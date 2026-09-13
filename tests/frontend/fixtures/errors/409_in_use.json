@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "conflict",
+    "params": {},
+    "fields": {
+      "id": { "code": "in_use", "params": { "count": 4, "name": "Iceland" } }
+    }
+  }
+}

@@ -1,0 +1,696 @@
+{
+  "_comment": "Canonical fixture for design/API.md. Balances and stats are derived from the items — keep them derived when editing.",
+  "trip": {
+    "trip": {
+      "id": 1,
+      "slug": "iceland-2026",
+      "name": "Iceland 2026",
+      "start_date": "2026-09-12",
+      "end_date": "2026-09-21",
+      "note": null,
+      "archived": false,
+      "people": [
+        {
+          "id": 1,
+          "name": "Petr",
+          "initial": "P",
+          "color": "#0d6efd",
+          "default_weight": "1",
+          "sort_order": 0,
+          "active": true
+        },
+        {
+          "id": 2,
+          "name": "Ann",
+          "initial": "A",
+          "color": "#dc3545",
+          "default_weight": "1",
+          "sort_order": 1,
+          "active": true
+        },
+        {
+          "id": 3,
+          "name": "Bob",
+          "initial": "B",
+          "color": "#198754",
+          "default_weight": "1",
+          "sort_order": 2,
+          "active": true
+        },
+        {
+          "id": 4,
+          "name": "Eva",
+          "initial": "E",
+          "color": "#fd7e14",
+          "default_weight": "0.5",
+          "sort_order": 3,
+          "active": true
+        }
+      ],
+      "currencies": [
+        {
+          "id": 1,
+          "code": "ISK",
+          "symbol": "kr",
+          "is_primary": true,
+          "sort_order": 0
+        },
+        {
+          "id": 2,
+          "code": "EUR",
+          "symbol": "€",
+          "is_primary": false,
+          "sort_order": 1
+        },
+        {
+          "id": 3,
+          "code": "DKK",
+          "symbol": "kr.",
+          "is_primary": false,
+          "sort_order": 2
+        }
+      ],
+      "countries": [
+        {
+          "id": 1,
+          "name": "Iceland",
+          "code": "IS",
+          "flag": "🇮🇸",
+          "is_default": true,
+          "sort_order": 0,
+          "item_count": 4
+        },
+        {
+          "id": 2,
+          "name": "Denmark",
+          "code": "DK",
+          "flag": "🇩🇰",
+          "is_default": false,
+          "sort_order": 1,
+          "item_count": 1
+        }
+      ],
+      "created_at": "2026-09-01T08:12:00Z",
+      "updated_at": "2026-09-12T14:02:00Z"
+    }
+  },
+  "labels": {
+    "labels": [
+      {
+        "id": 1,
+        "name": "food",
+        "color": "#6c757d",
+        "use_count": 2
+      },
+      {
+        "id": 2,
+        "name": "restaurant",
+        "color": "#6c757d",
+        "use_count": 1
+      },
+      {
+        "id": 3,
+        "name": "transport",
+        "color": "#6c757d",
+        "use_count": 1
+      },
+      {
+        "id": 4,
+        "name": "fuel",
+        "color": "#6c757d",
+        "use_count": 1
+      },
+      {
+        "id": 5,
+        "name": "fun",
+        "color": "#6c757d",
+        "use_count": 1
+      },
+      {
+        "id": 6,
+        "name": "spa",
+        "color": "#6c757d",
+        "use_count": 1
+      },
+      {
+        "id": 7,
+        "name": "lodging",
+        "color": "#6c757d",
+        "use_count": 1
+      },
+      {
+        "id": 8,
+        "name": "airport",
+        "color": "#6c757d",
+        "use_count": 1
+      },
+      {
+        "id": 9,
+        "name": "groceries",
+        "color": "#6c757d",
+        "use_count": 0
+      },
+      {
+        "id": 10,
+        "name": "drinks",
+        "color": "#6c757d",
+        "use_count": 0
+      }
+    ]
+  },
+  "items": {
+    "items": [
+      {
+        "id": 42,
+        "name": "Dinner at Messinn",
+        "note": null,
+        "occurred_at": "2026-09-14T19:30:00Z",
+        "currency_code": "ISK",
+        "currency_id": 1,
+        "amount": 18400,
+        "payer_id": 1,
+        "country_id": 1,
+        "labels": [
+          "food",
+          "restaurant"
+        ],
+        "map_url": "https://maps.app.goo.gl/Kx9mNq2",
+        "lat": "64.14930",
+        "lon": "-21.94030",
+        "split": {
+          "mode": "equal",
+          "shares": [
+            {
+              "person_id": 1,
+              "weight": "1",
+              "owed": 4600
+            },
+            {
+              "person_id": 2,
+              "weight": "1",
+              "owed": 4600
+            },
+            {
+              "person_id": 3,
+              "weight": "1",
+              "owed": 4600
+            },
+            {
+              "person_id": 4,
+              "weight": "1",
+              "owed": 4600
+            }
+          ]
+        },
+        "created_at": "2026-09-14T19:30:00Z",
+        "updated_at": "2026-09-14T19:30:00Z"
+      },
+      {
+        "id": 41,
+        "name": "Fuel — N1 Selfoss",
+        "note": null,
+        "occurred_at": "2026-09-14T11:05:00Z",
+        "currency_code": "ISK",
+        "currency_id": 1,
+        "amount": 7900,
+        "payer_id": 3,
+        "country_id": 1,
+        "labels": [
+          "fuel",
+          "transport"
+        ],
+        "map_url": null,
+        "lat": "63.93330",
+        "lon": "-20.99000",
+        "split": {
+          "mode": "equal",
+          "shares": [
+            {
+              "person_id": 1,
+              "weight": "1",
+              "owed": 1975
+            },
+            {
+              "person_id": 2,
+              "weight": "1",
+              "owed": 1975
+            },
+            {
+              "person_id": 3,
+              "weight": "1",
+              "owed": 1975
+            },
+            {
+              "person_id": 4,
+              "weight": "1",
+              "owed": 1975
+            }
+          ]
+        },
+        "created_at": "2026-09-14T11:05:00Z",
+        "updated_at": "2026-09-14T11:05:00Z"
+      },
+      {
+        "id": 40,
+        "name": "Blue Lagoon tickets",
+        "note": null,
+        "occurred_at": "2026-09-14T09:00:00Z",
+        "currency_code": "EUR",
+        "currency_id": 2,
+        "amount": 40.0,
+        "payer_id": 2,
+        "country_id": 1,
+        "labels": [
+          "fun",
+          "spa"
+        ],
+        "map_url": null,
+        "lat": null,
+        "lon": null,
+        "split": {
+          "mode": "equal",
+          "shares": [
+            {
+              "person_id": 1,
+              "weight": "1",
+              "owed": 13.333333
+            },
+            {
+              "person_id": 2,
+              "weight": "1",
+              "owed": 13.333333
+            },
+            {
+              "person_id": 3,
+              "weight": null,
+              "owed": null
+            },
+            {
+              "person_id": 4,
+              "weight": "1",
+              "owed": 13.333333
+            }
+          ]
+        },
+        "created_at": "2026-09-14T09:00:00Z",
+        "updated_at": "2026-09-14T09:00:00Z"
+      },
+      {
+        "id": 39,
+        "name": "Guesthouse Vík, 2 nights",
+        "note": null,
+        "occurred_at": "2026-09-13T16:00:00Z",
+        "currency_code": "ISK",
+        "currency_id": 1,
+        "amount": 96000,
+        "payer_id": 4,
+        "country_id": 1,
+        "labels": [
+          "lodging"
+        ],
+        "map_url": "https://maps.app.goo.gl/Vik42",
+        "lat": null,
+        "lon": null,
+        "split": {
+          "mode": "shares",
+          "shares": [
+            {
+              "person_id": 1,
+              "weight": "1",
+              "owed": 27428.571428
+            },
+            {
+              "person_id": 2,
+              "weight": "1",
+              "owed": 27428.571428
+            },
+            {
+              "person_id": 3,
+              "weight": "1",
+              "owed": 27428.571428
+            },
+            {
+              "person_id": 4,
+              "weight": "0.5",
+              "owed": 13714.285714
+            }
+          ]
+        },
+        "created_at": "2026-09-13T16:00:00Z",
+        "updated_at": "2026-09-13T16:00:00Z"
+      },
+      {
+        "id": 38,
+        "name": "Layover lunch — Kastrup",
+        "note": null,
+        "occurred_at": "2026-09-12T12:40:00Z",
+        "currency_code": "DKK",
+        "currency_id": 3,
+        "amount": 480.0,
+        "payer_id": 2,
+        "country_id": 2,
+        "labels": [
+          "airport",
+          "food"
+        ],
+        "map_url": null,
+        "lat": null,
+        "lon": null,
+        "split": {
+          "mode": "equal",
+          "shares": [
+            {
+              "person_id": 1,
+              "weight": "1",
+              "owed": 120
+            },
+            {
+              "person_id": 2,
+              "weight": "1",
+              "owed": 120
+            },
+            {
+              "person_id": 3,
+              "weight": "1",
+              "owed": 120
+            },
+            {
+              "person_id": 4,
+              "weight": "1",
+              "owed": 120
+            }
+          ]
+        },
+        "created_at": "2026-09-12T12:40:00Z",
+        "updated_at": "2026-09-12T12:40:00Z"
+      }
+    ]
+  },
+  "balances": {
+    "balances": [
+      {
+        "currency_code": "ISK",
+        "currency_id": 1,
+        "total_spent": 122300,
+        "people": [
+          {
+            "person_id": 1,
+            "paid": 18400,
+            "owed": 34003.571428,
+            "net": -15603.571428
+          },
+          {
+            "person_id": 2,
+            "paid": 0,
+            "owed": 34003.571428,
+            "net": -34003.571428
+          },
+          {
+            "person_id": 3,
+            "paid": 7900,
+            "owed": 34003.571428,
+            "net": -26103.571428
+          },
+          {
+            "person_id": 4,
+            "paid": 96000,
+            "owed": 20289.285714,
+            "net": 75710.714286
+          }
+        ],
+        "suggestions": [
+          {
+            "from_person_id": 2,
+            "to_person_id": 4,
+            "amount": 34003.57
+          },
+          {
+            "from_person_id": 3,
+            "to_person_id": 4,
+            "amount": 26103.57
+          },
+          {
+            "from_person_id": 1,
+            "to_person_id": 4,
+            "amount": 15603.57
+          }
+        ]
+      },
+      {
+        "currency_code": "EUR",
+        "currency_id": 2,
+        "total_spent": 40,
+        "people": [
+          {
+            "person_id": 1,
+            "paid": 0,
+            "owed": 13.333333,
+            "net": -13.333333
+          },
+          {
+            "person_id": 2,
+            "paid": 40,
+            "owed": 13.333333,
+            "net": 26.666667
+          },
+          {
+            "person_id": 3,
+            "paid": 0,
+            "owed": 0,
+            "net": 0
+          },
+          {
+            "person_id": 4,
+            "paid": 0,
+            "owed": 13.333333,
+            "net": -13.333333
+          }
+        ],
+        "suggestions": [
+          {
+            "from_person_id": 1,
+            "to_person_id": 2,
+            "amount": 13.34
+          },
+          {
+            "from_person_id": 4,
+            "to_person_id": 2,
+            "amount": 13.33
+          }
+        ]
+      },
+      {
+        "currency_code": "DKK",
+        "currency_id": 3,
+        "total_spent": 480,
+        "people": [
+          {
+            "person_id": 1,
+            "paid": 0,
+            "owed": 120,
+            "net": -120
+          },
+          {
+            "person_id": 2,
+            "paid": 480,
+            "owed": 120,
+            "net": 360
+          },
+          {
+            "person_id": 3,
+            "paid": 0,
+            "owed": 120,
+            "net": -120
+          },
+          {
+            "person_id": 4,
+            "paid": 0,
+            "owed": 120,
+            "net": -120
+          }
+        ],
+        "suggestions": [
+          {
+            "from_person_id": 1,
+            "to_person_id": 2,
+            "amount": 120
+          },
+          {
+            "from_person_id": 3,
+            "to_person_id": 2,
+            "amount": 120
+          },
+          {
+            "from_person_id": 4,
+            "to_person_id": 2,
+            "amount": 120
+          }
+        ]
+      }
+    ]
+  },
+  "stats": {
+    "stats": [
+      {
+        "currency_code": "ISK",
+        "currency_id": 1,
+        "by_label": [
+          {
+            "label": "lodging",
+            "item_count": 1,
+            "amount": 96000
+          },
+          {
+            "label": "food",
+            "item_count": 1,
+            "amount": 18400
+          },
+          {
+            "label": "restaurant",
+            "item_count": 1,
+            "amount": 18400
+          },
+          {
+            "label": "fuel",
+            "item_count": 1,
+            "amount": 7900
+          },
+          {
+            "label": "transport",
+            "item_count": 1,
+            "amount": 7900
+          }
+        ],
+        "by_country": [
+          {
+            "country_id": 1,
+            "item_count": 3,
+            "amount": 122300
+          }
+        ],
+        "by_person": [
+          {
+            "person_id": 1,
+            "amount": 34003.571428
+          },
+          {
+            "person_id": 2,
+            "amount": 34003.571428
+          },
+          {
+            "person_id": 3,
+            "amount": 34003.571428
+          },
+          {
+            "person_id": 4,
+            "amount": 20289.285714
+          }
+        ],
+        "by_day": [
+          {
+            "date": "2026-09-13",
+            "amount": 96000
+          },
+          {
+            "date": "2026-09-14",
+            "amount": 26300
+          }
+        ],
+        "total": 122300
+      },
+      {
+        "currency_code": "EUR",
+        "currency_id": 2,
+        "by_label": [
+          {
+            "label": "fun",
+            "item_count": 1,
+            "amount": 40.0
+          },
+          {
+            "label": "spa",
+            "item_count": 1,
+            "amount": 40.0
+          }
+        ],
+        "by_country": [
+          {
+            "country_id": 1,
+            "item_count": 1,
+            "amount": 40.0
+          }
+        ],
+        "by_person": [
+          {
+            "person_id": 1,
+            "amount": 13.333333
+          },
+          {
+            "person_id": 2,
+            "amount": 13.333333
+          },
+          {
+            "person_id": 4,
+            "amount": 13.333333
+          }
+        ],
+        "by_day": [
+          {
+            "date": "2026-09-14",
+            "amount": 40.0
+          }
+        ],
+        "total": 40.0
+      },
+      {
+        "currency_code": "DKK",
+        "currency_id": 3,
+        "by_label": [
+          {
+            "label": "airport",
+            "item_count": 1,
+            "amount": 480.0
+          },
+          {
+            "label": "food",
+            "item_count": 1,
+            "amount": 480.0
+          }
+        ],
+        "by_country": [
+          {
+            "country_id": 2,
+            "item_count": 1,
+            "amount": 480.0
+          }
+        ],
+        "by_person": [
+          {
+            "person_id": 1,
+            "amount": 120
+          },
+          {
+            "person_id": 2,
+            "amount": 120
+          },
+          {
+            "person_id": 3,
+            "amount": 120
+          },
+          {
+            "person_id": 4,
+            "amount": 120
+          }
+        ],
+        "by_day": [
+          {
+            "date": "2026-09-12",
+            "amount": 480.0
+          }
+        ],
+        "total": 480.0
+      }
+    ],
+    "day_count": 10
+  }
+}

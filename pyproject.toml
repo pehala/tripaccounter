@@ -1,0 +1,40 @@
+[project]
+name = "tripaccounter"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+  "fastapi>=0.141",
+  "uvicorn[standard]>=0.52",
+  "sqlalchemy>=2.0.52",
+  "alembic>=1.20",
+  "pydantic>=2.13",
+  "pydantic-settings>=2.15",
+  "sqlmodel>=0.0.42",
+  "psycopg[binary]>=3.2",
+  "fastapi-cli-slim>=0.0.23",
+]
+
+[dependency-groups]
+dev = ["pytest>=9.1", "httpx>=0.28", "pytest-playwright>=0.9", "pytest-xdist>=3.6", "ruff>=0.16", "lefthook>=2.1", "commitlint>=2.0"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+extend-select = ["E", "F", "I", "B", "UP", "SIM", "PL", "D"]
+ignore = ["PLR2004"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.alembic]
+script_location = "alembic"
+prepend_sys_path = ["."]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

@@ -1,0 +1,21 @@
+[Unit]
+Description=Trip Accounter app
+After=postgres.service
+Requires=postgres.service
+
+[Container]
+Image=localhost/tripaccounter:latest
+ContainerName=tripaccounter-app
+Network=tripaccounter.network
+EnvironmentFile=/etc/tripaccounter/app.env
+PublishPort=8000:8000
+HealthCmd=/app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/')"
+HealthInterval=10s
+HealthRetries=5
+HealthStartPeriod=15s
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target default.target

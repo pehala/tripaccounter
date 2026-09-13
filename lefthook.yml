@@ -1,0 +1,29 @@
+pre-commit:
+  parallel: true
+  commands:
+    fmt:
+      glob: "*.py"
+      run: make fmt FILES="{staged_files}"
+      stage_fixed: true
+    lock-check:
+      glob: "pyproject.toml"
+      run: make lock-check
+    openapi-fresh:
+      # The committed spec is generated from the routers and schemas; touching
+      # either regenerates it in the same commit.
+      glob: "{app/schemas.py,app/routers/*.py,app/main.py}"
+      run: make openapi && git add openapi.json
+    no-secrets:
+      run: git diff --cached --name-only | grep -E '(^|/)\.env(\..*)?$|\.db$' && echo "refusing to commit env/db files" && exit 1 || true
+
+commit-msg:
+  commands:
+    commitlint:
+      run: uv run commitlint --file {1} --max-header-length 72
+
+pre-push:
+  commands:
+    lint:
+      run: make lint
+    backend-tests:
+      run: make test_backend

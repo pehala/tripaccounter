@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "validation_error",
+    "params": {},
+    "fields": {
+      "shares": { "code": "sum_mismatch", "params": { "diff": 3, "currency_code": "ISK" } }
+    }
+  }
+}

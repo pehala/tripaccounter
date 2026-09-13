@@ -1,0 +1,1 @@
+"""Trip Accounter backend package."""

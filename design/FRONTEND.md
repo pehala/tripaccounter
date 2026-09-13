@@ -1,0 +1,233 @@
+# Frontend Architecture — `static/`
+
+**Owns**: everything under `static/`, plus `tools/mockserver.py` and
+`tools/check_i18n.py`.
+
+**Owns nothing under `app/`.** The API hands over **data, not presentation** — plain
+numbers — and every bit of formatting is frontend work: digit grouping, the decimal
+separator, the currency symbol, the `+` on a credit, the dash for a person left out,
+and the split phrase ("equally, 4 ways", "shares 1·1·1·0.5").
+
+---
+
+## 1. Stack
+
+Preact + htm as ES modules through an import map. No build step, no Node, no npm.
+Pinned versions with SRI hashes. Bootstrap 5 CSS plus `bootstrap.bundle.min.js` for
+the modal and tabs — Preact renders the markup, Bootstrap animates it. Bootstrap
+Icons for glyphs. Roughly 500 lines of own JS.
+
+**Localized from the first commit.** Two catalogs, `en` (the source of truth) and
+`cs`; a third is one file plus one line. No i18n library: `t()` is about 40 lines over
+`Intl.PluralRules`, `Intl.NumberFormat` and `Intl.DateTimeFormat`, which already do
+the hard parts for every locale.
+
+## 2. Layout
+
+```
+static/
+├── index.html            <head>, pinned CDN tags + SRI, import map, <div id="app">
+├── app.css               ~80 lines on top of Bootstrap. No framework rewrite.
+└── js/
+    ├── app.js            mount + router: / and /t/:slug#items|balances|stats|setup
+    ├── api.js            fetch wrapper: base path, JSON,
+    │                     error envelope → {status, code, params, fields}
+    ├── store.js          per-trip state: trip, labels, items, balances, stats;
+    │                     load(), reload(kind)
+    ├── fmt.js            money(), signed(), parse(), date() — one cached
+    │                     Intl.NumberFormat per locale
+    ├── h.js              html = htm.bind(h)
+    ├── rates.js          the statistics rates, localStorage only, never sent
+    ├── i18n/
+    │   ├── index.js      LANGS, current locale, t(key, params), setLocale()
+    │   ├── en.js         source catalog, flat dotted keys
+    │   └── cs.js         same keys, Czech
+    ├── views/
+    │   ├── TripList.js  TripNew.js
+    │   ├── Trip.js       header + nav-tabs, picks the tab view
+    │   ├── Items.js      day groups, empty state, FAB
+    │   ├── Balances.js   one BalanceCard per currency
+    │   ├── Stats.js      per-currency and combined views, rate inputs
+    │   └── Setup.js      people / currencies / countries / labels / settings / export
+    └── components/
+        ├── ItemRow.js  DayGroup.js
+        ├── ItemModal.js  add + edit, one component, two modes
+        ├── SplitEditor.js  mode switch, weights/amounts, calls preview-split
+        ├── LabelInput.js   space/comma-separated chips
+        ├── BalanceCard.js  diverging bars, settle-up list
+        ├── Avatar.js  PersonChip.js  LabelBadge.js  Flash.js
+        └── splitSummary.js  mode + weights → "equally, 4 ways" — UI wording, UI code
+```
+
+State keys are exactly the API's resource names: `trip` (with embedded `people`,
+`currencies`, `countries`), `labels`, `items`, `balances`, `stats`.
+
+## 3. Data flow
+
+```mermaid
+flowchart TD
+    api["api.js<br/><i>fetch, envelope → {status, code, params, fields}</i>"]
+    store["store.js<br/><i>trip · labels · items · balances · stats</i>"]
+    views["views/ + components/"]
+    fmt["fmt.js<br/><i>the only place a number becomes text</i>"]
+    i18n["i18n/<br/><i>the only place a word exists</i>"]
+
+    api --> store --> views
+    views --> fmt
+    views --> i18n
+    views -- "write" --> api
+    api -. "then reload(kind)" .-> store
+
+    style fmt fill:#e9f7ee,stroke:#3f9e5f
+    style i18n fill:#fff4e0,stroke:#d2933a
+```
+
+Note the dashed arrow: **a write is followed by a re-read, never by a local mutation.**
+
+## 4. The seven rules
+
+1. **Format, never calculate — with exactly one exception.** Amounts arrive as plain
+   JSON numbers, some with six fraction digits (`owed`, `net`, `by_person`). Render
+   them through `fmt.money(value)`, which does grouping, separators and **0–2 fraction
+   digits** — nothing else. The extra places exist so the server never rounds per item;
+   the screen never shows them. **Never add, subtract or accumulate a column of
+   amounts**: they are float64, and the backend ships every total, subtotal and balance
+   pre-summed from SQL over integers.
+
+   A direct consequence: **the feed shows no per-day subtotal.** That number is not in
+   the API and the frontend may not compute it. `stats.by_day` has it if a day view
+   ever wants one.
+
+   The exception is the statistics page: it multiplies each group total by a rate the
+   user typed, **rounds each product to two places**, and sums those rounded figures
+   across currencies for the combined row. That sum is the only place the frontend adds
+   two amounts, and both operands are already the user's own guesswork. The rates live
+   in `localStorage`, are never posted back, and never come near a balance or a
+   settle-up figure.
+
+2. **No split computation.** `item.split.shares` arrives resolved: one entry per person
+   in roster order, `owed: null` for anyone left out (render a dash), `owed: 0` meaning
+   they are in the split and rounding gave them nothing. Map the list as given.
+   `split.mode` and `weight` are for prefilling the form and for `splitSummary()`. Live
+   numbers in the modal come from `POST /items/preview-split`, fired on `change` of an
+   amount, a weight or a person checkbox — not on every keystroke. If the request
+   fails, the preview greys out; it never guesses.
+
+3. **Writes, then re-read.** After any successful `POST`/`PATCH`/`DELETE`, call
+   `store.reload('items')` (or `'trip'`, `'labels'`, …) and let Preact diff. No
+   client-side row insertion, no local mutation of amounts, no optimistic updates. One
+   extra `GET` per save is the price of never being wrong.
+
+4. **Errors are rendered from code + params; the server sends no text.**
+   `error.fields[name]` is `{code, params}` — render `t('err.' + code, params)` under
+   the matching input, and `t('err.' + error.code, error.params)` in the flash for a
+   field-less error. A code the catalog does not know renders as the code and its params
+   (`sum_mismatch · diff 3`) — ugly on purpose, and `test_i18n.py` makes sure it never
+   ships. Numbers inside `params` go through `fmt` like any other number.
+
+   **Input goes the other way.** The API takes canonical decimals only (`18400.50`), so
+   `fmt.parse(text)` turns whatever the user typed in the current locale (`18 400,50`,
+   `18,400.50`, `18400,5`) into canonical form before it is sent — for `amount`,
+   weights, exact shares, `default_weight`, `lat`, `lon`. The server knows no
+   separators; the client knows exactly one locale.
+
+5. **Unknown fields are ignored**, so a backend addition can never break a view. This
+   is what let the backend ship ahead of the frontend, and it stays true afterwards.
+
+6. **Keys and formatters.** Every list render has `key=${id}`. `fmt.js` builds one
+   `Intl.NumberFormat` per locale and caches it — constructing one per cell is the only
+   real performance trap in this app.
+
+7. **No literal UI text in a component.** Every user-visible string goes through
+   `t(key, params)`; components contain keys, not words.
+   - **Catalogs** are flat ES modules with `{name}` interpolation only.
+   - **Plurals** are separate keys per CLDR category: `t('items.count', {n: 3})` picks
+     `items.count.` + `Intl.PluralRules(locale).select(3)` — `one/other` for English,
+     `one/few/many/other` for Czech. The catalog author never writes the rule; the
+     browser has it.
+   - **Numbers and dates never come from a catalog.** `fmt.money()` and `fmt.date()`
+     take the current locale, so Czech renders `18 400,50` and `po 14. 9.` without a
+     single translated string.
+   - **Locale** is `localStorage['lang']`, else the first `navigator.languages` entry
+     whose prefix is in `LANGS`, else `en`. `setLocale()` sets `<html lang>`, writes
+     storage and re-renders the root — no reload.
+   - **Text that is not the UI's** — item names, label names, country and person names
+     — is user data and is never translated. Country flags are data. Error text arrives
+     as a `code`. The API has no language.
+   - **Adding a language** is: copy `en.js`, translate, add the code to `LANGS`.
+     `test_i18n.py` refuses a catalog with a missing or extra key.
+
+**`occurred_at` is tz-aware UTC on the wire, always.** `fmt.date()` / `fmt.dateTime()`
+convert to the viewer's local time as part of formatting, the same way `fmt.money()`
+hides the locale's separators, and the item form converts back before sending. A
+component never parses or formats a date by hand, and the wire string is never treated
+as the viewer's own wall clock.
+
+## 5. Call budget per screen
+
+| Screen | Calls | Notes |
+|---|---|---|
+| Trip list | 1 | `GET /trips` |
+| Open a trip | 3, parallel | `GET /trips/{slug}`, `/items`, `/labels` |
+| Balances tab | 1 | on first open, cached until a write |
+| Stats tab | 1 | on first open |
+| Open the edit modal | 0 | the item is already in `store.items` |
+| Type in the modal | 0 | labels filtered from `store.labels` client-side |
+| Change amount or split | 1 | `preview-split` on `change`, not on input |
+| Save an item | 2 | the write, then `GET /items` (plus `/labels` if a new label was typed) |
+| Setup edit | 2 | the write, then `GET /trips/{slug}` (or `/labels`) |
+
+Anything above this is a bug, and `test_call_budget.py` says so.
+
+## 6. Working without the backend
+
+```bash
+make start_ui        # tools/mockserver.py on :8001 — static/ at /, fixtures under /api/v1
+make test_frontend   # no DB, no uvicorn, no backend
+```
+
+The mock server serves the same `static/` directory the real app does, so the frontend
+cannot tell which one is behind it. **It does no arithmetic, ever.** A `POST`/`PATCH`
+echoes the body back with an id; a `DELETE` answers `204`; the stored fixture is
+updated in memory so the re-read after a write returns something consistent. Nothing
+it returns is computed — a split that arrives resolved was written out by hand in the
+fixture.
+
+That is the whole point. The moment the mock computes a split there are two
+implementations of the allocation rule, and the frontend suite starts passing against
+the wrong one.
+
+## 7. Tests
+
+`tests/frontend/` owns rendering and interaction, and runs a real Chromium against
+`tools/mockserver.py` serving canned JSON. It is the browser and the fixtures, and
+that is all it needs — ruff bans an `app.*` import here, because a frontend test that
+wants the database is a backend test in the wrong directory.
+
+```
+tests/frontend/
+├── conftest.py          mockserver on a free port, page fixture, route helpers
+├── fixtures/
+│   ├── trip.json        the resting state: 4 people, 2 currencies, resolved splits
+│   ├── empty.json       a trip with no items, for the empty states
+│   ├── hostile.json     markup in names and labels, for escaping
+│   └── errors/          one file per envelope: 404, 409_in_use, 422_shares, 500_html
+└── test_*.py
+```
+
+**Two data mechanisms, and the choice is not a matter of taste.** Baseline `GET`s come
+from the mock server — that is the app's resting state. Everything else — writes, error
+envelopes, `preview-split`, slow or failing responses — is stubbed per test with
+`page.route`, so a `409`, a mismatched-shares `422` or a 500 with an HTML body is one
+line instead of a backend state that has to be manufactured.
+
+**`preview-split` is always canned.** This suite asserts *"renders what the server
+returned"*. Whether 18 400 ISK across four people is 4 600 each is a backend question,
+asked in exactly one backend file. That is rule 2 as a test-layout rule.
+
+**Fixture values are copied from what the backend actually produced**, and a fixture
+is updated in the same commit as the contract change that moves it. The browsable
+truth to copy from is `/docs` on a running server, or the committed `openapi.json`.
+
+Anything under `tests/` follows
+[`skills/writing-unit-tests`](../skills/writing-unit-tests/SKILL.md).
