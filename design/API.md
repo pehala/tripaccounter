@@ -291,8 +291,8 @@ One block per currency that has any activity; a currency nobody spent is absent.
 
 ### Statistics
 Plain `GROUP BY` aggregates — per currency, never across them. The totals arrive
-already summed, so a client never adds a column of floats; all it does with these
-numbers is multiply by a rate and round to two places.
+already summed, so a client never adds a column of floats over this API's own
+response; all it does with these numbers otherwise is format them.
 
 `by_person` is a sum over the share view (six places); every other group is a sum of
 typed amounts (two). **`by_person[].amount` is what that person owes** in the period —
@@ -303,12 +303,14 @@ a trip where one person pays for everything.
 to more than `total`, and a client must say so on screen. Items with no label appear
 under `"label": null`. `by_day` groups on `occurred_at`; `day_count` spans the trip.
 
-**The combined view is the single client-side exception.** The user types a rate per
-currency; the client multiplies each group total by its rate, rounds to two places,
-sums those rounded figures across currencies for the combined row, and formats with
-`Intl.NumberFormat`. Those rates live in `localStorage`, are never sent to this API,
-never stored, and never touch a balance or a settle-up figure. Everywhere else the
-client formats what it is given and computes nothing.
+**The Total is the single client-side exception, and it is all-or-nothing.** It sits
+in the statistics page as another switch alongside the currencies: the user types a
+rate per currency, and only once every currency (not just some) has a positive rate
+does the client multiply each group total by its rate, round to two places, and sum
+those rounded figures across currencies. Until then the Total shows nothing but the
+rate form — never a partial sum quietly missing a currency. Those rates live in
+`localStorage`, are never sent to this API, never stored, and never touch a balance,
+a settle-up figure, or any currency's own statistics.
 
 ### Export
 `?format=csv|json`, both `Content-Disposition: attachment`. CSV is **share-grained** —
