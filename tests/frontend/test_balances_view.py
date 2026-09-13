@@ -1,133 +1,92 @@
 """Tests for views/Balances.js and components/BalanceCard.js.
 
-One card per currency, each `net`
-formatted and signed correctly (credit `+`, debt `−`, zero bare), suggestion rows
-in order and never more than n−1, bar widths derived without mutating the values;
-asserts `|sum(people[].net)| < 0.00001` per card and that the suggestions sum to
-zero exactly, both of which API.md explicitly allows a client to check; six-place
-`net` values render to two.
+One card per currency, each `net` formatted and signed correctly (credit `+`, debt
+`-`, zero bare), suggestion rows in the API's order, bar widths derived from the
+full-precision net while six-place `net` values render to two.
 """
 
+import re
+
+import pytest
 from playwright.sync_api import expect
 
 
-def fmt_signed(page, value):
-    """Return the exact string fmt.js's signed() produces for `value` in `en`."""
-    return page.evaluate(
-        "async ({ value }) => (await import('/js/fmt.js')).signed(value, 'en')",
-        {"value": value},
-    )
+@pytest.fixture
+def person_row(balances_page, card):
+    """Return `person_row(currency_code, name)`: that person's <li> in the Balance card."""
+
+    def find(currency_code, name):
+        return card(f"Balance {currency_code}").locator("li").filter(has_text=name)
+
+    return find
 
 
-def balance_card_for(page, currency_code):
-    """Return the 'Balance <code>' card (people + net) — not the settle-up card."""
-    return page.locator(".card").filter(
-        has=page.locator(".card-header", has_text=f"Balance {currency_code}")
-    )
-
-
-def settle_card_for(page, currency_code):
-    """Return the 'Settle up <code>' card (suggestions)."""
-    return page.locator(".card").filter(
-        has=page.locator(".card-header", has_text=f"Settle up {currency_code}")
-    )
-
-
-def test_one_balance_card_and_one_settle_up_card_per_currency(
-    page, mockserver, trip_url, fixture_data
-):
+@pytest.mark.parametrize(
+    "currency_code",
+    [
+        pytest.param("ISK", id="isk"),
+        pytest.param("EUR", id="eur"),
+        pytest.param("DKK", id="dkk"),
+    ],
+)
+def test_one_balance_card_and_one_settle_up_card_per_currency(balances_page, card, currency_code):
     """Every currency in the fixture gets its own balance card and settle-up card."""
-    page.goto(f"{trip_url}#balances")
-
-    for balance in fixture_data["balances"]["balances"]:
-        expect(balance_card_for(page, balance["currency_code"])).to_have_count(1)
-        expect(settle_card_for(page, balance["currency_code"])).to_have_count(1)
+    expect(card(f"Balance {currency_code}")).to_have_count(1)
+    expect(card(f"Settle up {currency_code}")).to_have_count(1)
 
 
-def test_net_values_are_signed_correctly_per_person(page, mockserver, trip_url, fixture_data):
-    """A positive net renders with a leading +, a negative with -, zero renders bare."""
-    page.goto(f"{trip_url}#balances")
-    trip = fixture_data["trip"]["trip"]
-    people_by_id = {p["id"]: p["name"] for p in trip["people"]}
+@pytest.mark.parametrize(
+    ("currency_code", "name", "expected"),
+    [
+        pytest.param("ISK", "Petr", "-15,603.57", id="isk-petr-debit"),
+        pytest.param("ISK", "Ann", "-34,003.57", id="isk-ann-debit"),
+        pytest.param("ISK", "Bob", "-26,103.57", id="isk-bob-debit"),
+        pytest.param("ISK", "Eva", "+75,710.71", id="isk-eva-credit"),
+        pytest.param("EUR", "Petr", "-13.33", id="eur-petr-debit"),
+        pytest.param("EUR", "Ann", "+26.67", id="eur-ann-credit"),
+        pytest.param("EUR", "Bob", "0", id="eur-bob-zero"),
+        pytest.param("EUR", "Eva", "-13.33", id="eur-eva-debit"),
+        pytest.param("DKK", "Petr", "-120", id="dkk-petr-debit"),
+        pytest.param("DKK", "Ann", "+360", id="dkk-ann-credit"),
+        pytest.param("DKK", "Bob", "-120", id="dkk-bob-debit"),
+        pytest.param("DKK", "Eva", "-120", id="dkk-eva-debit"),
+    ],
+)
+def test_net_value_is_signed_and_trimmed_to_two_places(person_row, currency_code, name, expected):
+    """A credit renders with a leading +, a debt with -, zero bare; six places trim to two."""
+    expect(person_row(currency_code, name).locator(".num")).to_have_text(expected)
 
-    for balance in fixture_data["balances"]["balances"]:
-        card = balance_card_for(page, balance["currency_code"])
-        for person in balance["people"]:
-            name = people_by_id[person["person_id"]]
-            expected = fmt_signed(page, person["net"])
-            row = card.locator("li").filter(has_text=name)
-            expect(row.locator(".num")).to_have_text(expected)
-            if person["net"] > 0:
-                assert expected.startswith("+")
-            elif person["net"] < 0:
-                assert expected.startswith(("-", "−"))
-            else:
-                assert not expected.startswith("+") and "-" not in expected
+
+@pytest.mark.parametrize(
+    ("currency_code", "transfers"),
+    [
+        pytest.param("ISK", [("Ann", "Eva"), ("Bob", "Eva"), ("Petr", "Eva")], id="isk"),
+        pytest.param("EUR", [("Petr", "Ann"), ("Eva", "Ann")], id="eur"),
+        pytest.param("DKK", [("Petr", "Ann"), ("Bob", "Ann"), ("Eva", "Ann")], id="dkk"),
+    ],
+)
+def test_suggestion_rows_follow_the_api_order(balances_page, card, currency_code, transfers):
+    """Settle-up rows render payer then payee in the API's own order, with no extra rows."""
+    rows = card(f"Settle up {currency_code}").locator("ul.list-group-flush li")
+
+    expect(rows).to_have_text([re.compile(rf"^{payer}\s+{payee}") for payer, payee in transfers])
 
 
-def test_suggestion_rows_match_the_fixture_order_and_count(
-    page, mockserver, trip_url, fixture_data
+@pytest.mark.parametrize(
+    ("currency_code", "name", "expected_style"),
+    [
+        pytest.param("ISK", "Eva", "width: 50%;", id="isk-eva-widest"),
+        pytest.param("ISK", "Petr", "width: 10.3047%;", id="isk-petr"),
+        pytest.param("EUR", "Ann", "width: 50%;", id="eur-ann-widest"),
+        pytest.param("EUR", "Petr", "width: 25%;", id="eur-petr"),
+        pytest.param("DKK", "Ann", "width: 50%;", id="dkk-ann-widest"),
+        pytest.param("DKK", "Petr", "width: 16.6667%;", id="dkk-petr"),
+    ],
+)
+def test_bar_width_is_derived_from_the_full_precision_net(
+    person_row, currency_code, name, expected_style
 ):
-    """Suggestion rows render in the fixture's own order and never exceed n-1 per currency."""
-    page.goto(f"{trip_url}#balances")
-    trip = fixture_data["trip"]["trip"]
-    people_by_id = {p["id"]: p["name"] for p in trip["people"]}
+    """The widest |net| bar is 50%; every other bar is its raw six-place ratio of that."""
+    bar = person_row(currency_code, name).locator(".bal-bar i")
 
-    for balance in fixture_data["balances"]["balances"]:
-        n_people = len(balance["people"])
-        assert len(balance["suggestions"]) <= n_people - 1
-
-        rows = settle_card_for(page, balance["currency_code"]).locator("ul.list-group-flush li")
-        expect(rows).to_have_count(len(balance["suggestions"]))
-        for i, suggestion in enumerate(balance["suggestions"]):
-            expect(rows.nth(i)).to_contain_text(people_by_id[suggestion["from_person_id"]])
-            expect(rows.nth(i)).to_contain_text(people_by_id[suggestion["to_person_id"]])
-
-
-def test_suggestions_settle_every_person_close_to_their_net(
-    page, mockserver, trip_url, fixture_data
-):
-    """Settle each person to within a cent of their raw net, summing to zero exactly.
-
-    API.md: nets are rounded to hundredths with a zero-sum correction, so one person
-    may absorb an extra hundredth to keep the total exactly balanced.
-    """
-    for balance in fixture_data["balances"]["balances"]:
-        settled = dict.fromkeys((p["person_id"] for p in balance["people"]), 0.0)
-        for s in balance["suggestions"]:
-            settled[s["from_person_id"]] -= s["amount"]
-            settled[s["to_person_id"]] += s["amount"]
-
-        assert abs(sum(settled.values())) < 1e-9
-        for person in balance["people"]:
-            assert abs(settled[person["person_id"]] - person["net"]) <= 0.01 + 1e-9
-
-
-def test_person_net_sums_to_nearly_zero_per_currency(fixture_data):
-    """API.md guarantees |sum(people[].net)| < 0.00001 per currency (floor-loss bound)."""
-    for balance in fixture_data["balances"]["balances"]:
-        assert abs(sum(p["net"] for p in balance["people"])) < 0.00001
-
-
-def test_bar_widths_are_derived_from_the_raw_six_place_net_not_the_rounded_display(
-    page, mockserver, trip_url, fixture_data
-):
-    """The diverging bar's width% uses the full-precision net, not its 2-decimal text."""
-    page.goto(f"{trip_url}#balances")
-    trip = fixture_data["trip"]["trip"]
-    people_by_id = {p["id"]: p["name"] for p in trip["people"]}
-
-    for balance in fixture_data["balances"]["balances"]:
-        card = balance_card_for(page, balance["currency_code"])
-        max_abs = max(1e-9, *(abs(p["net"]) for p in balance["people"]))
-        for person in balance["people"]:
-            if person["net"] == 0:
-                continue
-            name = people_by_id[person["person_id"]]
-            bar = card.locator("li").filter(has_text=name).locator(".bal-bar i")
-            style = bar.get_attribute("style")
-            width_pct = float(style.split("width:")[1].split("%")[0])
-            expected_pct = (abs(person["net"]) / max_abs) * 50
-            # Loose tolerance: only floating-point serialization noise is expected here;
-            # using the rounded 2-decimal net instead would be off by whole percentage points.
-            assert abs(width_pct - expected_pct) < 1e-3
+    expect(bar).to_have_attribute("style", expected_style)

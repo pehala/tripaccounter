@@ -7,79 +7,105 @@ returns; the starter set is the same six words in en and cs (labels are data, no
 UI text) and unticking one drops it from the body.
 """
 
+import pytest
 from playwright.sync_api import expect
 
 STARTER_LABELS = ["food", "lodging", "transport", "fun", "groceries", "drinks"]
+MINTED_TRIP = {"trip": {"id": 999, "slug": "new-trip-slug"}}
+EXPECTED_BODY = {
+    "name": "Norway 2027",
+    "people": [{"name": "Petr"}],
+    "currencies": [{"code": "NOK", "is_primary": True}],
+    "countries": [{"name": "Norway"}],
+    "labels": ["food", "lodging", "transport", "fun", "groceries"],
+}
 
 
-def test_one_card_per_trip_from_the_trip_list(page, mockserver, fixture_data):
-    """GET /trips renders one list-group-item per trip, name and people count shown."""
-    page.goto(f"{mockserver}/")
-
-    cards = page.locator(".list-group-item-action")
-    expect(cards).to_have_count(1)
-    trip = fixture_data["trip"]["trip"]
-    expect(cards.first).to_contain_text(trip["name"])
-    expect(cards.first).to_contain_text(f"{len(trip['people'])} people")
-
-
-def test_empty_trip_list_shows_the_empty_state(page, mockserver, stub):
-    """A GET /trips with no trips renders the empty-state text, not a blank list."""
+@pytest.fixture
+def no_trips(stub):
+    """Answer GET /trips with an empty list."""
     stub(
         "**/api/v1/trips",
         lambda request: (200, {"trips": []}) if request.method == "GET" else None,
     )
 
+
+@pytest.fixture
+def new_trip_form(page, mockserver):
+    """Return the page on the new-trip form."""
+    page.goto(f"{mockserver}/trips/new")
+    return page
+
+
+@pytest.fixture
+def czech_new_trip_form(js, new_trip_form):
+    """Return the new-trip form with the UI switched to Czech in place."""
+    js("i18n/index.js", "setLocale", "cs")
+    expect(new_trip_form.locator("html")).to_have_attribute("lang", "cs")
+    return new_trip_form
+
+
+@pytest.fixture
+def posted_trips(stub):
+    """Answer POST /trips with a minted slug; return the recorded request bodies."""
+    return stub(
+        "**/api/v1/trips",
+        lambda request: (201, MINTED_TRIP) if request.method == "POST" else None,
+    )
+
+
+@pytest.fixture
+def submitted_form(posted_trips, new_trip_form):
+    """Fill one person, primary currency and country, untick drinks, submit; return the form."""
+    new_trip_form.get_by_placeholder("Trip name", exact=True).fill("Norway 2027")
+    new_trip_form.get_by_placeholder("Name", exact=True).first.fill("Petr")
+    new_trip_form.get_by_placeholder("ISK", exact=True).fill("nok")
+    new_trip_form.locator("#new-trip-currency-primary-0").check()
+    new_trip_form.get_by_placeholder("Name", exact=True).nth(1).fill("Norway")
+    new_trip_form.locator("#starter-label-drinks").uncheck()
+    with new_trip_form.expect_response(
+        lambda response: response.request.method == "POST" and response.url.endswith("/trips")
+    ):
+        new_trip_form.get_by_role("button", name="Create trip").click()
+    return new_trip_form
+
+
+# --- trip list --------------------------------------------------------------------
+
+
+def test_one_card_per_trip_from_the_trip_list(page, mockserver):
+    """GET /trips renders one list-group-item per trip, name and people count shown."""
+    page.goto(f"{mockserver}/")
+
+    cards = page.locator(".list-group-item-action")
+    expect(cards).to_have_count(1)
+    expect(cards.first).to_contain_text("Iceland 2026")
+    expect(cards.first).to_contain_text("4 people")
+
+
+def test_empty_trip_list_shows_the_empty_state(no_trips, page, mockserver):
+    """A GET /trips with no trips renders the empty-state text, not a blank list."""
     page.goto(f"{mockserver}/")
 
     expect(page.get_by_text("No trips yet.")).to_be_visible()
-    assert page.locator(".list-group-item-action").count() == 0
+    expect(page.locator(".list-group-item-action")).to_have_count(0)
 
 
-def test_starter_labels_are_the_same_english_words_regardless_of_locale(page, mockserver):
-    """Starter label checkboxes show the literal English words even once the UI is in Czech."""
-    page.goto(f"{mockserver}/trips/new")
-    page.evaluate(
-        """async () => {
-            const { setLocale } = await import('/js/i18n/index.js');
-            setLocale('cs');
-        }"""
-    )
-
-    for word in STARTER_LABELS:
-        expect(page.locator(f"label[for='starter-label-{word}']")).to_have_text(word)
+# --- new trip ---------------------------------------------------------------------
 
 
-def test_submit_posts_people_currencies_countries_and_ticked_labels_and_routes_to_the_slug(
-    page, mockserver, stub
-):
+def test_starter_labels_are_the_same_english_words_regardless_of_locale(czech_new_trip_form):
+    """Starter label checkboxes show exactly the six literal English words with the UI in Czech."""
+    labels = czech_new_trip_form.locator("label[for^='starter-label-']")
+
+    assert labels.all_inner_texts() == STARTER_LABELS
+
+
+def test_submit_posts_people_currencies_countries_and_ticked_labels(submitted_form, posted_trips):
     """Submitting posts one body with only the filled-in rows and the ticked starter labels."""
-    posted = stub(
-        "**/api/v1/trips",
-        lambda request: (
-            (201, {"trip": {"id": 999, "slug": "new-trip-slug"}})
-            if request.method == "POST"
-            else None
-        ),
-    )
+    assert posted_trips == [EXPECTED_BODY]
 
-    page.goto(f"{mockserver}/trips/new")
-    page.get_by_placeholder("Trip name", exact=True).fill("Norway 2027")
-    page.get_by_placeholder("Name", exact=True).first.fill("Petr")
-    page.get_by_placeholder("ISK", exact=True).fill("nok")
-    page.locator("#new-trip-currency-primary-0").check()
-    page.get_by_placeholder("Name", exact=True).nth(1).fill("Norway")
-    page.locator("#starter-label-drinks").uncheck()
 
-    page.get_by_role("button", name="Create trip").click()
-
-    assert len(posted) == 1
-    body = posted[0]
-    assert body["name"] == "Norway 2027"
-    assert body["people"] == [{"name": "Petr"}]
-    assert body["currencies"] == [{"code": "NOK", "is_primary": True}]
-    assert body["countries"] == [{"name": "Norway"}]
-    assert set(body["labels"]) == set(STARTER_LABELS) - {"drinks"}
-    assert len(body["labels"]) == 5
-
-    expect(page).to_have_url(f"{mockserver}/t/new-trip-slug")
+def test_submit_routes_to_the_slug_the_server_minted(submitted_form, mockserver):
+    """After a 201, the app routes to the trip page of the slug in the response."""
+    expect(submitted_form).to_have_url(f"{mockserver}/t/new-trip-slug")

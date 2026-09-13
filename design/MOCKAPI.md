@@ -159,7 +159,6 @@ and a typo in a route shows up as a failing test instead of an echoed body.
 | `fixture_data` | a fresh parse of `fixture_name`, private to the test; a module overrides it to mutate the copy before it is served |
 | `mockserver` | base URL of a server built from `fixture_data`; stopped with the test |
 | `trip_url` | `{mockserver}/t/{slug}` |
-| `make_mockserver(name=…)` / `make_mockserver(data=…)` | `(base_url, data)` for a fixture file or an in-memory dict; stopped with the test |
 | `open_trip(hash)` / `items_page` … `setup_page` | the trip loaded on a tab, waited for; the factory form lets a test stub a baseline `GET` first |
 | `stub(pattern, responder)` | a `page.route` interceptor; a responder returning `None` lets the request through to the mock |
 | `count_requests(path_glob, method)` | a live list of the requests the page made, for the call budget |

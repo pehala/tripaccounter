@@ -5,7 +5,6 @@ modal fixtures on top of it, route stubs for writes and errors. No DB, no `app.*
 """
 
 import json
-from contextlib import ExitStack
 from fnmatch import fnmatchcase
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -70,24 +69,6 @@ def mockserver(fixture_data):
 def trip_url(mockserver, slug):
     """Return the mockserver URL for this test's trip page, without a hash."""
     return f"{mockserver}/t/{slug}"
-
-
-@pytest.fixture
-def make_mockserver():
-    """Return a factory that serves a fixture on a free port and returns `(url, data)`.
-
-    Transitional, for modules not yet on `fixture_name`: pass either `name`, a file
-    under fixtures/, or `data`, a dict to serve as is. Every server started this way
-    is stopped at teardown.
-    """
-    with ExitStack() as servers:
-
-        def make(name=None, data=None):
-            if data is None:
-                data = load_fixture(name)
-            return servers.enter_context(MockServer(data)).url, data
-
-        yield make
 
 
 # --- browser ----------------------------------------------------------------------

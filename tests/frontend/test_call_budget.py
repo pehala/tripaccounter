@@ -5,111 +5,83 @@ modal makes 0, saving makes 2, the stats tab 1, the balances tab 1 — every row
 the table, asserted as equality, not a ceiling.
 """
 
+import pytest
 from playwright.sync_api import expect
 
-
-def count_api_calls(page):
-    """Return a list that grows by one for every request to /api/v1/.
-
-    Attach it right before the action under test.
-    """
-    calls = []
-    page.on("request", lambda request: calls.append(request) if "/api/v1/" in request.url else None)
-    return calls
+API_CALLS = "*/api/v1/*"
 
 
-def test_opening_a_trip_makes_exactly_three_calls(page, mockserver, slug):
+@pytest.fixture
+def visited_tabs_page(items_page, open_tab):
+    """Return the page after Balances and Statistics were each opened once and Items reopened."""
+    open_tab("Balances")
+    open_tab("Statistics")
+    return open_tab("Items")
+
+
+@pytest.fixture
+def filled_new_item_modal(page, new_item_modal):
+    """Return the new-expense modal with name and amount typed and the split preview settled."""
+    new_item_modal.locator('input[name="name"]').fill("Snacks")
+    new_item_modal.locator('input[name="amount"]').fill("500")
+    with page.expect_response(lambda response: "preview-split" in response.url):
+        new_item_modal.locator('input[name="amount"]').blur()
+    return new_item_modal
+
+
+def test_opening_a_trip_makes_exactly_three_calls(count_requests, open_trip):
     """store.load() fires trip + items + labels in parallel — three calls, no more."""
-    calls = count_api_calls(page)
-    page.goto(f"{mockserver}/t/{slug}")
-    expect(page.get_by_role("button", name="Expense")).to_be_visible()
+    calls = count_requests(API_CALLS)
+
+    open_trip()
+
     assert len(calls) == 3
 
 
-def test_opening_the_edit_modal_makes_no_calls(page, mockserver, trip_url):
+def test_opening_the_edit_modal_makes_no_calls(items_page, count_requests, open_edit_modal):
     """The item is already in store.items — opening it for edit fetches nothing."""
-    page.goto(trip_url)
-    expect(page.get_by_role("button", name="Expense")).to_be_visible()
-    calls = count_api_calls(page)
+    calls = count_requests(API_CALLS)
 
-    page.locator("a.list-group-item-action").first.click()
-    page.locator(".modal.show").wait_for()
+    open_edit_modal("Dinner at Messinn")
 
     assert len(calls) == 0
 
 
-def test_balances_tab_makes_exactly_one_call(page, mockserver, trip_url):
-    """Opening Balances for the first time is one GET /balances."""
-    page.goto(trip_url)
-    expect(page.get_by_role("button", name="Expense")).to_be_visible()
-    calls = count_api_calls(page)
+@pytest.mark.parametrize(
+    ("tab", "expected_calls"),
+    [
+        pytest.param("Balances", 1, id="balances"),
+        pytest.param("Statistics", 1, id="stats"),
+    ],
+)
+def test_first_visit_to_a_derived_tab_makes_exactly_one_call(
+    items_page, count_requests, open_tab, tab, expected_calls
+):
+    """Opening Balances or Statistics for the first time is one GET of that resource."""
+    calls = count_requests(API_CALLS)
 
-    page.get_by_role("link", name="Balances").click()
-    expect(page.get_by_text("Settle up").first).to_be_visible()
+    open_tab(tab)
 
-    assert len(calls) == 1
-
-
-def test_stats_tab_makes_exactly_one_call(page, mockserver, trip_url):
-    """Opening Stats for the first time is one GET /stats."""
-    page.goto(trip_url)
-    expect(page.get_by_role("button", name="Expense")).to_be_visible()
-    calls = count_api_calls(page)
-
-    page.get_by_role("link", name="Statistics").click()
-    expect(page.get_by_text("By label").first).to_be_visible()
-
-    assert len(calls) == 1
+    assert len(calls) == expected_calls
 
 
-def test_revisiting_balances_and_stats_makes_no_further_calls(page, mockserver, trip_url):
+def test_revisiting_balances_and_stats_makes_no_further_calls(
+    visited_tabs_page, count_requests, open_tab
+):
     """Once loaded, store.balances/store.stats are cached — switching back refetches nothing."""
-    page.goto(trip_url)
-    expect(page.get_by_role("button", name="Expense")).to_be_visible()
-    page.get_by_role("link", name="Balances").click()
-    expect(page.get_by_text("Settle up").first).to_be_visible()
-    page.get_by_role("link", name="Statistics").click()
-    expect(page.get_by_text("By label").first).to_be_visible()
-    page.get_by_role("link", name="Items").click()
-    expect(page.get_by_role("button", name="Expense")).to_be_visible()
+    calls = count_requests(API_CALLS)
 
-    calls = count_api_calls(page)
-    page.get_by_role("link", name="Balances").click()
-    expect(page.get_by_text("Settle up").first).to_be_visible()
-    page.get_by_role("link", name="Statistics").click()
-    expect(page.get_by_text("By label").first).to_be_visible()
+    open_tab("Balances")
+    open_tab("Statistics")
 
     assert len(calls) == 0
 
 
-def test_saving_an_item_makes_exactly_two_calls(page, mockserver, trip_url, stub, fixture_data):
+def test_saving_an_item_makes_exactly_two_calls(filled_new_item_modal, count_requests):
     """A save with no new label is POST + the re-read GET /items — two calls, no labels reload."""
-    saved = {}
+    calls = count_requests(API_CALLS)
 
-    def responder(request):
-        if request.method == "POST":
-            saved.update(request.post_data_json)
-            saved.update({"id": 12345, "split": {"mode": "equal", "shares": []}})
-            return 201, {"item": saved}
-        if request.method == "GET" and saved:
-            return 200, {"items": [saved, *fixture_data["items"]["items"]]}
-        return None
-
-    stub("**/api/v1/trips/*/items", responder)
-    page.goto(trip_url)
-    expect(page.get_by_role("button", name="Expense")).to_be_visible()
-
-    page.get_by_role("button", name="Expense").click()
-    page.locator(".modal.show").wait_for()
-    page.locator('input[name="name"]').fill("Snacks")
-    page.locator('input[name="amount"]').fill("500")
-    # The amount's own change-preview call (call budget's separate
-    # "change amount/split" row) has to settle before counting "save" itself.
-    with page.expect_response(lambda r: "preview-split" in r.url):
-        page.locator('input[name="amount"]').blur()
-
-    calls = count_api_calls(page)
-    page.get_by_role("button", name="Save", exact=True).click()
-    page.locator(".modal.show").wait_for(state="hidden")
+    filled_new_item_modal.get_by_role("button", name="Save", exact=True).click()
+    expect(filled_new_item_modal).to_be_hidden()
 
     assert len(calls) == 2
