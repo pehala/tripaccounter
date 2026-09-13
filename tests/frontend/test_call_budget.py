@@ -2,7 +2,9 @@
 
 Intercept network — opening a trip makes exactly 3 API calls, opening the edit
 modal makes 0, saving makes 2, the stats tab 1, the balances tab 1 — every row of
-the table, asserted as equality, not a ceiling.
+the table, asserted as equality, not a ceiling. Setup only needs `labels`, and Items
+already loads those, so Setup's own cost only shows up when it opens before Items
+ever does.
 """
 
 import pytest
@@ -63,6 +65,24 @@ def test_first_visit_to_a_derived_tab_makes_exactly_one_call(
     open_tab(tab)
 
     assert len(calls) == expected_calls
+
+
+def test_setup_after_items_makes_no_calls(items_page, count_requests, open_tab):
+    """Setup only needs labels, and Items already loaded them — opening it fetches nothing."""
+    calls = count_requests(API_CALLS)
+
+    open_tab("Setup")
+
+    assert len(calls) == 0
+
+
+def test_first_visit_to_setup_without_items_makes_exactly_two_calls(count_requests, open_trip):
+    """Landing straight on Setup, skipping Items, is trip + labels — two calls, not items."""
+    calls = count_requests(API_CALLS)
+
+    open_trip("setup")
+
+    assert len(calls) == 2
 
 
 def test_revisiting_balances_and_stats_makes_no_further_calls(

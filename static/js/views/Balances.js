@@ -1,8 +1,9 @@
 import { useEffect } from 'preact/hooks';
 import { html } from '../h.js';
 import { useStore, reload } from '../store.js';
-import { t, getLocale } from '../i18n/index.js';
+import { getLocale } from '../i18n/index.js';
 import { BalanceCard } from '../components/BalanceCard.js';
+import { Loading } from '../components/Loading.js';
 
 export function Balances() {
   const store = useStore();
@@ -12,7 +13,7 @@ export function Balances() {
     if (!store.balances) reload('balances');
   }, [store.slug]);
 
-  if (!store.balances) return html`<p>${t('app.loading')}</p>`;
+  if (!store.balances) return html`<${Loading} />`;
 
   return html`
     ${store.balances.map((balance) => html`

@@ -49,7 +49,7 @@ export async function load(slug) {
   state.error = null;
   notify();
   try {
-    await Promise.all([reload('trip'), reload('items'), reload('labels')]);
+    await reload('trip');
   } catch (err) {
     state.error = err;
     notify();

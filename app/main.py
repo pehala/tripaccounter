@@ -1,12 +1,14 @@
 """FastAPI app factory: routers, error handlers, and static file serving."""
 
+import hashlib
 import logging
 import uuid
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import Settings
 from app.routers import (
@@ -85,13 +87,46 @@ async def handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=500, content=InternalError(ref).to_wire())
 
 
+class ETagMiddleware(BaseHTTPMiddleware):
+    """Give every `/api/v1` GET response an ETag so a client can revalidate instead of refetching.
+
+    A page load under `/t/{slug}/{tab}` is now an independent HTTP request, not a
+    client-side route switch, so this is what keeps repeat loads of the same trip
+    cheap: unchanged data comes back as a 304 with no body, and a write immediately
+    changes the hash, so there is no stale-data window to reason about.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        """Recompute the response as a conditional GET when its route matches."""
+        response = await call_next(request)
+        is_api_get = request.method == "GET" and request.url.path.startswith("/api/v1")
+        if not is_api_get or response.status_code != 200:
+            return response
+
+        body = b"".join([chunk async for chunk in response.body_iterator])
+        etag = f'"{hashlib.sha256(body).hexdigest()}"'
+        headers = dict(response.headers)
+        headers["etag"] = etag
+        headers["cache-control"] = "no-cache"
+
+        if request.headers.get("if-none-match") == etag:
+            headers.pop("content-length", None)
+            return Response(status_code=304, headers=headers)
+        return Response(
+            content=body,
+            status_code=response.status_code,
+            headers=headers,
+            media_type=response.media_type,
+        )
+
+
 async def index_root() -> FileResponse:
     """Serve the frontend's index page at the site root."""
     return FileResponse(settings.static_dir / "index.html")
 
 
-async def index_trip(slug: str) -> FileResponse:
-    """Serve the frontend's index page for a trip deep link."""
+async def index_trip(slug: str, tab: str | None = None) -> FileResponse:
+    """Serve the frontend's index page for a trip deep link, tab included."""
     return FileResponse(settings.static_dir / "index.html")
 
 
@@ -140,6 +175,8 @@ def create_app() -> FastAPI:
     for router in ROUTERS:
         app.include_router(router, prefix="/api/v1")
 
+    app.add_middleware(ETagMiddleware)
+
     generate_openapi = app.openapi
 
     def openapi() -> dict:
@@ -156,6 +193,7 @@ def create_app() -> FastAPI:
 
     app.add_api_route("/", index_root, methods=["GET"], include_in_schema=False)
     app.add_api_route("/t/{slug}", index_trip, methods=["GET"], include_in_schema=False)
+    app.add_api_route("/t/{slug}/{tab}", index_trip, methods=["GET"], include_in_schema=False)
 
     if settings.static_dir.exists():
         app.mount("/", StaticFiles(directory=settings.static_dir), name="static")

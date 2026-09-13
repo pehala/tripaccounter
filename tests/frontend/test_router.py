@@ -1,6 +1,6 @@
-"""Tests for app.js's router: hash tabs, back/forward, unknown slug.
+"""Tests for app.js's router: tab subpaths, back/forward, unknown slug.
 
-`/t/{slug}#balances` deep-links straight to that tab on a cold load; back and
+`/t/{slug}/balances` deep-links straight to that tab on a cold load; back and
 forward switch tabs without refetching; an unknown slug renders the 404 view, not
 an empty shell.
 """
@@ -8,8 +8,8 @@ an empty shell.
 from playwright.sync_api import expect
 
 
-def test_cold_load_with_hash_lands_directly_on_that_tab(balances_page):
-    """A first paint at #balances renders the Balances tab active and never mounts the Items FAB."""
+def test_cold_load_with_tab_path_lands_directly_on_that_tab(balances_page):
+    """A first paint at /balances renders the Balances tab active and never mounts the Items FAB."""
     expect(balances_page.locator(".nav-link.active")).to_have_text("Balances")
     expect(balances_page.get_by_text("Balance", exact=False).first).to_be_visible()
     assert balances_page.locator(".fab").count() == 0

@@ -5,6 +5,7 @@ import { t, getLocale } from '../i18n/index.js';
 import { money, parse, date as fmtDate } from '../fmt.js';
 import { getRates, setRate } from '../rates.js';
 import { LabelBadge } from '../components/LabelBadge.js';
+import { Loading } from '../components/Loading.js';
 
 function pct(amount, total) {
   return total > 0 ? Math.round((amount / total) * 100) : 0;
@@ -214,7 +215,7 @@ export function Stats() {
     if (!store.stats) reload('stats');
   }, [store.slug]);
 
-  if (!store.stats) return html`<p>${t('app.loading')}</p>`;
+  if (!store.stats) return html`<${Loading} />`;
 
   const trip = store.trip;
   const multiCurrency = trip.currencies.length > 1;

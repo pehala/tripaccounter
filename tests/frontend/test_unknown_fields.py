@@ -32,7 +32,7 @@ def test_page_errors_never_fire_with_unknown_fields(page, open_trip, open_tab):
 
 
 @pytest.mark.parametrize(
-    ("hash_", "scope_selector", "real_field", "leaked"),
+    ("tab", "scope_selector", "real_field", "leaked"),
     [
         pytest.param(
             "items",
@@ -58,10 +58,10 @@ def test_page_errors_never_fire_with_unknown_fields(page, open_trip, open_tab):
     ],
 )
 def test_surface_renders_its_real_fields_and_not_the_unknown_one(
-    open_trip, hash_, scope_selector, real_field, leaked
+    open_trip, tab, scope_selector, real_field, leaked
 ):
     """The surface shows its real fields; the unknown key's value is neither shown nor breaks it."""
-    page = open_trip(hash_)
+    page = open_trip(tab)
 
     expect(real_field(page)).to_be_visible()
     assert leaked not in page.locator(scope_selector).inner_text()
