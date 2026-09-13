@@ -53,7 +53,6 @@ export function Trip({ slug, tab }) {
   const trip = store.trip;
   const locale = getLocale();
   const flags = trip.countries.map((c) => c.flag).filter(Boolean).join(' ');
-  const titleFlag = trip.countries.find((c) => c.is_default)?.flag || trip.countries[0]?.flag || '';
   const currencyCodes = trip.currencies.map((c) => c.code).join(', ');
   const subtitle = [
     dateRange(trip.start_date, trip.end_date, locale),
@@ -67,7 +66,7 @@ export function Trip({ slug, tab }) {
     <header class="bg-body border-bottom sticky-top">
       <div class="container" style="max-width:48rem">
         <div class="d-flex align-items-baseline gap-2 flex-wrap pt-3">
-          <h1 class="h5 mb-0">${titleFlag} ${trip.name}</h1>
+          <h1 class="h5 mb-0">${trip.name}</h1>
           <small class="text-body-secondary">${subtitle}</small>
           <div class="dropdown ms-auto">
             <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" aria-expanded="false">⋯</button>
