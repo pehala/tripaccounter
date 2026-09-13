@@ -345,7 +345,11 @@ class MockServer:
     def __init__(self, data: dict) -> None:
         """Bind a server for this fixture dict on an ephemeral port; entering it starts serving."""
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(data))
-        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        # shutdown() returns only after serve_forever's next poll; the default 0.5 s
+        # would be paid by every test's teardown.
+        self.thread = threading.Thread(
+            target=self.server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
+        )
         self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
 
     def __enter__(self) -> Self:
