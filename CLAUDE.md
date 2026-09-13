@@ -16,6 +16,7 @@ layers, how money moves, and where the two halves meet.
 | [`design/FRONTEND.md`](design/FRONTEND.md) | `static/` — the seven rules, `tests/frontend/` |
 | [`design/MOCKAPI.md`](design/MOCKAPI.md) | the mock API behind the Playwright suite — fixture grammar, what the engine does with it |
 | [`tests/frontend/fixtures/trip.json`](tests/frontend/fixtures/trip.json) | the canned trip the Playwright suite renders |
+| [`tests/backend/fixtures/sheet.csv`](tests/backend/fixtures/sheet.csv) | the example sheet `tools/import_sheet/` is tested against, and the format by example |
 
 **API shapes are generated, never hand-written.** Fields, endpoints and statuses come
 from `app/schemas.py` and the routers; `/docs` renders them and `make openapi` writes

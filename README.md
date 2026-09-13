@@ -88,6 +88,64 @@ Environment variables, all prefixed `TA_`:
 | `TA_DATABASE_URL` | `sqlite:///./dev.db` | SQLAlchemy URL; `postgresql+psycopg://…` for Postgres |
 | `TA_STATIC_DIR` | `./static` | directory mounted at `/` |
 
+## Import an existing sheet
+
+`tools/import_sheet/` turns a CSV expense sheet into a trip: it derives the roster,
+currencies and countries from the file, works out each row's split, and writes the
+whole sheet in **one transaction** — so it either lands complete or not at all.
+
+```bash
+# import it
+uv run python -m tools.import_sheet SHEET.csv "Trip name" --people Ann Bob
+
+# see what that would do first, without writing anything
+uv run python -m tools.import_sheet SHEET.csv "Trip name" --people Ann Bob --dry-run
+```
+
+Both forms do the same work and print the same report; `--dry-run` rolls the
+transaction back at the end instead of committing it. Because it takes the real path,
+a dry run exercises every service call, foreign key and check constraint — what it
+reports is what an import would do.
+
+Read the report from the top: it opens with the **index map**, which shows each column
+index, the header text found there, and the value it produced on the first row. That
+is how you confirm the sheet lines up before trusting the rest.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--people NAME...` | — | **required**; one name per owed column, left to right |
+| `--start-date` / `--end-date` | — | the trip's dates |
+| `--tz ZONE` | `Europe/Prague` | the zone the sheet's times are written in |
+| `--dry-run` | off | roll back instead of committing |
+
+[`tests/backend/fixtures/sheet.csv`](tests/backend/fixtures/sheet.csv) is the format
+by example — an invented trip whose 24 rows carry no real data and cover every case
+the importer distinguishes. The test suite imports that same file, so it cannot drift
+from the behaviour it documents.
+
+Columns are read **by index**, never by header text, because header wording is not
+stable. Only the roster size moves anything:
+
+| Index | Holds |
+|---|---|
+| `0`–`6` | name, date, category, payer, amount, currency, ISO-3166-1 alpha-2 country |
+| `7`–`8` | ignored |
+| `9 + 2i` | what `--people[i]` owes, each followed by a spreadsheet helper column |
+| `9 + 2N` | note |
+| beyond | ignored — the sheet's own summary and pivot block |
+
+Amounts may be written the way a spreadsheet writes them (`1 162,00`, non-breaking
+space and all). Dates may carry a time or not, and may omit the year, which is taken
+from whatever the rest of the sheet agrees on. A row splits **equally** when everyone
+who owes owes the same amount, and **exactly** otherwise; a person owing nothing is
+left out of the split rather than recorded as owing zero.
+
+Every run creates its own trip, so importing the same sheet twice gives two trips
+rather than one with everything doubled. Anything unreadable — a missing date, a
+country that is not an ISO code, shares adding up to neither the amount nor each
+other — is collected, printed, and the run exits `2` **having written nothing**. Fix
+the sheet and run again.
+
 ## Develop
 
 ```bash
@@ -120,7 +178,7 @@ alembic/      migrations
 design/       the architecture (start with ARCHITECTURE.md)
 openapi.json  generated from app.openapi(); `make openapi` rewrites it
 tests/        backend/ (pytest) and frontend/ (playwright + fixtures)
-tools/        mock server, OpenAPI snapshot, i18n catalog check
+tools/        CSV sheet importer, mock server, OpenAPI snapshot, i18n catalog check
 deploy/       podman quadlet units
 ```
 
