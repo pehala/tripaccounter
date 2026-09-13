@@ -441,6 +441,59 @@
         "title": "CurrencyUpdate",
         "type": "object"
       },
+      "DayCurrencyTotalOut": {
+        "description": "Wire representation of one currency's total for one day.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency_code": {
+            "title": "Currency Code",
+            "type": "string"
+          },
+          "currency_id": {
+            "title": "Currency Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "currency_code",
+          "currency_id",
+          "amount"
+        ],
+        "title": "DayCurrencyTotalOut",
+        "type": "object"
+      },
+      "DayTotalOut": {
+        "description": "Wire representation of a day's per-currency totals.",
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "totals": {
+            "items": {
+              "$ref": "#/components/schemas/DayCurrencyTotalOut"
+            },
+            "title": "Totals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "date",
+          "totals"
+        ],
+        "title": "DayTotalOut",
+        "type": "object"
+      },
       "ErrorBodyOut": {
         "description": "The body of an error: a top-level code, its params, and optional per-field detail.",
         "properties": {
@@ -522,8 +575,15 @@
         "type": "object"
       },
       "ItemListEnvelope": {
-        "description": "`{ \"items\": [Item] }`.",
+        "description": "`{ \"items\": [Item], \"day_totals\": [DayTotal] }`.",
         "properties": {
+          "day_totals": {
+            "items": {
+              "$ref": "#/components/schemas/DayTotalOut"
+            },
+            "title": "Day Totals",
+            "type": "array"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/ItemOut"
@@ -533,7 +593,8 @@
           }
         },
         "required": [
-          "items"
+          "items",
+          "day_totals"
         ],
         "title": "ItemListEnvelope",
         "type": "object"

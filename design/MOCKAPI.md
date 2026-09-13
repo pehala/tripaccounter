@@ -89,7 +89,8 @@ Status follows the method unless `$status` says otherwise:
 ### Collections
 
 ```json
-{"collection": "#/items/items", "item": "item", "defaults": {…}, "insert": "head"}
+{"collection": "#/items/items", "item": "item", "defaults": {…}, "insert": "head",
+ "extra": {"day_totals": "#/items/day_totals"}}
 ```
 
 | Field | Meaning |
@@ -98,6 +99,7 @@ Status follows the method unless `$status` says otherwise:
 | `item` | the envelope key of one row (`item`, `person`) |
 | `defaults` | keys a created row gets when the request leaves them out (optional) |
 | `insert` | `"head"` prepends a created row; the default appends (optional) |
+| `extra` | sibling keys merged into the `GET` list response only — each value a pointer or a literal (optional) |
 
 Any other field on a collection is refused at server build with a `KeyError`, so a
 misspelt `defaults` cannot pass silently.
@@ -106,7 +108,7 @@ A collection expands into four operations:
 
 | Request | Answer |
 |---|---|
-| `GET …` | 200 `{items: rows}` |
+| `GET …` | 200 `{items: rows, **extra}` |
 | `POST …` | 201 `{item: defaults + body + id}`, row stored |
 | `PATCH …/{id}` | 200 `{item: row}` after `row.update(body)` |
 | `DELETE …/{id}` | 204, row removed |

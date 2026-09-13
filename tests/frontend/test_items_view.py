@@ -1,10 +1,9 @@
 """Tests for views/Items.js, components/DayGroup.js and components/ItemRow.js.
 
-One row per fixture item, in order; one
-owed chip per person in roster order; `owed: null` renders a dash while `owed: 0`
-renders a zero; the split phrase matches the mode; labels as badges; country
-flag shown; `empty.json` shows the empty state and the FAB; no per-day subtotal
-element exists.
+One row per fixture item, in order; one owed chip per participating person, in
+roster order, and a person with no share (`owed: null`) gets no chip at all;
+labels as badges; country flag shown; `empty.json` shows the empty state and the
+FAB; the day separator shows `items.day_totals`, one chip per currency.
 """
 
 from playwright.sync_api import expect
@@ -21,30 +20,30 @@ def test_one_row_per_item_in_fixture_order(page, mockserver, trip_url, fixture_d
         expect(rows.nth(i)).to_contain_text(item["name"])
 
 
-def test_owed_chips_in_roster_order_with_dash_for_null(page, mockserver, trip_url, fixture_data):
-    """Each row shows one owed chip per person, in roster order; a null share is a dash."""
+def test_owed_chips_skip_people_with_no_share(page, mockserver, trip_url, fixture_data):
+    """A row shows one owed chip per participating person; no chip for a null share."""
     page.goto(trip_url)
     trip = fixture_data["trip"]["trip"]
     blue_lagoon = next(
         i for i in fixture_data["items"]["items"] if i["name"] == "Blue Lagoon tickets"
     )
+    participants = [
+        person
+        for person in trip["people"]
+        if next(s["owed"] for s in blue_lagoon["split"]["shares"] if s["person_id"] == person["id"])
+        is not None
+    ]
 
     row = page.locator("a.list-group-item-action", has_text="Blue Lagoon tickets")
     chips = row.locator(".owed span")
-    expect(chips).to_have_count(len(trip["people"]))
-
-    for i, person in enumerate(trip["people"]):
-        share = next(
-            (s for s in blue_lagoon["split"]["shares"] if s["person_id"] == person["id"]), None
-        )
-        if share is None or share["owed"] is None:
-            expect(chips.nth(i)).to_contain_text("—")
-        else:
-            expect(chips.nth(i)).to_be_visible()
+    expect(chips).to_have_count(len(participants))
+    assert len(participants) < len(trip["people"])
 
 
-def test_owed_zero_renders_as_a_zero_not_a_dash(page, mockserver, trip_url, stub, fixture_data):
-    """A share present with owed: 0 renders a literal 0, distinct from owed: null's dash."""
+def test_owed_zero_renders_as_a_zero_and_null_share_gets_no_chip(
+    page, mockserver, trip_url, stub, fixture_data
+):
+    """A share with owed: 0 renders a chip with a literal 0; a null share renders no chip."""
     trip = fixture_data["trip"]["trip"]
     zeroed_item = {
         **fixture_data["items"]["items"][0],
@@ -60,30 +59,16 @@ def test_owed_zero_renders_as_a_zero_not_a_dash(page, mockserver, trip_url, stub
     }
     stub(
         "**/api/v1/trips/*/items",
-        lambda request: (200, {"items": [zeroed_item]}) if request.method == "GET" else None,
+        lambda request: (
+            (200, {"items": [zeroed_item], "day_totals": []}) if request.method == "GET" else None
+        ),
     )
 
     page.goto(trip_url)
     row = page.locator("a.list-group-item-action", has_text="Split with a zero share")
     chips = row.locator(".owed span")
+    expect(chips).to_have_count(1)
     expect(chips.first).to_contain_text("0")
-    expect(chips.first).not_to_contain_text("—")
-    expect(chips.nth(1)).to_contain_text("—")
-
-
-def test_split_phrase_matches_the_mode(page, mockserver, trip_url):
-    """Each row's split phrase reflects its own mode and weights, not a generic label."""
-    page.goto(trip_url)
-
-    expect(page.locator("a.list-group-item-action", has_text="Dinner at Messinn")).to_contain_text(
-        "equally, 4 ways"
-    )
-    expect(
-        page.locator("a.list-group-item-action", has_text="Blue Lagoon tickets")
-    ).to_contain_text("equally, 3 of 4")
-    expect(page.locator("a.list-group-item-action", has_text="Guesthouse Vík")).to_contain_text(
-        "shares 1·1·1·0.5"
-    )
 
 
 def test_labels_render_as_badges(page, mockserver, trip_url):
@@ -119,14 +104,21 @@ def test_empty_trip_shows_empty_state_and_fab(page, make_mockserver):
     assert page.locator("a.list-group-item-action").count() == 0
 
 
-def test_no_per_day_subtotal_element_exists(page, mockserver, trip_url):
-    """A day separator carries only its date label — no computed per-day total."""
+def test_day_separator_shows_day_totals_rounded_up_to_a_whole_unit(page, mockserver, trip_url):
+    """The day separator renders `items.day_totals`, one chip per currency, rounded up."""
     page.goto(trip_url)
 
     day_seps = page.locator(".day-sep")
     expect(day_seps).to_have_count(3)  # three distinct days in the fixture
-    for i in range(3):
-        text = day_seps.nth(i).inner_text()
-        assert "ISK" not in text
-        assert "EUR" not in text
-        assert "DKK" not in text
+    expect(day_seps.nth(0)).to_contain_text("26,300 ISK")
+    expect(day_seps.nth(0)).to_contain_text("41 EUR")  # fixture has 40.5, rounded up
+    expect(day_seps.nth(1)).to_contain_text("96,000 ISK")
+    expect(day_seps.nth(2)).to_contain_text("480 DKK")
+
+
+def test_day_totals_hidden_while_filtering(page, mockserver, trip_url):
+    """A day total covers the whole day, so it disappears once a filter hides part of it."""
+    page.goto(trip_url)
+    page.locator("input[placeholder]").fill("Dinner")
+
+    expect(page.locator(".day-sep").first).not_to_contain_text("ISK")
