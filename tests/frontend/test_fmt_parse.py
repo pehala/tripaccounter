@@ -1,61 +1,31 @@
 """Tests for fmt.js's parse(), via page.evaluate.
 
-Page.evaluate on fmt.parse: in en,
-`18,400.50` -> `18400.50`, `1,000` -> `1000`; in cs, `18 400,50` -> `18400.50`,
-`1 000` -> `1000`, `0,5` -> `0.5`; `abc`, `1.2.3`, `` -> null and the input shows
-err.invalid_amount client-side before any request; a non-breaking space groups
-like a space.
+Locale text becomes a canonical decimal string: en `18,400.50` -> `18400.50`, cs
+`18 400,50` -> `18400.50` with either a plain or a non-breaking space as the group
+separator; garbage, multi-dot, empty or missing input parse to null.
 """
 
 import pytest
 
 
-def parse(page, text, locale):
-    """Evaluate fmt.js's parse function, in the browser, for `text` in `locale`."""
-    return page.evaluate(
-        "async ({ text, locale }) => (await import('/js/fmt.js')).parse(text, locale)",
-        {"text": text, "locale": locale},
-    )
-
-
 @pytest.mark.parametrize(
-    ("text", "expected"),
+    ("text", "locale", "expected"),
     [
-        ("18,400.50", "18400.50"),
-        ("1,000", "1000"),
-        ("18400.5", "18400.5"),
-        ("-5", "-5"),
+        pytest.param("18,400.50", "en", "18400.50", id="en-grouped"),
+        pytest.param("1,000", "en", "1000", id="en-thousands"),
+        pytest.param("18400.5", "en", "18400.5", id="en-plain"),
+        pytest.param("-5", "en", "-5", id="en-negative"),
+        pytest.param("18 400,50", "cs", "18400.50", id="cs-grouped"),
+        pytest.param("18\u00a0400,50", "cs", "18400.50", id="cs-grouped-nbsp"),
+        pytest.param("1 000", "cs", "1000", id="cs-thousands"),
+        pytest.param("0,5", "cs", "0.5", id="cs-decimal"),
+        pytest.param("abc", "en", None, id="garbage"),
+        pytest.param("1.2.3", "en", None, id="multi-dot"),
+        pytest.param("", "en", None, id="empty"),
+        pytest.param("  ", "en", None, id="blank"),
+        pytest.param(None, "en", None, id="missing"),
     ],
 )
-def test_parses_english_grouped_input(page, mockserver, text, expected):
-    """English input with comma grouping and a dot decimal parses to a canonical decimal."""
-    page.goto(f"{mockserver}/")
-    assert parse(page, text, "en") == expected
-
-
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ("18 400,50", "18400.50"),
-        ("1 000", "1000"),
-        ("0,5", "0.5"),
-    ],
-)
-def test_parses_czech_grouped_input(page, mockserver, text, expected):
-    """Czech input with space grouping and a comma decimal parses to a canonical decimal."""
-    page.goto(f"{mockserver}/")
-    assert parse(page, text, "cs") == expected
-
-
-@pytest.mark.parametrize("text", ["abc", "1.2.3", "", "  ", None])
-def test_unparseable_input_returns_null(page, mockserver, text):
-    """Garbage, multi-dot, empty or missing input all parse to null, never NaN or a guess."""
-    page.goto(f"{mockserver}/")
-    assert parse(page, text, "en") is None
-
-
-def test_non_breaking_space_groups_like_a_plain_space(page, mockserver):
-    """A non-breaking space (the char some locales' NumberFormat actually emits) groups too."""
-    page.goto(f"{mockserver}/")
-    assert parse(page, "18 400,50", "cs") == "18400.50"
-    assert parse(page, "18 400,50", "cs") == "18400.50"
+def test_parse(js, text, locale, expected):
+    """Locale-grouped input parses to a canonical decimal; unparseable input is null, not NaN."""
+    assert js("fmt.js", "parse", text, locale) == expected
