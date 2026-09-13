@@ -16,6 +16,7 @@ jobs:
         with: { enable-cache: true }
       - run: uv sync --frozen
       - run: make lint
+      - run: make test_tools
 
   commitlint:
     runs-on: ubuntu-latest
