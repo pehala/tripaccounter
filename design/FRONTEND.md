@@ -94,9 +94,9 @@ Note the dashed arrow: **a write is followed by a re-read, never by a local muta
    amounts**: they are float64, and the backend ships every total, subtotal and balance
    pre-summed from SQL over integers.
 
-   A direct consequence: **the feed shows no per-day subtotal.** That number is not in
-   the API and the frontend may not compute it. `stats.by_day` has it if a day view
-   ever wants one.
+   A direct consequence: the feed's per-day, per-currency subtotal comes from
+   `items.day_totals` — one `GROUP BY` alongside the item query, never a client-side
+   sum over the day's rows.
 
    The exception is the statistics page: it multiplies each group total by a rate the
    user typed, **rounds each product to two places**, and sums those rounded figures

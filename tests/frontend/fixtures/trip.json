@@ -384,6 +384,27 @@
         "created_at": "2026-09-12T12:40:00Z",
         "updated_at": "2026-09-12T12:40:00Z"
       }
+    ],
+    "day_totals": [
+      {
+        "date": "2026-09-14",
+        "totals": [
+          {"currency_code": "ISK", "currency_id": 1, "amount": 26300},
+          {"currency_code": "EUR", "currency_id": 2, "amount": 40.5}
+        ]
+      },
+      {
+        "date": "2026-09-13",
+        "totals": [
+          {"currency_code": "ISK", "currency_id": 1, "amount": 96000}
+        ]
+      },
+      {
+        "date": "2026-09-12",
+        "totals": [
+          {"currency_code": "DKK", "currency_id": 3, "amount": 480.0}
+        ]
+      }
     ]
   },
   "balances": {
@@ -724,7 +745,8 @@
     "/api/v1/trips/iceland-2026/items": {
       "collection": "#/items/items",
       "item": "item",
-      "insert": "head"
+      "insert": "head",
+      "extra": {"day_totals": "#/items/day_totals"}
     },
     "/api/v1/trips/iceland-2026/items/preview-split": {
       "POST": {

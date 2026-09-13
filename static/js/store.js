@@ -8,6 +8,7 @@ const state = {
   trip: null,
   labels: null,
   items: null,
+  dayTotals: null,
   balances: null,
   stats: null,
   error: null,
@@ -29,7 +30,10 @@ export function useStore() {
 const LOADERS = {
   trip: (slug) => api.get(`/trips/${slug}`).then((r) => { state.trip = r.trip; }),
   labels: (slug) => api.get(`/trips/${slug}/labels`).then((r) => { state.labels = r.labels; }),
-  items: (slug) => api.get(`/trips/${slug}/items`).then((r) => { state.items = r.items; }),
+  items: (slug) => api.get(`/trips/${slug}/items`).then((r) => {
+    state.items = r.items;
+    state.dayTotals = r.day_totals;
+  }),
   balances: (slug) => api.get(`/trips/${slug}/balances`).then((r) => { state.balances = r.balances; }),
   stats: (slug) => api.get(`/trips/${slug}/stats`).then((r) => { state.stats = r.stats; }),
 };
@@ -41,7 +45,7 @@ export async function reload(kind) {
 
 export async function load(slug) {
   state.slug = slug;
-  state.trip = state.labels = state.items = state.balances = state.stats = null;
+  state.trip = state.labels = state.items = state.dayTotals = state.balances = state.stats = null;
   state.error = null;
   notify();
   try {

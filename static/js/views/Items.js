@@ -31,6 +31,11 @@ export function Items() {
     ? items.filter((item) => item.name.toLowerCase().includes(needle) || item.labels.some((l) => l.includes(needle)))
     : items;
   const groups = groupByDay(filtered);
+  // day_totals covers every item for the day; once a filter hides some of them
+  // the total no longer matches what's on screen, so don't show it.
+  const totalsByDay = needle
+    ? {}
+    : Object.fromEntries((store.dayTotals || []).map((day) => [day.date, day.totals]));
 
   return html`
     <div class="d-flex align-items-center gap-2 mb-3">
@@ -44,8 +49,8 @@ export function Items() {
     </div>
     ${groups.length === 0 && html`<p class="text-body-secondary">${t('items.empty')}</p>`}
     ${groups.map((group) => html`
-      <${DayGroup} key=${group.date} date=${group.date} items=${group.items} trip=${store.trip} locale=${locale}
-                   onSelect=${(item) => setModalItem(item)} />
+      <${DayGroup} key=${group.date} date=${group.date} items=${group.items} totals=${totalsByDay[group.date]}
+                   trip=${store.trip} locale=${locale} onSelect=${(item) => setModalItem(item)} />
     `)}
 
     <button class="btn btn-primary btn-lg rounded-pill fab" onClick=${() => setModalItem(null)}>
