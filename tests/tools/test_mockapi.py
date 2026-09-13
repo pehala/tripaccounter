@@ -7,7 +7,7 @@ Python.
 
 import copy
 
-import httpx
+import httpx2
 import pytest
 
 from tests.frontend.mockapi import MockServer, make_handler
@@ -38,10 +38,10 @@ NOT_FOUND = {"gone": True}
 
 @pytest.fixture
 def client():
-    """Return an httpx client against a mock server built from a private copy of MINI."""
+    """Return an httpx2 client against a mock server built from a private copy of MINI."""
     with (
         MockServer(copy.deepcopy(MINI)) as server,
-        httpx.Client(base_url=server.url) as client,
+        httpx2.Client(base_url=server.url) as client,
     ):
         yield client
 
@@ -201,7 +201,7 @@ def test_two_servers_share_neither_rows_nor_ids(client):
     client.post(PEOPLE, json={"name": "Zoe"})
     with (
         MockServer(copy.deepcopy(MINI)) as second,
-        httpx.Client(base_url=second.url) as other,
+        httpx2.Client(base_url=second.url) as other,
     ):
         created = other.post(PEOPLE, json={"name": "Ann"}).json()
         people = other.get(PEOPLE).json()
