@@ -34,7 +34,7 @@ STATUS_BY_METHOD = {
     "DELETE": HTTPStatus.NO_CONTENT,
 }
 ERRORS = {"not_found": HTTPStatus.NOT_FOUND, "bad_request": HTTPStatus.BAD_REQUEST}
-COLLECTION_FIELDS = {"collection", "item", "defaults", "insert"}
+COLLECTION_FIELDS = {"collection", "item", "defaults", "insert", "extra"}
 COLLECTION_OPERATIONS = (
     ("GET", (), "read"),
     ("POST", (), "create"),
@@ -133,14 +133,15 @@ class Collection:
     insert: str
     ids: Iterator[int]
     not_found: Response
+    extra: dict
 
     def find(self, rid: str | None) -> dict | None:
         """Return the row whose id renders as rid in a URL, or None."""
         return next((row for row in self.rows if str(row.get("id")) == rid), None)
 
     def read(self, body: dict, rid: str | None) -> Response:
-        """Answer the list under its envelope key."""
-        return HTTPStatus.OK, {self.key: self.rows}
+        """Answer the list under its envelope key, plus any declared sibling fields."""
+        return HTTPStatus.OK, {self.key: self.rows, **self.extra}
 
     def create(self, body: dict, rid: str | None) -> Response:
         """Store defaults + body under a fresh id and answer 201 with the row."""
@@ -244,6 +245,10 @@ class Router:
                     insert=spec.get("insert", "tail"),
                     ids=self.ids,
                     not_found=self.not_found,
+                    extra={
+                        key: resolve_pointer(data, value) if is_pointer(value) else value
+                        for key, value in spec.get("extra", {}).items()
+                    },
                 )
             return getattr(collections[pointer], spec["op"])
         method, value = spec["method"], spec["value"]

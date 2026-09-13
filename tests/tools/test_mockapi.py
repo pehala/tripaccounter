@@ -17,6 +17,7 @@ MINI = {
     "trip": {"trip": {"slug": "t", "name": "Mini", "people": [PETR]}},
     "trips": {"trips": [{"slug": "t", "name": "Mini", "people_count": 1}]},
     "items": {"items": [{"id": 7, "name": "Old"}]},
+    "items_meta": {"count": 1},
     "routes": {
         "/api/v1/trips": {"GET": "#/trips", "POST": {"trip": "$echo"}},
         "/api/v1/trips/t": {"GET": "#/trip", "PATCH": "#/trip"},
@@ -26,7 +27,12 @@ MINI = {
             "defaults": {"active": True, "color": "#6c757d"},
         },
         "/api/v1/trips/t/people/self": {"PATCH": {"literal": "sibling"}},
-        "/api/v1/trips/t/items": {"collection": "#/items/items", "item": "item", "insert": "head"},
+        "/api/v1/trips/t/items": {
+            "collection": "#/items/items",
+            "item": "item",
+            "insert": "head",
+            "extra": {"note": "flat", "meta": "#/items_meta"},
+        },
         "/api/v1/trips/t/items/gone": {"DELETE": None},
         "/api/v1/trips/t/items/preview": {"POST": {"$status": 200, "total": 0}},
     },
@@ -136,8 +142,21 @@ def test_collection_insert_head_prepends_the_new_row(client):
     client.post("/api/v1/trips/t/items", json={"name": "New"})
 
     assert client.get("/api/v1/trips/t/items").json() == {
-        "items": [{"name": "New", "id": 1000}, {"id": 7, "name": "Old"}]
+        "items": [{"name": "New", "id": 1000}, {"id": 7, "name": "Old"}],
+        "note": "flat",
+        "meta": {"count": 1},
     }
+
+
+def test_collection_extra_merges_literal_and_pointer_into_get_only(client):
+    """`extra` fields land in the collection GET response, resolving pointers by identity."""
+    assert client.get("/api/v1/trips/t/items").json() == {
+        "items": [{"id": 7, "name": "Old"}],
+        "note": "flat",
+        "meta": {"count": 1},
+    }
+    created = client.post("/api/v1/trips/t/items", json={"name": "New"}).json()
+    assert set(created) == {"item"}  # POST answers stay a plain {item: row}, no extra
 
 
 def test_collection_patch_merges_into_row_shared_with_trip(client):
