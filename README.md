@@ -76,8 +76,8 @@ make seed             # optional: put the demo trip in the database
 make start_dev_server # :8000, reload
 ```
 
-`make start_ui` serves the frontend alone against JSON fixtures on `:8001` — no
-database, no backend. `make help` lists every target.
+`make test_frontend` runs the Playwright suite against JSON fixtures — no database,
+no backend. `make help` lists every target.
 
 ### Configuration
 

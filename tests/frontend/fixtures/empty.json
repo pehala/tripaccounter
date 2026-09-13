@@ -65,5 +65,116 @@
   "stats": {
     "stats": [],
     "day_count": 0
+  },
+  "trips": {
+    "trips": [
+      {
+        "id": 2,
+        "slug": "empty-trip",
+        "name": "Empty Trip",
+        "start_date": null,
+        "end_date": null,
+        "note": null,
+        "archived": false,
+        "created_at": "2026-09-01T08:12:00Z",
+        "updated_at": "2026-09-01T08:12:00Z",
+        "people_count": 2,
+        "item_count": 0
+      }
+    ]
+  },
+  "routes": {
+    "/api/v1/trips": {
+      "GET": "#/trips",
+      "POST": {
+        "trip": "$echo"
+      }
+    },
+    "/api/v1/trips/empty-trip": {
+      "GET": "#/trip",
+      "PATCH": "#/trip"
+    },
+    "/api/v1/trips/empty-trip/items": {
+      "collection": "#/items/items",
+      "item": "item",
+      "insert": "head"
+    },
+    "/api/v1/trips/empty-trip/items/preview-split": {
+      "POST": {
+        "$status": 200,
+        "split": {
+          "mode": "equal",
+          "shares": [
+            {
+              "person_id": 1,
+              "weight": "1",
+              "owed": 500
+            },
+            {
+              "person_id": 2,
+              "weight": "1",
+              "owed": 500
+            }
+          ]
+        },
+        "total": 1000
+      }
+    },
+    "/api/v1/trips/empty-trip/labels": {
+      "collection": "#/labels/labels",
+      "item": "label",
+      "defaults": {
+        "color": "#6c757d",
+        "use_count": 0
+      }
+    },
+    "/api/v1/trips/empty-trip/people": {
+      "collection": "#/trip/trip/people",
+      "item": "person",
+      "defaults": {
+        "active": true,
+        "color": "#6c757d"
+      }
+    },
+    "/api/v1/trips/empty-trip/currencies": {
+      "collection": "#/trip/trip/currencies",
+      "item": "currency",
+      "defaults": {
+        "symbol": null,
+        "is_primary": false
+      }
+    },
+    "/api/v1/trips/empty-trip/countries": {
+      "collection": "#/trip/trip/countries",
+      "item": "country",
+      "defaults": {
+        "code": null,
+        "flag": null,
+        "is_default": false,
+        "item_count": 0
+      }
+    },
+    "/api/v1/trips/empty-trip/balances": {
+      "GET": "#/balances"
+    },
+    "/api/v1/trips/empty-trip/stats": {
+      "GET": "#/stats"
+    }
+  },
+  "errors": {
+    "not_found": {
+      "error": {
+        "code": "not_found",
+        "params": {
+          "resource": "route"
+        }
+      }
+    },
+    "bad_request": {
+      "error": {
+        "code": "bad_request",
+        "params": {}
+      }
+    }
   }
 }

@@ -14,6 +14,7 @@ schedules — those described how the thing got built and were deleted when it w
 | [`ERD.md`](ERD.md) | entities, invariants, the `share_owed` view, indexes |
 | [`BACKEND.md`](BACKEND.md) | how `app/` is laid out and what belongs in which layer |
 | [`FRONTEND.md`](FRONTEND.md) | how `static/` is laid out, and the rules that keep it from computing money |
+| [`MOCKAPI.md`](MOCKAPI.md) | the JSON-driven mock API the Playwright suite runs against: fixture grammar, resolution rules, conftest fixtures |
 | [`../tests/frontend/fixtures/`](../tests/frontend/fixtures/) | the canned responses the Playwright suite renders |
 
 ## Shapes are generated; rules are written
@@ -40,7 +41,7 @@ generator, not a safety net.
 
 [`tests/frontend/fixtures/`](../tests/frontend/fixtures/) holds canned responses —
 a complete trip, an empty one, one full of markup, and one file per error envelope.
-`tools/mockserver.py` serves them under `/api/v1` so the Playwright suite runs the
+`tests/frontend/mockapi.py` serves them under `/api/v1` so the Playwright suite runs the
 real `static/` with no backend and no database. They are test data, which is why they
 live under `tests/` rather than here.
 

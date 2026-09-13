@@ -180,7 +180,7 @@ it public on the production side in the same change.
 ## When NOT to Use
 
 - Writing Playwright tests for the UI — those live in `tests/frontend/`, run against
-  canned fixtures and `tools/mockserver.py`, and are described in
+  canned fixtures and `tests/frontend/mockapi.py`, and are described in
   `design/FRONTEND.md` §7
 - Asserting rendering, formatting or interaction — the backend has none
 - Changing the contract — `design/API.md` moves first and `make openapi`
