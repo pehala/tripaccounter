@@ -41,7 +41,7 @@ generator, not a safety net.
 
 [`tests/frontend/fixtures/`](../tests/frontend/fixtures/) holds canned responses —
 a complete trip, an empty one, one full of markup, and one file per error envelope.
-`tools/mockserver.py` serves them under `/api/v1` so the Playwright suite runs the
+`tests/frontend/mockapi.py` serves them under `/api/v1` so the Playwright suite runs the
 real `static/` with no backend and no database. They are test data, which is why they
 live under `tests/` rather than here.
 

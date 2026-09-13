@@ -212,7 +212,7 @@ flowchart LR
 
     subgraph frontend["tests/frontend/ — Playwright"]
         direction TB
-        f1["chromium against tools/mockserver.py"]
+        f1["chromium against tests/frontend/mockapi.py"]
         f2["canned fixtures + page.route stubs"]
         f3["rendering and interaction only"]
     end

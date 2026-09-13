@@ -71,7 +71,6 @@ make install         # uv sync --frozen, prod deps only
 make install_dev     # uv sync --frozen --group dev + chromium + lefthook
 make start_server     # production: backend + static on :8000, no reload
 make start_dev_server # backend + static on :8000, reload
-make start_ui         # frontend only, fixture API on :8001, no DB
 make test_backend    # pytest tests/backend -q
 make test_frontend   # playwright against fixtures
 make test_tools      # the mock API engine

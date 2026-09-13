@@ -1,6 +1,6 @@
 # Frontend Architecture — `static/`
 
-**Owns**: everything under `static/`, plus `tools/mockserver.py` and
+**Owns**: everything under `static/`, plus `tests/frontend/mockapi.py` and
 `tools/check_i18n.py`.
 
 **Owns nothing under `app/`.** The API hands over **data, not presentation** — plain
@@ -182,31 +182,32 @@ Anything above this is a bug, and `test_call_budget.py` says so.
 ## 6. Working without the backend
 
 ```bash
-make start_ui        # tools/mockserver.py on :8001 — static/ at /, fixtures under /api/v1
 make test_frontend   # no DB, no uvicorn, no backend
 ```
 
-The mock server serves the same `static/` directory the real app does, so the frontend
-cannot tell which one is behind it. **It does no arithmetic, ever.** A `POST`/`PATCH`
-echoes the body back with an id; a `DELETE` answers `204`; the stored fixture is
-updated in memory so the re-read after a write returns something consistent. Nothing
-it returns is computed — a split that arrives resolved was written out by hand in the
-fixture.
+The suite runs against `tests/frontend/mockapi.py`, a generic engine that serves the
+same `static/` directory the real app does plus the routes the fixture file declares.
+**The fixture JSON is the source of truth**: every path, body and error envelope is
+written in the file, and the engine knows nothing about trips, splits or balances.
+The grammar, the resolution rules and the conftest fixtures are in
+[`MOCKAPI.md`](MOCKAPI.md).
 
-That is the whole point. The moment the mock computes a split there are two
-implementations of the allocation rule, and the frontend suite starts passing against
-the wrong one.
+**It does no arithmetic, ever.** `preview-split` is a canned body in the fixture, a
+resolved split was written out by hand, and nothing served is computed. The moment the
+mock computes a split there are two implementations of the allocation rule, and the
+frontend suite starts passing against the wrong one.
 
 ## 7. Tests
 
 `tests/frontend/` owns rendering and interaction, and runs a real Chromium against
-`tools/mockserver.py` serving canned JSON. It is the browser and the fixtures, and
+`tests/frontend/mockapi.py` serving canned JSON. It is the browser and the fixtures, and
 that is all it needs — ruff bans an `app.*` import here, because a frontend test that
 wants the database is a backend test in the wrong directory.
 
 ```
 tests/frontend/
-├── conftest.py          mockserver on a free port, page fixture, route helpers
+├── conftest.py          mock API on a free port, page fixture, route helpers
+├── mockapi.py           the JSON-driven engine, see §6
 ├── fixtures/
 │   ├── trip.json        the resting state: 4 people, 2 currencies, resolved splits
 │   ├── empty.json       a trip with no items, for the empty states

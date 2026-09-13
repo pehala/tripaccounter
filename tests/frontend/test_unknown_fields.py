@@ -24,7 +24,7 @@ def test_page_errors_never_fire_with_unknown_fields(page, make_mockserver, fixtu
     errors = []
     page.on("pageerror", lambda exc: errors.append(exc))  # noqa: PLW0108 (bound method breaks Playwright's wrapper)
     data = with_unknown_fields(fixture_data)
-    base_url, fixture = make_mockserver(data)
+    base_url, fixture = make_mockserver(data=data)
 
     page.goto(f"{base_url}/t/{fixture['trip']['trip']['slug']}")
     page.get_by_role("link", name="Balances").click()
@@ -40,7 +40,7 @@ def test_page_errors_never_fire_with_unknown_fields(page, make_mockserver, fixtu
 def test_trip_header_renders_identically_with_an_unknown_field(page, make_mockserver, fixture_data):
     """The header shows the trip's real fields; the unknown one is neither shown nor breaks it."""
     data = with_unknown_fields(fixture_data)
-    base_url, fixture = make_mockserver(data)
+    base_url, fixture = make_mockserver(data=data)
 
     page.goto(f"{base_url}/t/{fixture['trip']['trip']['slug']}")
 
@@ -51,7 +51,7 @@ def test_trip_header_renders_identically_with_an_unknown_field(page, make_mockse
 def test_item_row_renders_identically_with_an_unknown_field(page, make_mockserver, fixture_data):
     """The item row shows its real fields; the unknown one is neither shown nor breaks it."""
     data = with_unknown_fields(fixture_data)
-    base_url, fixture = make_mockserver(data)
+    base_url, fixture = make_mockserver(data=data)
     item = data["items"]["items"][0]
 
     page.goto(f"{base_url}/t/{fixture['trip']['trip']['slug']}")
@@ -66,7 +66,7 @@ def test_balance_card_renders_identically_with_an_unknown_field(
 ):
     """The balance card shows its real fields; the unknown one is neither shown nor breaks it."""
     data = with_unknown_fields(fixture_data)
-    base_url, fixture = make_mockserver(data)
+    base_url, fixture = make_mockserver(data=data)
 
     page.goto(f"{base_url}/t/{fixture['trip']['trip']['slug']}#balances")
 

@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install install_dev lock start_server start_dev_server start_ui seed test \
+.PHONY: help install install_dev lock start_server start_dev_server seed test \
         test_backend test_frontend test_tools lint fmt lock-check migrate migration openapi \
         openapi-check clean
 
@@ -27,9 +27,6 @@ start_server:    ## production: backend + static on :8000, no reload, trusts pro
 
 start_dev_server: ## backend + static on :8000, reload
 	uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-start_ui:        ## frontend only, fixture API on :8001, no DB
-	python3 -m tools.mockserver 8001
 
 seed:            ## put the demo trip in the dev DB
 	uv run python -m app.seed --demo

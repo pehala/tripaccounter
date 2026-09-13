@@ -366,7 +366,7 @@ Fixtures are the frontend's, and they live in `tests/frontend/fixtures/`.
 `balances` + `stats` — for a demo trip; the rest are purpose-built (an empty trip,
 markup in every user-supplied string, one file per error envelope).
 
-- `tools/mockserver.py` serves them under `/api/v1`, so the Playwright suite runs
+- `tests/frontend/mockapi.py` serves them under `/api/v1`, so the Playwright suite runs
   the real `static/` against canned responses with no backend and no database.
 - Every value in them is copied from what the backend actually produced. The mock
   computes nothing: a resolved split in a fixture was written out by hand, because a
