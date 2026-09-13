@@ -25,7 +25,7 @@ flowchart LR
         db[("SQLite<br/>(Postgres-compatible schema)")]
     end
 
-    ui -- "GET /, /t/{slug}" --> static
+    ui -- "GET /, /t/{slug}, /t/{slug}/{tab}" --> static
     ui -- "JSON only" --> api
     api --> db
 
@@ -35,9 +35,17 @@ flowchart LR
 ```
 
 The static mount is a **deployment convenience**, nothing more. The API has no
-knowledge of what sits in `static/`, serves `index.html` for `/` and `/t/{slug}`
-without looking at the slug, and never returns HTML under `/api/v1`. Point the
-frontend at another origin and the only change is a `CORSMiddleware` line.
+knowledge of what sits in `static/`, serves `index.html` for `/`, `/t/{slug}` and
+`/t/{slug}/{tab}` without looking at the slug or tab, and never returns HTML under
+`/api/v1`. Point the frontend at another origin and the only change is a
+`CORSMiddleware` line.
+
+**A tab is a URL** (`/t/{slug}/{tab}`) but not a page load: `app.js` intercepts the
+link click (and the back/forward buttons) and re-renders in place, so `/t/{slug}/{tab}`
+only ever hits the server on a direct link, a bookmark, or a hard refresh. `ETagMiddleware`
+(`app/main.py`) gives every `GET /api/v1/...` response a content hash as its `ETag`
+plus `Cache-Control: no-cache`, so even that cold load can come back as an empty
+`304` when nothing changed since the last visit.
 
 ## 2. One request, end to end
 

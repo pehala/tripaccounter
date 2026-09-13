@@ -20,7 +20,7 @@ from tests.frontend.mockapi import MockServer
 # them is written out by hand, copied from what the backend actually produced.
 FIXTURES = Path(__file__).parent / "fixtures"
 
-# Tab link text -> (URL hash, locator visible once that tab has finished rendering).
+# Tab link text -> (URL path segment, locator visible once that tab has finished rendering).
 # The landmarks are visible at every viewport width, so phone-width tests can use them.
 TABS = {
     "Items": ("items", lambda page: page.get_by_placeholder("filter by name or label")),
@@ -28,8 +28,8 @@ TABS = {
     "Statistics": ("stats", lambda page: page.get_by_text("By label").first),
     "Setup": ("setup", lambda page: page.get_by_text("People", exact=True)),
 }
-TAB_PARAMS = [pytest.param(name, id=hash_) for name, (hash_, _) in TABS.items()]
-TAB_BY_HASH = {hash_: name for name, (hash_, _) in TABS.items()}
+TAB_PARAMS = [pytest.param(name, id=path) for name, (path, _) in TABS.items()]
+TAB_BY_PATH = {path: name for name, (path, _) in TABS.items()}
 
 
 # Bootstrap's modal fade and collapse resolve on CSS transition end; waiting for
@@ -77,7 +77,7 @@ def mockserver(fixture_data):
 
 @pytest.fixture
 def trip_url(mockserver, slug):
-    """Return the mockserver URL for this test's trip page, without a hash."""
+    """Return the mockserver URL for this test's trip page, without a tab segment."""
     return f"{mockserver}/t/{slug}"
 
 
@@ -184,15 +184,15 @@ def js(page, mockserver):
 
 @pytest.fixture
 def open_trip(page, trip_url):
-    """Return `open_trip(hash=None) -> page`: load the trip at `#hash`, wait for the tab.
+    """Return `open_trip(tab=None) -> page`: load the trip at `/tab`, wait for the tab.
 
     A factory rather than a page fixture, so a test can register a stub on a baseline
     GET before the first navigation.
     """
 
-    def go(hash_=None):
-        page.goto(trip_url if hash_ is None else f"{trip_url}#{hash_}")
-        expect(TABS[TAB_BY_HASH[hash_ or "items"]][1](page)).to_be_visible()
+    def go(tab=None):
+        page.goto(trip_url if tab is None else f"{trip_url}/{tab}")
+        expect(TABS[TAB_BY_PATH[tab or "items"]][1](page)).to_be_visible()
         return page
 
     return go

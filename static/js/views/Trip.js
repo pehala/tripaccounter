@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useRef } from 'preact/hooks';
 import { html } from '../h.js';
 import { useStore, load } from '../store.js';
-import { t, LANGS, getLocale, setLocale } from '../i18n/index.js';
+import { t, getLocale } from '../i18n/index.js';
 import { dateRange } from '../fmt.js';
 import { Items } from './Items.js';
 import { Balances } from './Balances.js';
 import { Stats } from './Stats.js';
 import { Setup } from './Setup.js';
 import { Flash } from '../components/Flash.js';
+import { Loading } from '../components/Loading.js';
 
 const TABS = [
   ['items', 'nav.items'],
@@ -16,25 +17,9 @@ const TABS = [
   ['setup', 'nav.setup'],
 ];
 
-function currentTheme() {
-  return document.documentElement.dataset.bsTheme === 'dark' ? 'dark' : 'light';
-}
-
-if (localStorage.getItem('theme')) {
-  document.documentElement.dataset.bsTheme = localStorage.getItem('theme');
-}
-
 export function Trip({ slug, tab }) {
   const store = useStore();
-  const [theme, setTheme] = useState(currentTheme());
   const headerRef = useRef(null);
-
-  function toggleTheme() {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.bsTheme = next;
-    localStorage.setItem('theme', next);
-    setTheme(next);
-  }
 
   useEffect(() => {
     if (store.slug !== slug) load(slug);
@@ -60,7 +45,7 @@ export function Trip({ slug, tab }) {
       </div>`;
     }
     if (store.error) return html`<div class="container py-4"><p class="text-danger">${t('app.error')}</p></div>`;
-    return html`<div class="container py-4">${t('app.loading')}</div>`;
+    return html`<${Loading} />`;
   }
 
   const trip = store.trip;
@@ -81,30 +66,11 @@ export function Trip({ slug, tab }) {
         <div class="d-flex align-items-baseline gap-2 flex-wrap pt-3">
           <h1 class="h5 mb-0">${trip.name}</h1>
           <small class="text-body-secondary">${subtitle}</small>
-          <div class="dropdown ms-auto">
-            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" aria-expanded="false">⋯</button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><h6 class="dropdown-header">${t('lang.menu')}</h6></li>
-              ${Object.keys(LANGS).map((lang) => html`
-                <li key=${lang}>
-                  <button class="dropdown-item ${lang === locale ? 'active' : ''}" type="button"
-                          onClick=${() => setLocale(lang)}>${t(`lang.${lang}`)}</button>
-                </li>
-              `)}
-              <li><hr class="dropdown-divider" /></li>
-              <li>
-                <button class="dropdown-item" type="button" onClick=${toggleTheme}>
-                  <i class="bi ${theme === 'dark' ? 'bi-sun' : 'bi-moon'}"></i>
-                  ${theme === 'dark' ? t('theme.light') : t('theme.dark')}
-                </button>
-              </li>
-            </ul>
-          </div>
         </div>
         <ul class="nav nav-tabs border-0 mt-2" role="tablist">
           ${TABS.map(([key, labelKey]) => html`
             <li key=${key} class="nav-item">
-              <a class="nav-link ${key === tab ? 'active' : ''}" href="/t/${slug}#${key}">${t(labelKey)}</a>
+              <a class="nav-link ${key === tab ? 'active' : ''}" href="/t/${slug}/${key}">${t(labelKey)}</a>
             </li>
           `)}
         </ul>

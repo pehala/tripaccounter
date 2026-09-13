@@ -29,7 +29,7 @@ static/
 ├── index.html            <head>, pinned CDN tags + SRI, import map, <div id="app">
 ├── app.css               ~80 lines on top of Bootstrap. No framework rewrite.
 └── js/
-    ├── app.js            mount + router: / and /t/:slug#items|balances|stats|setup
+    ├── app.js            mount + router: / and /t/:slug/items|balances|stats|setup
     ├── api.js            fetch wrapper: base path, JSON,
     │                     error envelope → {status, code, params, fields}
     ├── store.js          per-trip state: trip, labels, items, balances, stats;
@@ -50,6 +50,10 @@ static/
     │   ├── Stats.js      per-currency and combined views, rate inputs
     │   └── Setup.js      people / currencies / countries / labels / settings / export
     └── components/
+        ├── Shell.js        the one piece of chrome every route shares, app.js
+        │                   renders it once around whichever view is current
+        ├── ThemeLangMenu.js  language + theme, lives only in Shell
+        ├── Loading.js      one spinner, everywhere a store field isn't ready yet
         ├── ItemRow.js  DayGroup.js
         ├── ItemModal.js  add + edit, one component, two modes
         ├── SplitEditor.js  mode switch, weights/amounts, calls preview-split
@@ -165,19 +169,31 @@ as the viewer's own wall clock.
 
 ## 5. Call budget per screen
 
+A tab is a URL (`/t/{slug}/{tab}`) but a tab switch is still a client-side route
+change, not a page load — `app.js` intercepts it, so `store.trip` and any tab
+already visited stay in memory. Each tab loads only what it needs the first time
+it opens; landing straight on a tab via a direct link or a hard refresh pays for
+`trip` too, since nothing is cached yet.
+
 | Screen | Calls | Notes |
 |---|---|---|
 | Trip list | 1 | `GET /trips` |
-| Open a trip | 3, parallel | `GET /trips/{slug}`, `/items`, `/labels` |
-| Balances tab | 1 | on first open, cached until a write |
-| Stats tab | 1 | on first open |
+| Open a trip (Items tab) | 3, parallel | `GET /trips/{slug}`, `/items`, `/labels` |
+| Balances tab, first open | 1 | `GET /balances` — `trip` is already in the store |
+| Stats tab, first open | 1 | `GET /stats` — `trip` is already in the store |
+| Setup tab, first open | 0 or 1 | `GET /labels`, unless Items already loaded them |
+| Balances/Stats/Setup, cold (direct link) | 2 | `GET /trips/{slug}` plus that tab's own endpoint |
+| Revisiting a loaded tab | 0 | already in the store |
 | Open the edit modal | 0 | the item is already in `store.items` |
 | Type in the modal | 0 | labels filtered from `store.labels` client-side |
 | Change amount or split | 1 | `preview-split` on `change`, not on input |
 | Save an item | 2 | the write, then `GET /items` (plus `/labels` if a new label was typed) |
 | Setup edit | 2 | the write, then `GET /trips/{slug}` (or `/labels`) |
 
-Anything above this is a bug, and `test_call_budget.py` says so.
+Anything above this is a bug, and `test_call_budget.py` says so. A cold `GET
+/trips/{slug}` may still come back as a 304 (see `design/ARCHITECTURE.md` §1,
+`ETagMiddleware`) — that saves bytes, not the request itself, so it still counts
+here.
 
 ## 6. Working without the backend
 

@@ -85,3 +85,6 @@ Dependencies are `uv` only: `pyproject.toml` + committed `uv.lock`, `uv sync
 
 Pre-merge gate is `make lint test_backend`; lefthook runs it on push and CI runs the
 same targets.
+
+PR titles follow the same convention as commit subjects: `type(scope): summary`,
+lowercase, no trailing period.

@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { html } from '../h.js';
 import { useStore, reload } from '../store.js';
 import { t, getLocale } from '../i18n/index.js';
@@ -6,6 +6,7 @@ import { fmtParams } from '../fmt.js';
 import { api } from '../api.js';
 import { pushFlash } from '../components/Flash.js';
 import { Avatar } from '../components/Avatar.js';
+import { Loading } from '../components/Loading.js';
 
 function errText(err, locale) {
   return t('err.' + err.code, fmtParams(err.params, locale));
@@ -497,15 +498,21 @@ function TripSection({ trip, locale }) {
 
 export function Setup() {
   const store = useStore();
-  const trip = store.trip;
-  const labels = store.labels || [];
   const locale = getLocale();
+
+  useEffect(() => {
+    if (!store.labels) reload('labels');
+  }, [store.slug]);
+
+  if (!store.labels) return html`<${Loading} />`;
+
+  const trip = store.trip;
 
   return html`
     <${PeopleSection} trip=${trip} locale=${locale} />
     <${CurrenciesSection} trip=${trip} locale=${locale} />
     <${CountriesSection} trip=${trip} locale=${locale} />
-    <${LabelsSection} trip=${trip} labels=${labels} locale=${locale} />
+    <${LabelsSection} trip=${trip} labels=${store.labels} locale=${locale} />
     <${TripSection} trip=${trip} locale=${locale} />
   `;
 }

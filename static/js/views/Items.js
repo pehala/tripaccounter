@@ -1,9 +1,10 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { html } from '../h.js';
-import { useStore } from '../store.js';
+import { useStore, reload } from '../store.js';
 import { t, getLocale } from '../i18n/index.js';
 import { DayGroup } from '../components/DayGroup.js';
 import { ItemModal } from '../components/ItemModal.js';
+import { Loading } from '../components/Loading.js';
 
 function groupByDay(items) {
   const groups = [];
@@ -25,7 +26,14 @@ export function Items() {
   const [modalItem, setModalItem] = useState(undefined); // undefined = closed, null = new, object = edit
   const locale = getLocale();
 
-  const items = store.items || [];
+  useEffect(() => {
+    if (!store.items) reload('items');
+    if (!store.labels) reload('labels');
+  }, [store.slug]);
+
+  if (!store.items) return html`<${Loading} />`;
+
+  const items = store.items;
   const needle = filter.trim().toLowerCase();
   const filtered = needle
     ? items.filter((item) => item.name.toLowerCase().includes(needle) || item.labels.some((l) => l.includes(needle)))
