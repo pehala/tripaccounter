@@ -12,7 +12,7 @@ export function DayGroup({ date, items, trip, locale, onSelect }) {
       <small class="text-body-secondary text-uppercase fw-semibold">${label}</small>
       <hr class="flex-grow-1 my-0 opacity-25" />
     </div>
-    <div class="list-group shadow-sm mb-3">
+    <div class="list-group item-list shadow-sm mb-3">
       ${items.map((item) => html`<${ItemRow} key=${item.id} item=${item} trip=${trip} locale=${locale} onSelect=${onSelect} />`)}
     </div>
   `;
