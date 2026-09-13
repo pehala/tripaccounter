@@ -8,159 +8,153 @@ through `t()`, a field-less error reaches the flash; an unknown code renders as
 code + params, never blank.
 """
 
-import json
-from pathlib import Path
-
+import pytest
 from playwright.sync_api import expect
 
-ERRORS = Path(__file__).parent / "fixtures" / "errors"
+from tests.frontend.conftest import FIXTURES, load_fixture
 
 
-def api_get_error(page, stub, status, body):
-    """Stub GET /trips/x, call api.get through it, and return the caught error."""
-    stub("**/api/v1/trips/x", lambda request: (status, body))
-    return page.evaluate(
-        """async () => {
-            const { api } = await import('/js/api.js');
-            try {
-                await api.get('/trips/x');
-                return null;
-            } catch (err) {
-                return err;
-            }
-        }"""
-    )
+@pytest.fixture
+def api_get_error(page, mockserver, stub):
+    """Return `api_get_error(status, body, content_type="application/json")`.
 
-
-def test_404_maps_to_the_envelope_shape(page, mockserver, stub):
-    """A 404 response becomes {status, code, params, fields}."""
+    Stubs GET /trips/x with that response, calls `api.get('/trips/x')` in a document
+    served by the mock and returns the error it throws (None if it resolves).
+    """
     page.goto(f"{mockserver}/")
-    body = json.loads((ERRORS / "404.json").read_text())
-    err = api_get_error(page, stub, 404, body)
-    assert err == {"status": 404, "code": "not_found", "params": {"resource": "trip"}, "fields": {}}
+
+    def call(status, body, content_type="application/json"):
+        stub("**/api/v1/trips/x", lambda request: (status, body, content_type))
+        return page.evaluate(
+            """async () => {
+                const { api } = await import('/js/api.js');
+                try {
+                    await api.get('/trips/x');
+                    return null;
+                } catch (err) {
+                    return err;
+                }
+            }"""
+        )
+
+    return call
 
 
-def test_409_maps_to_the_envelope_shape(page, mockserver, stub):
-    """A 409 response's fields entry survives intact."""
-    page.goto(f"{mockserver}/")
-    body = json.loads((ERRORS / "409_in_use.json").read_text())
-    err = api_get_error(page, stub, 409, body)
-    assert err["status"] == 409
-    assert err["code"] == "conflict"
-    assert err["fields"] == {"id": {"code": "in_use", "params": {"count": 4, "name": "Iceland"}}}
+@pytest.fixture
+def save_snack_with_error(new_item_modal, stub):
+    """Return `save_snack_with_error(status, body) -> page`.
+
+    Answers POST /items with that error (GETs pass through to the mock), then fills
+    name and amount in the open new-expense modal and clicks Save.
+    """
+
+    def submit(status, body):
+        stub(
+            "**/api/v1/trips/*/items",
+            lambda request: (status, body) if request.method == "POST" else None,
+        )
+        new_item_modal.locator('input[name="name"]').fill("Snacks")
+        new_item_modal.locator('input[name="amount"]').fill("500")
+        new_item_modal.get_by_role("button", name="Save", exact=True).click()
+        return new_item_modal.page
+
+    return submit
 
 
-def test_422_maps_to_the_envelope_shape(page, mockserver, stub):
-    """A 422 validation error's fields entry survives intact."""
-    page.goto(f"{mockserver}/")
-    body = json.loads((ERRORS / "422_shares.json").read_text())
-    err = api_get_error(page, stub, 422, body)
-    assert err["status"] == 422
-    assert err["code"] == "validation_error"
-    assert err["fields"] == {
-        "shares": {"code": "sum_mismatch", "params": {"diff": 3, "currency_code": "ISK"}}
-    }
-
-
-def test_500_with_html_body_yields_internal_error_without_throwing(page, mockserver):
-    """A 500 whose body is HTML, not JSON, still yields a clean fallback envelope."""
-    page.goto(f"{mockserver}/")
-    # `stub`'s responder always JSON-encodes `body`; a genuinely non-JSON body
-    # needs its own route, bypassing the shared fixture's JSON encoding.
-    page.route(
-        "**/api/v1/trips/y",
-        lambda route: route.fulfill(
-            status=500,
-            content_type="text/html",
-            body=(ERRORS / "500_html.html").read_text(),
+@pytest.mark.parametrize(
+    ("body", "status", "content_type", "expected"),
+    [
+        pytest.param(
+            load_fixture("errors/404.json"),
+            404,
+            "application/json",
+            {"status": 404, "code": "not_found", "params": {"resource": "trip"}, "fields": {}},
+            id="not-found",
         ),
-    )
-    err = page.evaluate(
-        """async () => {
-            const { api } = await import('/js/api.js');
-            try {
-                await api.get('/trips/y');
-                return null;
-            } catch (e) {
-                return e;
-            }
-        }"""
-    )
-    assert err == {"status": 500, "code": "internal_error", "params": {}, "fields": {}}
-
-
-def test_field_error_reaches_the_matching_input(page, mockserver, trip_url, stub):
-    """A fields.amount error renders under the amount input via the catalog, not text."""
-    stub(
-        "**/api/v1/trips/*/items",
-        lambda request: (
-            (
-                422,
-                {
-                    "error": {
-                        "code": "validation_error",
-                        "params": {},
-                        "fields": {"amount": {"code": "invalid_amount", "params": {}}},
+        pytest.param(
+            load_fixture("errors/409_in_use.json"),
+            409,
+            "application/json",
+            {
+                "status": 409,
+                "code": "conflict",
+                "params": {},
+                "fields": {"id": {"code": "in_use", "params": {"count": 4, "name": "Iceland"}}},
+            },
+            id="in-use",
+        ),
+        pytest.param(
+            load_fixture("errors/422_shares.json"),
+            422,
+            "application/json",
+            {
+                "status": 422,
+                "code": "validation_error",
+                "params": {},
+                "fields": {
+                    "shares": {
+                        "code": "sum_mismatch",
+                        "params": {"diff": 3, "currency_code": "ISK"},
                     }
                 },
-            )
-            if request.method == "POST"
-            else None
+            },
+            id="sum-mismatch",
         ),
-    )
-
-    page.goto(trip_url)
-    page.get_by_role("button", name="Expense").click()
-    page.locator(".modal.show").wait_for()
-    page.locator('input[name="name"]').fill("Snacks")
-    page.locator('input[name="amount"]').fill("500")
-    page.get_by_role("button", name="Save", exact=True).click()
-
-    amount_group = page.locator('input[name="amount"]').locator("..")
-    expect(amount_group.locator(".invalid-feedback")).to_have_text("Enter an amount.")
-    assert page.locator(".modal.show").count() == 1  # save failed, modal stays open
-
-
-def test_field_less_error_reaches_the_flash(page, mockserver, trip_url, stub):
-    """An error with no fields (a top-level failure) shows in the flash, not under a field."""
-    stub(
-        "**/api/v1/trips/*/items",
-        lambda request: (
-            (500, {"error": {"code": "internal_error", "params": {"ref": "abc123"}}})
-            if request.method == "POST"
-            else None
+        pytest.param(
+            (FIXTURES / "errors/500_html.html").read_text(),
+            500,
+            "text/html",
+            {"status": 500, "code": "internal_error", "params": {}, "fields": {}},
+            id="html-500",
         ),
-    )
-
-    page.goto(trip_url)
-    page.get_by_role("button", name="Expense").click()
-    page.locator(".modal.show").wait_for()
-    page.locator('input[name="name"]').fill("Snacks")
-    page.locator('input[name="amount"]').fill("500")
-    page.get_by_role("button", name="Save", exact=True).click()
-
-    expect(page.locator(".alert-danger")).to_have_text("Something went wrong. Reference: abc123.")
-    assert page.locator(".invalid-feedback").count() == 0
-
-
-def test_unknown_error_code_renders_as_code_and_params_never_blank(
-    page, mockserver, trip_url, stub
+    ],
+)
+def test_error_response_maps_to_the_envelope_shape(
+    api_get_error, body, status, content_type, expected
 ):
-    """A code the catalog doesn't know still shows something readable, not a blank flash."""
-    stub(
-        "**/api/v1/trips/*/items",
-        lambda request: (
-            (400, {"error": {"code": "brand_new_rule", "params": {"limit": 5}}})
-            if request.method == "POST"
-            else None
+    """An error response becomes {status, code, params, fields}; a non-JSON body falls back."""
+    err = api_get_error(status, body, content_type)
+
+    assert err == expected
+
+
+def test_field_error_reaches_the_matching_input(new_item_modal, save_snack_with_error):
+    """A fields.amount error renders under the amount input via the catalog; the modal stays."""
+    error_body = {
+        "error": {
+            "code": "validation_error",
+            "params": {},
+            "fields": {"amount": {"code": "invalid_amount", "params": {}}},
+        }
+    }
+
+    save_snack_with_error(422, error_body)
+
+    amount_group = new_item_modal.locator('input[name="amount"]').locator("..")
+    expect(amount_group.locator(".invalid-feedback")).to_have_text("Enter an amount.")
+    expect(new_item_modal).to_have_count(1)
+
+
+@pytest.mark.parametrize(
+    ("status", "error_body", "text"),
+    [
+        pytest.param(
+            500,
+            {"error": {"code": "internal_error", "params": {"ref": "abc123"}}},
+            "Something went wrong. Reference: abc123.",
+            id="known-code",
         ),
-    )
+        pytest.param(
+            400,
+            {"error": {"code": "brand_new_rule", "params": {"limit": 5}}},
+            "brand_new_rule · limit 5",
+            id="unknown-code",
+        ),
+    ],
+)
+def test_field_less_error_reaches_the_flash(save_snack_with_error, status, error_body, text):
+    """An error with no fields shows in the flash: the catalog sentence, or code + params."""
+    page = save_snack_with_error(status, error_body)
 
-    page.goto(trip_url)
-    page.get_by_role("button", name="Expense").click()
-    page.locator(".modal.show").wait_for()
-    page.locator('input[name="name"]').fill("Snacks")
-    page.locator('input[name="amount"]').fill("500")
-    page.get_by_role("button", name="Save", exact=True).click()
-
-    expect(page.locator(".alert-danger")).to_have_text("brand_new_rule · limit 5")
+    expect(page.locator(".alert-danger")).to_have_text(text)
+    expect(page.locator(".invalid-feedback")).to_have_count(0)

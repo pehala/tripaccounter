@@ -7,105 +7,93 @@ keystroke; the rendered shares are exactly the stub's numbers, recomputed by
 nothing (rule 2).
 """
 
+import pytest
 from playwright.sync_api import expect
 
+PREVIEW_URL = "**/api/v1/trips/*/items/preview-split"
 
-def open_new_item_modal_with_split_expanded(page, trip_url):
-    """Open the new-item modal and expand the split section, without touching amount."""
-    page.goto(trip_url)
-    page.get_by_role("button", name="Expense").click()
-    page.locator(".modal.show").wait_for()
-    page.locator('[data-bs-target="#split-body"]').click()
-    page.locator("#split-body.show").wait_for()
-    return page.locator('input[name="amount"]')
+SUM_MISMATCH = {
+    "error": {
+        "code": "validation_error",
+        "params": {},
+        "fields": {
+            "shares": {"code": "sum_mismatch", "params": {"diff": 1, "currency_code": "ISK"}}
+        },
+    }
+}
+
+EXACT_PREVIEW = {"split": {"mode": "exact", "shares": []}}
+
+EQUAL_PREVIEW = {
+    "split": {
+        "mode": "equal",
+        "shares": [
+            {"person_id": 1, "weight": "1", "owed": 12345},
+            {"person_id": 2, "weight": "1", "owed": 1},
+            {"person_id": 3, "weight": None, "owed": None},
+            {"person_id": 4, "weight": "1", "owed": 99999},
+        ],
+    }
+}
 
 
-def exact_input_for(page, person_id):
-    """Return that person's per-share numeric input in the expanded split list."""
-    return page.locator("li", has=page.locator(f"#split-{person_id}")).locator("input.num")
+@pytest.fixture
+def amount(new_item_modal):
+    """Return the amount input of the open new-expense modal."""
+    return new_item_modal.locator('input[name="amount"]')
+
+
+@pytest.fixture
+def exact_input_for(split_expanded):
+    """Return `exact_input_for(person_id)`: that person's per-share input in the split list."""
+
+    def find(person_id):
+        return split_expanded.locator(f"li:has(#split-{person_id}) input.num")
+
+    return find
 
 
 def test_exact_mode_mismatch_renders_sum_mismatch_from_the_catalog(
-    page, mockserver, trip_url, stub
+    new_item_modal, split_expanded, amount, stub
 ):
     """A stubbed 422 sum_mismatch on `shares` renders as the catalog's sentence, diff formatted."""
-    stub(
-        "**/api/v1/trips/*/items/preview-split",
-        lambda request: (
-            422,
-            {
-                "error": {
-                    "code": "validation_error",
-                    "params": {},
-                    "fields": {
-                        "shares": {
-                            "code": "sum_mismatch",
-                            "params": {"diff": 1, "currency_code": "ISK"},
-                        }
-                    },
-                }
-            },
-        ),
-    )
-    amount = open_new_item_modal_with_split_expanded(page, trip_url)
+    stub(PREVIEW_URL, lambda request: (422, SUM_MISMATCH))
     amount.fill("100")
 
-    page.get_by_role("button", name="Exact", exact=True).click()
+    new_item_modal.get_by_role("button", name="Exact", exact=True).click()
 
-    expect(page.locator(".alert-danger")).to_have_text("Off by 1 ISK.")
+    expect(new_item_modal.locator(".alert-danger")).to_have_text("Off by 1 ISK.")
 
 
-def test_preview_fires_on_change_not_on_every_keystroke(page, mockserver, trip_url, stub):
-    """Typing in a per-person exact amount fires preview-split on blur, once, not per key."""
-    calls = stub(
-        "**/api/v1/trips/*/items/preview-split",
-        lambda request: (200, {"split": {"mode": "exact", "shares": []}}),
-    )
-    amount = open_new_item_modal_with_split_expanded(page, trip_url)
+def test_preview_fires_on_change_not_on_every_keystroke(
+    new_item_modal, amount, exact_input_for, stub, count_requests
+):
+    """Committing the amount, the mode and one exact share previews three times, keystrokes none."""
+    stub(PREVIEW_URL, lambda request: (200, EXACT_PREVIEW))
+    page = new_item_modal.page
     amount.fill("100")
-    with page.expect_response(lambda r: "preview-split" in r.url):
+    previews = count_requests("*/items/preview-split")
+
+    with page.expect_response(lambda response: "preview-split" in response.url):
         amount.blur()
-    assert len(calls) == 1  # the amount field commits its own change first
-
-    with page.expect_response(lambda r: "preview-split" in r.url):
-        page.get_by_role("button", name="Exact", exact=True).click()
-    assert len(calls) == 2  # the mode switch itself previews once
-
-    person1 = exact_input_for(page, 1)
+    with page.expect_response(lambda response: "preview-split" in response.url):
+        new_item_modal.get_by_role("button", name="Exact", exact=True).click()
+    person1 = exact_input_for(1)
     person1.press_sequentially("60")
-    page.wait_for_timeout(200)  # give a stray request a chance to show up
-    assert len(calls) == 2  # keystrokes alone never call firePreview
-
-    with page.expect_response(lambda r: "preview-split" in r.url):
+    with page.expect_response(lambda response: "preview-split" in response.url):
         person1.blur()
-    assert len(calls) == 3  # committed once, on change
+
+    assert len(previews) == 3
 
 
-def test_rendered_shares_are_exactly_the_stubs_numbers(page, mockserver, trip_url, stub):
+def test_rendered_shares_are_exactly_the_stubs_numbers(split_expanded, amount, stub):
     """The split list shows the server's numbers verbatim — nothing here recomputes a share."""
-    stub(
-        "**/api/v1/trips/*/items/preview-split",
-        lambda request: (
-            200,
-            {
-                "split": {
-                    "mode": "equal",
-                    "shares": [
-                        {"person_id": 1, "weight": "1", "owed": 12345},
-                        {"person_id": 2, "weight": "1", "owed": 1},
-                        {"person_id": 3, "weight": None, "owed": None},
-                        {"person_id": 4, "weight": "1", "owed": 99999},
-                    ],
-                }
-            },
-        ),
-    )
-    amount = open_new_item_modal_with_split_expanded(page, trip_url)
-
+    stub(PREVIEW_URL, lambda request: (200, EQUAL_PREVIEW))
     amount.fill("100200")
+
     amount.blur()
 
-    rows = page.locator("#split-body li")
+    rows = split_expanded.locator("li")
     expect(rows.nth(0).locator(".num")).to_have_text("12,345")
     expect(rows.nth(1).locator(".num")).to_have_text("1")
     expect(rows.nth(2).locator(".num")).to_have_text("—")
