@@ -18,13 +18,24 @@ def test_create_item_read_back_equal(client, trip, item_body):
 
 
 def test_list_items_orders_by_occurred_at_desc_then_id_desc(
-    client, trip, items_two_same_day_one_earlier
+    client, trip, items_two_same_day_one_earlier, currencies
 ):
-    """List order is occurred_at DESC, id DESC."""
-    items = client.get(f"/api/v1/trips/{trip['slug']}/items").json()["items"]
-    dates = [item["occurred_at"] for item in items]
+    """List order is occurred_at DESC, id DESC; day_totals sums each day, newest first."""
+    items = client.get(f"/api/v1/trips/{trip['slug']}/items").json()
+    dates = [item["occurred_at"] for item in items["items"]]
     assert dates == ["2026-07-02T09:00:00Z", "2026-07-02T09:00:00Z", "2026-07-01T09:00:00Z"]
-    assert items[0]["id"] > items[1]["id"]
+    assert items["items"][0]["id"] > items["items"][1]["id"]
+
+    assert items["day_totals"] == [
+        {
+            "date": "2026-07-02",
+            "totals": [{"currency_code": "ISK", "currency_id": currencies[0]["id"], "amount": 200}],
+        },
+        {
+            "date": "2026-07-01",
+            "totals": [{"currency_code": "ISK", "currency_id": currencies[0]["id"], "amount": 100}],
+        },
+    ]
 
 
 def test_patch_item_leaves_omitted_fields_untouched(client, trip, item_body):

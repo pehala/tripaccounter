@@ -239,6 +239,11 @@ labels. Balances and statistics are fetched when their tab opens, not up front.
 Items come back sorted `occurred_at DESC, id DESC`, all of them: a holiday does not
 paginate. Filters and `limit` are a future additive change.
 
+The item list also carries `day_totals`: one entry per day with items, newest first,
+each holding one `{currency_code, currency_id, amount}` per currency that day —
+summed server-side in the same query, so the feed's per-day total is never a
+client-side accumulation (`design/FRONTEND.md` §4 rule 1).
+
 ### Writing an item
 A `PATCH` leaves omitted fields untouched, but sending `shares` **replaces the whole
 split** — there is no per-share patch.

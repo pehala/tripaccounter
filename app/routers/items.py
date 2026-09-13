@@ -3,13 +3,15 @@
 from decimal import Decimal
 
 from fastapi import APIRouter, Response
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.clock import ClockDep
 from app.deps import SessionDep, TripDep
 from app.models import ItemShare, LineItem, Person, TripCountry, TripCurrency, active_roster_ids
 from app.schemas import (
     ITEM_LOAD_OPTIONS,
+    DayCurrencyTotalOut,
+    DayTotalOut,
     ItemEnvelope,
     ItemListEnvelope,
     ItemOut,
@@ -181,7 +183,34 @@ def list_items(trip: TripDep, session: SessionDep):
         .all()
     )
     roster_ids = active_roster_ids(trip.people)
-    return {"items": [ItemOut.from_item(item, roster_ids) for item in items]}
+
+    day_rows = session.execute(
+        select(
+            func.date(LineItem.occurred_at),
+            TripCurrency.code,
+            TripCurrency.id,
+            func.sum(LineItem.amount_minor),
+        )
+        .select_from(LineItem)
+        .join(TripCurrency, TripCurrency.id == LineItem.currency_id)
+        .where(LineItem.trip_id == trip.id)
+        .group_by(func.date(LineItem.occurred_at), TripCurrency.id)
+        .order_by(func.date(LineItem.occurred_at).desc(), TripCurrency.sort_order)
+    ).all()
+    day_totals: dict[str, list[DayCurrencyTotalOut]] = {}
+    for day, code, currency_id, amount_minor in day_rows:
+        day_totals.setdefault(day, []).append(
+            DayCurrencyTotalOut(
+                currency_code=code,
+                currency_id=currency_id,
+                amount=to_wire(amount_minor, AMOUNT_SCALE),
+            )
+        )
+
+    return {
+        "items": [ItemOut.from_item(item, roster_ids) for item in items],
+        "day_totals": [DayTotalOut(date=day, totals=totals) for day, totals in day_totals.items()],
+    }
 
 
 @router.get(

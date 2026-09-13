@@ -609,10 +609,26 @@ class ItemEnvelope(BaseModel):
     item: ItemOut
 
 
+class DayCurrencyTotalOut(BaseModel):
+    """Wire representation of one currency's total for one day."""
+
+    currency_code: str
+    currency_id: int
+    amount: Number
+
+
+class DayTotalOut(BaseModel):
+    """Wire representation of a day's per-currency totals."""
+
+    date: str
+    totals: list[DayCurrencyTotalOut]
+
+
 class ItemListEnvelope(BaseModel):
-    """`{ "items": [Item] }`."""
+    """`{ "items": [Item], "day_totals": [DayTotal] }`."""
 
     items: list[ItemOut]
+    day_totals: list[DayTotalOut]
 
 
 class PersonEnvelope(BaseModel):
