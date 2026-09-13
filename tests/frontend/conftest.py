@@ -1,14 +1,16 @@
 """Fixtures for the Playwright suite.
 
-Fixture-seeded mock servers (tests/frontend/mockapi.py) and route-stubbing helpers,
-no DB or `app.*` import.
+One fixture-seeded mock server (tests/frontend/mockapi.py) per test, navigation and
+modal fixtures on top of it, route stubs for writes and errors. No DB, no `app.*`.
 """
 
 import json
-from contextlib import ExitStack
+from fnmatch import fnmatchcase
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
+from playwright.sync_api import expect
 
 from tests.frontend.mockapi import MockServer
 
@@ -18,57 +20,79 @@ from tests.frontend.mockapi import MockServer
 # them is written out by hand, copied from what the backend actually produced.
 FIXTURES = Path(__file__).parent / "fixtures"
 
+# Tab link text -> (URL hash, locator visible once that tab has finished rendering).
+# The landmarks are visible at every viewport width, so phone-width tests can use them.
+TABS = {
+    "Items": ("items", lambda page: page.get_by_placeholder("filter by name or label")),
+    "Balances": ("balances", lambda page: page.get_by_text("Settle up").first),
+    "Statistics": ("stats", lambda page: page.get_by_text("By label").first),
+    "Setup": ("setup", lambda page: page.get_by_text("People", exact=True)),
+}
+TAB_PARAMS = [pytest.param(name, id=hash_) for name, (hash_, _) in TABS.items()]
+TAB_BY_HASH = {hash_: name for name, (hash_, _) in TABS.items()}
+
+
+# Bootstrap's modal fade and collapse resolve on CSS transition end; waiting for
+# `.modal.show` or `#split-body.show` cost a test up to 1.4 s of pure animation.
+NO_TRANSITIONS = """document.addEventListener('DOMContentLoaded', () => {
+  const style = document.createElement('style');
+  style.textContent =
+    '*, *::before, *::after { transition: none !important; animation: none !important; }';
+  document.head.appendChild(style);
+});"""
+
 
 def load_fixture(name):
-    """Load and parse a named fixture file from tests/frontend/fixtures/."""
+    """Parse a file under fixtures/, e.g. "trip.json" or "errors/409_in_use.json"."""
     return json.loads((FIXTURES / name).read_text())
 
 
+# --- data -------------------------------------------------------------------------
+
+
 @pytest.fixture
-def fixture_data():
-    """Return a fresh copy of the resting-state fixture, private to this test."""
-    return load_fixture("trip.json")
+def fixture_name(request):
+    """Name of the fixture file the mock serves; override per module or parametrize indirectly."""
+    return getattr(request, "param", "trip.json")
+
+
+@pytest.fixture
+def fixture_data(fixture_name):
+    """Return a fresh parse of `fixture_name`, private to this test; override to mutate it."""
+    return load_fixture(fixture_name)
 
 
 @pytest.fixture
 def slug(fixture_data):
-    """Return the trip's slug from the fixture data."""
+    """Return the served trip's slug."""
     return fixture_data["trip"]["trip"]["slug"]
 
 
 @pytest.fixture
-def mockserver(make_mockserver, fixture_data):
-    """Return the base URL of a mock API serving this test's own `fixture_data`."""
-    return make_mockserver(data=fixture_data)[0]
+def mockserver(fixture_data):
+    """Return the base URL of a mock API serving this test's `fixture_data`."""
+    with MockServer(fixture_data) as server:
+        yield server.url
 
 
 @pytest.fixture
 def trip_url(mockserver, slug):
-    """Return the mockserver URL for this test's trip page."""
+    """Return the mockserver URL for this test's trip page, without a hash."""
     return f"{mockserver}/t/{slug}"
 
 
-@pytest.fixture
-def make_mockserver():
-    """Return a factory that serves a fixture on a free port and returns `(url, data)`.
-
-    Pass either `name`, a file under fixtures/, or `data`, a dict to serve as is. Every
-    server started this way is stopped at teardown.
-    """
-    with ExitStack() as servers:
-
-        def _make(name=None, data=None):
-            if data is None:
-                data = load_fixture(name)
-            return servers.enter_context(MockServer(data)).url, data
-
-        yield _make
+# --- browser ----------------------------------------------------------------------
 
 
 @pytest.fixture
 def page(page):
-    """Pin the browser's locale to `en` regardless of the runner's own OS/browser locale."""
+    """Pin the browser's locale to `en` and turn off CSS transitions so Bootstrap settles at once.
+
+    Without the pin the runner's OS locale would leak in; without the transitions every
+    modal and collapse wait would pay Bootstrap's animation time.
+    """
     page.add_init_script("window.localStorage.setItem('lang', 'en')")
+    page.add_init_script(NO_TRANSITIONS)
     return page
 
 
@@ -82,11 +106,13 @@ def browser_context_args(browser_context_args):
 def stub(page):
     """Return a helper that fulfils requests matching a URL glob via a callback.
 
-    The callback is `responder(request) -> (status, body) | None`; fulfilled
-    request bodies are recorded in call order.
+    The callback is `responder(request) -> (status, body) | (status, body, content_type)
+    | None`; None lets the request through to the mock. Bodies are JSON-encoded unless
+    a non-JSON `content_type` is given, in which case `body` is sent as text. Fulfilled
+    POST/PATCH request bodies are recorded in call order; other methods record None.
     """
 
-    def _stub(pattern, responder):
+    def install(pattern, responder):
         calls = []
 
         def handler(route):
@@ -96,10 +122,158 @@ def stub(page):
                 route.continue_()
                 return
             calls.append(request.post_data_json if request.method in ("POST", "PATCH") else None)
-            status, body = result
-            route.fulfill(status=status, content_type="application/json", body=json.dumps(body))
+            status, body, *rest = result
+            content_type = rest[0] if rest else "application/json"
+            if content_type == "application/json":
+                body = json.dumps(body)
+            route.fulfill(status=status, content_type=content_type, body=body)
 
         page.route(pattern, handler)
         return calls
 
-    return _stub
+    return install
+
+
+@pytest.fixture
+def count_requests(page):
+    """Return `count_requests(path_glob, method=None) -> list[Request]`, growing live.
+
+    Matches `fnmatch` against the URL path: "*/api/v1/*" is every API call, "*/items"
+    is the collection and not "*/items/preview-split". Attach it right before the
+    action under test; earlier requests are not counted.
+    """
+
+    def attach(path_glob, method=None):
+        seen = []
+
+        def record(request):
+            path_matches = fnmatchcase(urlsplit(request.url).path, path_glob)
+            if path_matches and method in (None, request.method):
+                seen.append(request)
+
+        page.on("request", record)
+        return seen
+
+    return attach
+
+
+@pytest.fixture
+def js(page, mockserver):
+    """Return `js(module, name, *args, locale=None)`: call an export of /js/<module>.
+
+    Evaluates `(await import('/js/<module>'))[name](...args)` in a document served by
+    the mock; with `locale`, calls i18n `setLocale(locale)` first. For inputs and
+    actions only: never compute an expected value with it, write the literal.
+    """
+    page.goto(f"{mockserver}/")
+
+    def call(module, name, *args, locale=None):
+        return page.evaluate(
+            """async ({ module, name, args, locale }) => {
+                if (locale) (await import('/js/i18n/index.js')).setLocale(locale);
+                return (await import(`/js/${module}`))[name](...args);
+            }""",
+            {"module": module, "name": name, "args": list(args), "locale": locale},
+        )
+
+    return call
+
+
+# --- navigation -------------------------------------------------------------------
+
+
+@pytest.fixture
+def open_trip(page, trip_url):
+    """Return `open_trip(hash=None) -> page`: load the trip at `#hash`, wait for the tab.
+
+    A factory rather than a page fixture, so a test can register a stub on a baseline
+    GET before the first navigation.
+    """
+
+    def go(hash_=None):
+        page.goto(trip_url if hash_ is None else f"{trip_url}#{hash_}")
+        expect(TABS[TAB_BY_HASH[hash_ or "items"]][1](page)).to_be_visible()
+        return page
+
+    return go
+
+
+@pytest.fixture
+def open_tab(page):
+    """Return `open_tab(name) -> page`: click the nav link and wait for that tab's landmark."""
+
+    def go(name):
+        page.get_by_role("link", name=name).click()
+        expect(page.locator(".nav-link.active")).to_have_text(name)
+        expect(TABS[name][1](page)).to_be_visible()
+        return page
+
+    return go
+
+
+@pytest.fixture
+def items_page(open_trip):
+    """Return the page with the trip loaded on the Items tab."""
+    return open_trip()
+
+
+@pytest.fixture
+def balances_page(open_trip):
+    """Return the page with the trip loaded on the Balances tab."""
+    return open_trip("balances")
+
+
+@pytest.fixture
+def stats_page(open_trip):
+    """Return the page with the trip loaded on the Statistics tab."""
+    return open_trip("stats")
+
+
+@pytest.fixture
+def setup_page(open_trip):
+    """Return the page with the trip loaded on the Setup tab."""
+    return open_trip("setup")
+
+
+@pytest.fixture
+def card(page):
+    """Return `card(header_text)`: the `.card` whose `.card-header` contains that text."""
+
+    def find(header_text):
+        return page.locator(".card").filter(has=page.locator(".card-header", has_text=header_text))
+
+    return find
+
+
+# --- item modal -------------------------------------------------------------------
+
+
+@pytest.fixture
+def new_item_modal(items_page):
+    """Return the `.modal.show` locator of the new-expense modal, opened from the Items tab."""
+    items_page.get_by_role("button", name="Expense").click()
+    modal = items_page.locator(".modal.show")
+    modal.wait_for()
+    return modal
+
+
+@pytest.fixture
+def split_expanded(new_item_modal):
+    """Return the `#split-body` locator of the new-expense modal with its split section open."""
+    new_item_modal.locator('[data-bs-target="#split-body"]').click()
+    body = new_item_modal.locator("#split-body.show")
+    body.wait_for()
+    return body
+
+
+@pytest.fixture
+def open_edit_modal(items_page):
+    """Return `open_edit_modal(item_name) -> modal`: click that row, wait for the edit modal."""
+
+    def go(item_name):
+        items_page.locator("a.list-group-item-action", has_text=item_name).first.click()
+        modal = items_page.locator(".modal.show")
+        modal.wait_for()
+        return modal
+
+    return go

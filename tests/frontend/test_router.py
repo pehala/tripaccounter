@@ -1,49 +1,38 @@
 """Tests for app.js's router: hash tabs, back/forward, unknown slug.
 
-`/t/{slug}#balances` deep-links straight to
-that tab on a cold load; back and forward switch tabs without refetching; an
-unknown slug renders the 404 view, not an empty shell.
+`/t/{slug}#balances` deep-links straight to that tab on a cold load; back and
+forward switch tabs without refetching; an unknown slug renders the 404 view, not
+an empty shell.
 """
 
 from playwright.sync_api import expect
 
 
-def test_cold_load_with_hash_lands_directly_on_that_tab(page, mockserver, slug):
-    """A first paint at #balances renders the Balances tab active, not Items."""
-    page.goto(f"{mockserver}/t/{slug}#balances")
-
-    expect(page.locator(".nav-link.active")).to_have_text("Balances")
-    expect(page.get_by_text("Balance", exact=False).first).to_be_visible()
-    assert page.locator(".fab").count() == 0  # the Items-tab FAB never rendered
+def test_cold_load_with_hash_lands_directly_on_that_tab(balances_page):
+    """A first paint at #balances renders the Balances tab active and never mounts the Items FAB."""
+    expect(balances_page.locator(".nav-link.active")).to_have_text("Balances")
+    expect(balances_page.get_by_text("Balance", exact=False).first).to_be_visible()
+    assert balances_page.locator(".fab").count() == 0
 
 
-def test_back_and_forward_switch_tabs_without_refetching_balances(page, mockserver, slug):
-    """Going back to Items and forward to Balances again reuses the cached balances."""
-    balance_requests = []
-    page.on(
-        "request",
-        lambda request: (
-            balance_requests.append(request) if request.url.endswith("/balances") else None
-        ),
-    )
+def test_back_and_forward_switch_tabs_without_refetching_balances(
+    items_page, open_tab, count_requests
+):
+    """Going back to Items and forward to Balances again reuses the one cached balances fetch."""
+    balance_requests = count_requests("*/balances")
 
-    page.goto(f"{mockserver}/t/{slug}#items")
-    expect(page.locator(".nav-link.active")).to_have_text("Items")
-
-    page.get_by_role("link", name="Balances").click()
-    expect(page.locator(".nav-link.active")).to_have_text("Balances")
-    expect(page.get_by_text("Settle up").first).to_be_visible()  # balances finished loading
+    open_tab("Balances")
     assert len(balance_requests) == 1
 
-    page.go_back()
-    expect(page.locator(".nav-link.active")).to_have_text("Items")
-    expect(page.get_by_role("button", name="Expense")).to_be_visible()
-    assert len(balance_requests) == 1  # back to Items makes no balances call
+    items_page.go_back()
+    expect(items_page.locator(".nav-link.active")).to_have_text("Items")
+    expect(items_page.get_by_role("button", name="Expense")).to_be_visible()
+    assert len(balance_requests) == 1
 
-    page.go_forward()
-    expect(page.locator(".nav-link.active")).to_have_text("Balances")
-    expect(page.get_by_text("Settle up").first).to_be_visible()
-    assert len(balance_requests) == 1  # forward to the cached tab, no second fetch
+    items_page.go_forward()
+    expect(items_page.locator(".nav-link.active")).to_have_text("Balances")
+    expect(items_page.get_by_text("Settle up").first).to_be_visible()
+    assert len(balance_requests) == 1
 
 
 def test_unknown_slug_renders_the_notfound_view(page, mockserver):

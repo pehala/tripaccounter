@@ -1,74 +1,67 @@
 """Tests for rule 5: unknown fields are ignored, never break a view.
 
-A fixture carrying an extra key on
-the trip, an item and a balance renders identically — rule 5, the guarantee that
-lets the backend ship first.
+A fixture carrying an extra key on the trip, an item and a balance renders
+identically — rule 5, the guarantee that lets the backend ship first.
 """
 
-import copy
-
+import pytest
 from playwright.sync_api import expect
 
-
-def with_unknown_fields(fixture_data):
-    """Build a deep copy of the fixture with an unrecognized key added to trip, item and balance."""
-    data = copy.deepcopy(fixture_data)
-    data["trip"]["trip"]["unknown_trip_field"] = "surprise"
-    data["items"]["items"][0]["unknown_item_field"] = {"nested": True}
-    data["balances"]["balances"][0]["unknown_balance_field"] = 12345
-    return data
+from tests.frontend.conftest import TABS
 
 
-def test_page_errors_never_fire_with_unknown_fields(page, make_mockserver, fixture_data):
+@pytest.fixture
+def fixture_data(fixture_data):
+    """Add an unrecognized key to the trip, the first item and the first balance."""
+    fixture_data["trip"]["trip"]["unknown_trip_field"] = "surprise"
+    fixture_data["items"]["items"][0]["unknown_item_field"] = {"nested": True}
+    fixture_data["balances"]["balances"][0]["unknown_balance_field"] = 12345
+    return fixture_data
+
+
+def test_page_errors_never_fire_with_unknown_fields(page, open_trip, open_tab):
     """No unhandled JS exception fires anywhere while browsing a fixture with extra keys."""
     errors = []
     page.on("pageerror", lambda exc: errors.append(exc))  # noqa: PLW0108 (bound method breaks Playwright's wrapper)
-    data = with_unknown_fields(fixture_data)
-    base_url, fixture = make_mockserver(data=data)
 
-    page.goto(f"{base_url}/t/{fixture['trip']['trip']['slug']}")
-    page.get_by_role("link", name="Balances").click()
-    expect(page.get_by_text("Settle up").first).to_be_visible()
-    page.get_by_role("link", name="Statistics").click()
-    expect(page.get_by_text("By label").first).to_be_visible()
-    page.get_by_role("link", name="Setup").click()
-    expect(page.get_by_text("People", exact=True)).to_be_visible()
+    open_trip()
+    for name in TABS:
+        open_tab(name)
 
     assert errors == []
 
 
-def test_trip_header_renders_identically_with_an_unknown_field(page, make_mockserver, fixture_data):
-    """The header shows the trip's real fields; the unknown one is neither shown nor breaks it."""
-    data = with_unknown_fields(fixture_data)
-    base_url, fixture = make_mockserver(data=data)
-
-    page.goto(f"{base_url}/t/{fixture['trip']['trip']['slug']}")
-
-    expect(page.get_by_role("heading", name=fixture["trip"]["trip"]["name"])).to_be_visible()
-    assert "surprise" not in page.locator("header").inner_text()
-
-
-def test_item_row_renders_identically_with_an_unknown_field(page, make_mockserver, fixture_data):
-    """The item row shows its real fields; the unknown one is neither shown nor breaks it."""
-    data = with_unknown_fields(fixture_data)
-    base_url, fixture = make_mockserver(data=data)
-    item = data["items"]["items"][0]
-
-    page.goto(f"{base_url}/t/{fixture['trip']['trip']['slug']}")
-
-    row = page.locator("a.list-group-item-action", has_text=item["name"])
-    expect(row).to_be_visible()
-    assert "unknown_item_field" not in row.inner_text()
-
-
-def test_balance_card_renders_identically_with_an_unknown_field(
-    page, make_mockserver, fixture_data
+@pytest.mark.parametrize(
+    ("hash_", "scope_selector", "real_field", "leaked"),
+    [
+        pytest.param(
+            "items",
+            "header",
+            lambda page: page.get_by_role("heading", name="Iceland 2026"),
+            "surprise",
+            id="trip-header",
+        ),
+        pytest.param(
+            "items",
+            'a.list-group-item-action:has-text("Dinner at Messinn")',
+            lambda page: page.locator("a.list-group-item-action", has_text="Dinner at Messinn"),
+            "unknown_item_field",
+            id="item-row",
+        ),
+        pytest.param(
+            "balances",
+            "main",
+            lambda page: page.get_by_text("Settle up").first,
+            "12345",
+            id="balance-card",
+        ),
+    ],
+)
+def test_surface_renders_its_real_fields_and_not_the_unknown_one(
+    open_trip, hash_, scope_selector, real_field, leaked
 ):
-    """The balance card shows its real fields; the unknown one is neither shown nor breaks it."""
-    data = with_unknown_fields(fixture_data)
-    base_url, fixture = make_mockserver(data=data)
+    """The surface shows its real fields; the unknown key's value is neither shown nor breaks it."""
+    page = open_trip(hash_)
 
-    page.goto(f"{base_url}/t/{fixture['trip']['trip']['slug']}#balances")
-
-    expect(page.get_by_text("Settle up").first).to_be_visible()
-    assert "12345" not in page.locator("main").inner_text()
+    expect(real_field(page)).to_be_visible()
+    assert leaked not in page.locator(scope_selector).inner_text()

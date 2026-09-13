@@ -1,102 +1,80 @@
 """Tests for the statistics combined view's user-typed rates (rates.js + Stats.js).
 
-Typing a rate updates the combined totals and
-survives a reload; a missing or zero rate leaves that currency out instead of
-rendering NaN; the per-currency view is unaffected by any rate.
+Typing a rate updates the combined totals and survives a reload; a missing or zero
+rate leaves that currency out instead of rendering NaN; the per-currency view is
+unaffected by any rate.
 """
 
+import pytest
 from playwright.sync_api import expect
 
-
-def rate_input(page, currency_code):
-    """Locate the rate <input> for one non-primary currency, scoped by its code badge."""
-    row = page.locator(".row").filter(has=page.locator(".badge", has_text=currency_code))
-    return row.locator("input")
+ISK_ONLY_TOTAL = "122,300 total"
+ISK_PLUS_EUR_AT_150 = "128,300 total"
+DKK_OWN_TOTAL = "480 total"
 
 
-def fmt_money(page, value):
-    """Compute the exact string fmt.js's money() produces for `value` in `en`."""
-    return page.evaluate(
-        "async ({ value }) => (await import('/js/fmt.js')).money(value, 'en')",
-        {"value": value},
-    )
+@pytest.fixture
+def rate_input(stats_page):
+    """Return `rate_input(currency_code)`: the rate <input> of that non-primary currency."""
+
+    def find(currency_code):
+        row = stats_page.locator(".row").filter(
+            has=stats_page.locator(".badge", has_text=currency_code)
+        )
+        return row.locator("input")
+
+    return find
 
 
-def convert(amount, rate):
-    """Mirror Stats.js's own currency conversion: round the product to 2 places."""
-    return round(amount * rate * 100) / 100
+@pytest.fixture
+def type_rate(rate_input):
+    """Return `type_rate(currency_code, text)`: fill that rate input and blur to commit it."""
+
+    def fill(currency_code, text):
+        rate_input(currency_code).fill(text)
+        rate_input(currency_code).blur()
+
+    return fill
 
 
-def test_typing_a_rate_updates_the_combined_total(page, mockserver, trip_url, fixture_data):
-    """Typing a EUR rate folds EUR into the combined total at that rate; DKK stays out."""
-    stats = fixture_data["stats"]["stats"]
-    isk_total = next(s for s in stats if s["currency_code"] == "ISK")["total"]
-    eur_total = next(s for s in stats if s["currency_code"] == "EUR")["total"]
-
-    page.goto(f"{trip_url}#stats")
-    rate_input(page, "EUR").fill("150")
-    rate_input(page, "EUR").blur()
-
-    expected_total = isk_total + convert(eur_total, 150)
-    expected_text = f"{fmt_money(page, expected_total)} total"
-    expect(page.locator(".card-header", has_text="By label").first).to_contain_text(expected_text)
-    assert "NaN" not in page.locator(".card-header", has_text="By label").first.inner_text()
+@pytest.fixture
+def combined_header(stats_page):
+    """Return the combined view's By label header, which carries the folded total."""
+    return stats_page.locator(".card-header", has_text="By label").first
 
 
-def test_rate_survives_a_reload(page, mockserver, trip_url, fixture_data):
+@pytest.mark.parametrize(
+    ("currency_code", "rate", "expected_total"),
+    [
+        pytest.param("EUR", "150", ISK_PLUS_EUR_AT_150, id="eur-150-folded-in"),
+        pytest.param("DKK", "", ISK_ONLY_TOTAL, id="dkk-blank-left-out"),
+        pytest.param("DKK", "0", ISK_ONLY_TOTAL, id="dkk-zero-left-out"),
+    ],
+)
+def test_typed_rate_folds_a_currency_in_or_leaves_it_out(
+    combined_header, type_rate, currency_code, rate, expected_total
+):
+    """A positive rate folds a currency into the combined sum; blank or 0 leaves it out, no NaN."""
+    type_rate(currency_code, rate)
+
+    expect(combined_header).to_contain_text(expected_total)
+    assert "NaN" not in combined_header.inner_text()
+
+
+def test_rate_survives_a_reload(stats_page, rate_input, type_rate, combined_header):
     """The typed rate is written to localStorage and is still there after a reload."""
-    stats = fixture_data["stats"]["stats"]
-    isk_total = next(s for s in stats if s["currency_code"] == "ISK")["total"]
-    eur_total = next(s for s in stats if s["currency_code"] == "EUR")["total"]
+    type_rate("EUR", "150")
 
-    page.goto(f"{trip_url}#stats")
-    rate_input(page, "EUR").fill("150")
-    rate_input(page, "EUR").blur()
+    stats_page.reload()
 
-    page.reload()
-
-    expect(rate_input(page, "EUR")).to_have_value("150")
-    expected_total = isk_total + convert(eur_total, 150)
-    expected_text = f"{fmt_money(page, expected_total)} total"
-    expect(page.locator(".card-header", has_text="By label").first).to_contain_text(expected_text)
+    expect(rate_input("EUR")).to_have_value("150")
+    expect(combined_header).to_contain_text(ISK_PLUS_EUR_AT_150)
 
 
-def test_missing_or_zero_rate_excludes_that_currency_without_nan(
-    page, mockserver, trip_url, fixture_data
-):
-    """DKK has no typed rate by default; it contributes nothing, not 0 and not NaN."""
-    stats = fixture_data["stats"]["stats"]
-    isk_total = next(s for s in stats if s["currency_code"] == "ISK")["total"]
-    dkk_total = next(s for s in stats if s["currency_code"] == "DKK")["total"]
-
-    page.goto(f"{trip_url}#stats")
-    combined_header = page.locator(".card-header", has_text="By label").first
-    expected_isk_only = f"{fmt_money(page, isk_total)} total"
-    expect(combined_header).to_contain_text(expected_isk_only)
-    assert "NaN" not in combined_header.inner_text()
-    assert str(dkk_total) not in combined_header.inner_text()
-
-    # Explicitly typing 0 behaves the same as leaving it blank — still excluded.
-    rate_input(page, "DKK").fill("0")
-    rate_input(page, "DKK").blur()
-    expect(combined_header).to_contain_text(expected_isk_only)
-    assert "NaN" not in combined_header.inner_text()
-
-
-def test_per_currency_view_is_unaffected_by_any_typed_rate(
-    page, mockserver, trip_url, fixture_data
-):
+def test_per_currency_view_is_unaffected_by_any_typed_rate(stats_page, type_rate):
     """DKK's own per-currency total stays the raw fixture value regardless of the EUR rate."""
-    dkk_total = next(s for s in fixture_data["stats"]["stats"] if s["currency_code"] == "DKK")[
-        "total"
-    ]
+    dkk_header = stats_page.locator(".card-header", has_text="total DKK")
 
-    page.goto(f"{trip_url}#stats")
-    dkk_header = page.locator(".card-header", has_text="total DKK")
-    expected_text = f"{fmt_money(page, dkk_total)} total"
-    expect(dkk_header).to_contain_text(expected_text)
+    type_rate("EUR", "150")
 
-    rate_input(page, "EUR").fill("150")
-    rate_input(page, "EUR").blur()
-
-    expect(dkk_header).to_contain_text(expected_text)
+    expect(dkk_header).to_contain_text(DKK_OWN_TOTAL)

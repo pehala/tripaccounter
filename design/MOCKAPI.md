@@ -155,11 +155,13 @@ and a typo in a route shows up as a failing test instead of an echoed body.
 
 | Fixture | Gives |
 |---|---|
-| `fixture_data` | a fresh parse of `trip.json`, private to the test |
-| `mockserver` | base URL of a server built from `fixture_data` |
+| `fixture_name` | the file the server is built from, `trip.json` unless a module overrides it or a test parametrizes it indirectly |
+| `fixture_data` | a fresh parse of `fixture_name`, private to the test; a module overrides it to mutate the copy before it is served |
+| `mockserver` | base URL of a server built from `fixture_data`; stopped with the test |
 | `trip_url` | `{mockserver}/t/{slug}` |
-| `make_mockserver(name=…)` / `make_mockserver(data=…)` | `(base_url, data)` for a fixture file or an in-memory dict; stopped with the test |
+| `open_trip(hash)` / `items_page` … `setup_page` | the trip loaded on a tab, waited for; the factory form lets a test stub a baseline `GET` first |
 | `stub(pattern, responder)` | a `page.route` interceptor; a responder returning `None` lets the request through to the mock |
+| `count_requests(path_glob, method)` | a live list of the requests the page made, for the call budget |
 
 **Two data mechanisms.** Baseline `GET`s and the round-trip writes of the Setup tab
 come from the mock. Error envelopes, `preview-split` numbers a test asserts, and slow
@@ -169,8 +171,8 @@ manufactured in server state.
 
 `MockServer(data)` is the seam: a context manager that serves that one dict on a free
 port for the length of its `with` block, so servers never share rows or ids and a test
-can mutate its copy before starting the server (`test_unknown_fields.py` adds keys the
-frontend has never seen). `make_handler(data)` underneath builds the handler class
+can mutate its copy before starting the server (`test_unknown_fields.py` overrides
+`fixture_data` to add keys the frontend has never seen). `make_handler(data)` underneath builds the handler class
 alone, for callers that bring their own server.
 
 ## 6. What keeps it honest

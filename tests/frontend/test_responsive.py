@@ -1,49 +1,52 @@
 """Tests for the phone-width layout (400px).
 
-400px viewport — no horizontal scroll
-on any tab, the modal is full-screen, the FAB is visible.
+400px viewport — no horizontal scroll on any tab, the modal is full-screen, the
+FAB is visible.
 """
 
+import re
+
+import pytest
 from playwright.sync_api import expect
 
+from tests.frontend.conftest import TAB_PARAMS, TABS
 
-def no_horizontal_scroll(page):
-    """Check whether the document ever grew wider than the viewport itself."""
-    return page.evaluate(
-        "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
-    )
+PHONE_VIEWPORT = {"width": 400, "height": 800}
+FITS_VIEWPORT_JS = "document.documentElement.scrollWidth <= document.documentElement.clientWidth"
 
 
-def test_no_horizontal_scroll_on_any_tab(page, mockserver, trip_url):
-    """Items, Balances, Stats and Setup all fit within a 400px viewport."""
-    page.set_viewport_size({"width": 400, "height": 800})
-    page.goto(trip_url)
-    expect(page.get_by_role("link", name="Statistics")).to_be_visible()
-
-    for tab_name in ("Items", "Balances", "Statistics", "Setup"):
-        page.get_by_role("link", name=tab_name).click()
-        expect(page.locator(".nav-link.active")).to_have_text(tab_name)
-        assert no_horizontal_scroll(page), f"{tab_name} tab overflows horizontally at 400px"
+@pytest.fixture
+def phone_page(page):
+    """Return the page with a 400x800 viewport, set before any navigation."""
+    page.set_viewport_size(PHONE_VIEWPORT)
+    return page
 
 
-def test_fab_is_visible_at_phone_width(page, mockserver, trip_url):
+@pytest.fixture
+def phone_items_page(phone_page, open_trip):
+    """Return the trip loaded on the Items tab at phone width."""
+    return open_trip()
+
+
+@pytest.mark.parametrize("tab", TAB_PARAMS)
+def test_no_horizontal_scroll_on_any_tab(phone_page, open_trip, tab):
+    """Each tab fits within a 400px viewport on a cold load, with no horizontal overflow."""
+    open_trip(TABS[tab][0])
+
+    assert phone_page.evaluate(FITS_VIEWPORT_JS)
+
+
+def test_fab_is_visible_at_phone_width(phone_items_page):
     """The floating add button shows at 400px, where the header 'Expense' button hides."""
-    page.set_viewport_size({"width": 400, "height": 800})
-    page.goto(trip_url)
-
-    expect(page.locator(".fab")).to_be_visible()
-    expect(page.get_by_role("button", name="Expense")).to_be_hidden()
+    expect(phone_items_page.locator(".fab")).to_be_visible()
+    expect(phone_items_page.get_by_role("button", name="Expense")).to_be_hidden()
 
 
-def test_modal_is_full_screen_at_phone_width(page, mockserver, trip_url):
-    """The item modal picks up modal-fullscreen-sm-down, which fills the phone viewport."""
-    page.set_viewport_size({"width": 400, "height": 800})
-    page.goto(trip_url)
+def test_modal_is_full_screen_at_phone_width(phone_items_page):
+    """The item modal picks up modal-fullscreen-sm-down and spans the whole 400px viewport."""
+    phone_items_page.locator(".fab").click()
+    phone_items_page.locator(".modal.show").wait_for()
 
-    page.locator(".fab").click()
-    page.locator(".modal.show").wait_for()
-
-    dialog = page.locator(".modal-dialog")
-    assert "modal-fullscreen-sm-down" in dialog.get_attribute("class")
-    box = dialog.bounding_box()
-    assert box["width"] >= 399  # fills the 400px viewport, not a centered card
+    dialog = phone_items_page.locator(".modal-dialog")
+    expect(dialog).to_have_class(re.compile(r"\bmodal-fullscreen-sm-down\b"))
+    assert dialog.bounding_box()["width"] >= 399
