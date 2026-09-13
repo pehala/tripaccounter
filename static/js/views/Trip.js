@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../h.js';
 import { useStore, load } from '../store.js';
 import { t, LANGS, getLocale, setLocale } from '../i18n/index.js';
@@ -27,6 +27,7 @@ if (localStorage.getItem('theme')) {
 export function Trip({ slug, tab }) {
   const store = useStore();
   const [theme, setTheme] = useState(currentTheme());
+  const headerRef = useRef(null);
 
   function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -38,6 +39,18 @@ export function Trip({ slug, tab }) {
   useEffect(() => {
     if (store.slug !== slug) load(slug);
   }, [slug]);
+
+  // The day separator sticks just below the header; the header's own height
+  // varies with content (flags, currencies, locale), so track it instead of
+  // guessing a fixed offset.
+  useEffect(() => {
+    if (!headerRef.current) return;
+    const observer = new ResizeObserver(([entry]) => {
+      document.documentElement.style.setProperty('--header-h', `${entry.target.offsetHeight}px`);
+    });
+    observer.observe(headerRef.current);
+    return () => observer.disconnect();
+  }, [store.trip]);
 
   if (store.slug !== slug || !store.trip) {
     if (store.error?.status === 404) {
@@ -63,7 +76,7 @@ export function Trip({ slug, tab }) {
 
   return html`
     <${Flash} />
-    <header class="bg-body border-bottom sticky-top">
+    <header class="bg-body border-bottom sticky-top" ref=${headerRef}>
       <div class="container" style="max-width:48rem">
         <div class="d-flex align-items-baseline gap-2 flex-wrap pt-3">
           <h1 class="h5 mb-0">${trip.name}</h1>

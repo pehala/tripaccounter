@@ -30,7 +30,7 @@ body { padding-bottom: 5rem; }
   background: var(--bs-border-color);
 }
 
-.day-sep { position: sticky; top: 6.6rem; z-index: 5; }
+.day-sep { position: sticky; top: var(--header-h, 6.6rem); z-index: 5; }
 .owed span { display: inline-flex; align-items: center; gap: .2rem; margin-right: .6rem; white-space: nowrap; }
 .owed .av { width: 1.05rem; height: 1.05rem; font-size: .55rem; }
 
