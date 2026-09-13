@@ -32,6 +32,16 @@ TAB_PARAMS = [pytest.param(name, id=hash_) for name, (hash_, _) in TABS.items()]
 TAB_BY_HASH = {hash_: name for name, (hash_, _) in TABS.items()}
 
 
+# Bootstrap's modal fade and collapse resolve on CSS transition end; waiting for
+# `.modal.show` or `#split-body.show` cost a test up to 1.4 s of pure animation.
+NO_TRANSITIONS = """document.addEventListener('DOMContentLoaded', () => {
+  const style = document.createElement('style');
+  style.textContent =
+    '*, *::before, *::after { transition: none !important; animation: none !important; }';
+  document.head.appendChild(style);
+});"""
+
+
 def load_fixture(name):
     """Parse a file under fixtures/, e.g. "trip.json" or "errors/409_in_use.json"."""
     return json.loads((FIXTURES / name).read_text())
@@ -76,8 +86,13 @@ def trip_url(mockserver, slug):
 
 @pytest.fixture
 def page(page):
-    """Pin the browser's locale to `en` regardless of the runner's own OS/browser locale."""
+    """Pin the browser's locale to `en` and turn off CSS transitions so Bootstrap settles at once.
+
+    Without the pin the runner's OS locale would leak in; without the transitions every
+    modal and collapse wait would pay Bootstrap's animation time.
+    """
     page.add_init_script("window.localStorage.setItem('lang', 'en')")
+    page.add_init_script(NO_TRANSITIONS)
     return page
 
 
