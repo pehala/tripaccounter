@@ -10,7 +10,7 @@ dependencies = [
   "pydantic>=2.13",
   "pydantic-settings>=2.15",
   "sqlmodel>=0.0.42",
-  "psycopg[binary]>=3.2",
+  "psycopg[binary]>=3.3.5",
   "fastapi-cli-slim>=0.0.23",
 ]
 
