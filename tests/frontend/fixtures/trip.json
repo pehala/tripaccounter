@@ -746,6 +746,7 @@
       "collection": "#/items/items",
       "item": "item",
       "insert": "head",
+      "defaults": {"currency_code": "ISK", "split": {"mode": "equal", "shares": []}},
       "extra": {"day_totals": "#/items/day_totals"}
     },
     "/api/v1/trips/iceland-2026/items/preview-split": {
