@@ -26,9 +26,10 @@ function draw() {
   render(h(Shell, null, view), root);
 }
 
-// Intercept same-origin link clicks so tab/trip navigation never reloads the page.
+// Intercept clicks on our own routes only, so tab/trip navigation never reloads the page.
+// Other same-origin links (e.g. /api/... export downloads) must hit the browser as normal.
 document.addEventListener('click', (e) => {
-  const a = e.target.closest('a[href^="/"]');
+  const a = e.target.closest('a[href^="/t/"], a[href="/trips/new"]');
   if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
   e.preventDefault();
   if (a.getAttribute('href') !== location.pathname) {
