@@ -65,7 +65,8 @@ docker logs -f tripaccounter            # startup / migrations
 docker stop tripaccounter && docker rm tripaccounter
 ```
 
-For a Postgres-backed systemd/podman deployment, see [`deploy/README.md`](deploy/README.md).
+For a Postgres-backed deployment — podman quadlets behind an nginx that terminates
+TLS and caches the static assets — see [`DEPLOY.md`](DEPLOY.md).
 
 ### From source
 

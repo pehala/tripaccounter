@@ -14,6 +14,7 @@ layers, how money moves, and where the two halves meet.
 | [`design/ERD.md`](design/ERD.md) | entities, invariants, indexes |
 | [`design/BACKEND.md`](design/BACKEND.md) | `app/` — what belongs in which layer, `tests/backend/` |
 | [`design/FRONTEND.md`](design/FRONTEND.md) | `static/` — the seven rules, `tests/frontend/` |
+| [`DEPLOY.md`](DEPLOY.md) | the runbook: quadlets, host nginx, TLS, upgrades, backups |
 | [`design/MOCKAPI.md`](design/MOCKAPI.md) | the mock API behind the Playwright suite — fixture grammar, what the engine does with it |
 | [`tests/frontend/fixtures/trip.json`](tests/frontend/fixtures/trip.json) | the canned trip the Playwright suite renders |
 | [`tests/backend/fixtures/sheet.csv`](tests/backend/fixtures/sheet.csv) | the example sheet `tools/import_sheet/` is tested against, and the format by example |
