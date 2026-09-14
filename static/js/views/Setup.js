@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { html } from '../h.js';
 import { useStore, reload } from '../store.js';
 import { t, getLocale } from '../i18n/index.js';
-import { fmtParams } from '../fmt.js';
+import { fmtParams, dateRange } from '../fmt.js';
 import { api } from '../api.js';
 import { pushFlash } from '../components/Flash.js';
 import { Avatar } from '../components/Avatar.js';
@@ -417,8 +417,10 @@ function LabelsSection({ trip, labels, locale }) {
 // --- Trip -----------------------------------------------------------------
 
 function TripSection({ trip, locale }) {
-  const [field, setField] = useState(null); // 'name' | 'note' | null
+  const [field, setField] = useState(null); // 'name' | 'note' | 'dates' | null
   const [draft, setDraft] = useState('');
+  const [draftStart, setDraftStart] = useState('');
+  const [draftEnd, setDraftEnd] = useState('');
   const [error, setError] = useState(null);
 
   function start(name, value) {
@@ -427,9 +429,19 @@ function TripSection({ trip, locale }) {
     setError(null);
   }
 
+  function startDates() {
+    setField('dates');
+    setDraftStart(trip.start_date || '');
+    setDraftEnd(trip.end_date || '');
+    setError(null);
+  }
+
   async function save() {
-    const err = await attempt(api.patch(`/trips/${trip.slug}`, { [field]: draft }));
-    if (err) return setError(err.fields?.[field] || null);
+    const body = field === 'dates'
+      ? { start_date: draftStart || null, end_date: draftEnd || null }
+      : { [field]: draft };
+    const err = await attempt(api.patch(`/trips/${trip.slug}`, body));
+    if (err) return setError(err.fields?.start_date || err.fields?.end_date || err.fields?.[field] || null);
     setField(null);
     await reload('trip');
   }
@@ -475,6 +487,24 @@ function TripSection({ trip, locale }) {
                 `
               : html`<span class="text-body-secondary" style="cursor:pointer" onClick=${() => start('note', trip.note)}>${trip.note || t('setup.note_placeholder')}</span>`}
           </div>
+        </li>
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between align-items-center">
+            <span>${t('setup.dates_label')}</span>
+            ${field === 'dates'
+              ? html`
+                  <span class="d-inline-flex gap-1 align-items-center">
+                    <input type="date" class="form-control form-control-sm" value=${draftStart}
+                           onInput=${(e) => setDraftStart(e.target.value)} autofocus />
+                    <input type="date" class="form-control form-control-sm" value=${draftEnd}
+                           onInput=${(e) => setDraftEnd(e.target.value)} />
+                    <button type="button" class="btn btn-sm btn-primary" onClick=${save}>${t('action.save')}</button>
+                    <button type="button" class="btn btn-sm btn-link" onClick=${() => setField(null)}>${t('action.cancel')}</button>
+                  </span>
+                `
+              : html`<span class="text-body-secondary" style="cursor:pointer" onClick=${startDates}>${dateRange(trip.start_date, trip.end_date, locale) || t('setup.dates_placeholder')}</span>`}
+          </div>
+          ${field === 'dates' && html`<${FieldError} error=${error} locale=${locale} />`}
         </li>
         <li class="list-group-item d-flex justify-content-between">
           <span>${t('setup.link')} <small class="text-body-secondary">${t('setup.link_note')}</small></span><code>/t/${trip.slug}</code>

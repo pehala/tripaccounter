@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import { html } from '../h.js';
 import { api } from '../api.js';
-import { t } from '../i18n/index.js';
+import { t, getLocale } from '../i18n/index.js';
+import { dateRange } from '../fmt.js';
 import { Loading } from '../components/Loading.js';
 
 export function TripList() {
@@ -26,7 +27,10 @@ export function TripList() {
           ${trips.map((trip) => html`
             <a key=${trip.id} class="list-group-item list-group-item-action" href="/t/${trip.slug}">
               <span class="d-block fw-semibold">${trip.name}</span>
-              <small class="text-body-secondary">${t('header.people', { n: trip.people_count })}</small>
+              <small class="text-body-secondary">
+                ${[dateRange(trip.start_date, trip.end_date, getLocale()), t('header.people', { n: trip.people_count })]
+                  .filter(Boolean).join(' · ')}
+              </small>
             </a>
           `)}
         </div>

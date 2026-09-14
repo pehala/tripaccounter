@@ -128,3 +128,25 @@ def test_list_trips_carries_counts_not_embedded_lists(trip, client):
     assert row["item_count"] == 0
     assert "people" not in row
     assert "currencies" not in row
+
+
+def test_list_trips_orders_by_end_date_desc_undated_last(client):
+    """Trips sort by end_date descending; a trip with no end date sinks below every dated one."""
+
+    def make(name, end_date=None):
+        body = {
+            "name": name,
+            "people": [{"name": "Petr"}],
+            "currencies": [{"code": "ISK"}],
+            "countries": [{"name": "Iceland"}],
+        }
+        if end_date:
+            body["end_date"] = end_date
+        return client.post("/api/v1/trips", json=body).json()["trip"]["slug"]
+
+    early = make("Early", "2026-01-10")
+    undated = make("Undated")
+    late = make("Late", "2026-06-15")
+
+    slugs = [row["slug"] for row in client.get("/api/v1/trips").json()["trips"]]
+    assert [s for s in slugs if s in {early, undated, late}] == [late, early, undated]

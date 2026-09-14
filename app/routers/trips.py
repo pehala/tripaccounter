@@ -25,8 +25,16 @@ router = APIRouter(tags=["trips"])
 
 @router.get("/trips", response_model=TripListEnvelope, responses=error_responses())
 def list_trips(session: SessionDep):
-    """List all trips, newest first."""
-    trips = session.execute(select(Trip).order_by(Trip.created_at.desc())).scalars().all()
+    """List all trips, most recently ended first; undated trips sort last, newest created first."""
+    trips = (
+        session.execute(
+            select(Trip).order_by(
+                Trip.end_date.is_(None), Trip.end_date.desc(), Trip.created_at.desc()
+            )
+        )
+        .scalars()
+        .all()
+    )
     result = []
     for trip in trips:
         people_count = session.execute(

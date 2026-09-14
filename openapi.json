@@ -1923,7 +1923,7 @@
   "paths": {
     "/api/v1/trips": {
       "get": {
-        "description": "List all trips, newest first.",
+        "description": "List all trips, most recently ended first; undated trips sort last, newest created first.",
         "operationId": "list_trips_api_v1_trips_get",
         "responses": {
           "200": {
