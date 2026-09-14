@@ -150,8 +150,7 @@ the sheet and run again.
 ## Develop
 
 ```bash
-make test_backend    # pytest tests/backend
-make test_frontend   # playwright against fixtures, no DB
+make test            # everything: tests/backend, tests/frontend, tests/tools
 make lint            # ruff check + format check + uv lock --check + i18n catalogs
 make fmt             # ruff format + import fixes
 ```

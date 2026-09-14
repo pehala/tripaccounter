@@ -126,7 +126,7 @@ Rule references: `P-n` → [common-pitfalls.md](../references/common-pitfalls.md
 3. **Run the file, then the suite:**
    ```bash
    uv run python -m pytest tests/backend/test_splits.py -q
-   make test_backend
+   make test
    ```
 
 4. **Check isolation** — the test must pass alone and after everything else:

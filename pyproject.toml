@@ -27,6 +27,7 @@ ignore = ["PLR2004"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-n4"
 
 [tool.alembic]
 script_location = "alembic"

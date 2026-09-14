@@ -406,16 +406,13 @@ guards against, the test is not worth adding.
 ## Running Tests
 
 ```bash
-make test_backend                                  # the whole backend suite
+make test                                          # everything: backend, frontend, tools
 uv run python -m pytest tests/backend/test_splits.py -q      # one file
 uv run python -m pytest tests/backend/test_splits.py::test_equal_split_pads_the_roster -v
 uv run python -m pytest tests/backend -q -x                  # stop at first failure
 uv run python -m pytest tests/backend --cov=app --cov-report=term-missing
 make lint                                          # ruff check + format check + uv lock --check
 ```
-
-`make test` also runs the Playwright suite; while iterating on backend tests, use
-`make test_backend`.
 
 ## Reference Index
 
@@ -446,6 +443,6 @@ make lint                                          # ruff check + format check +
 - [ ] Passes in isolation and in any order
 - [ ] All imports at the top of the file
 - [ ] One-sentence docstring on every test
-- [ ] `make lint test_backend` is clean
+- [ ] `make lint test` is clean
 - [ ] Checked against [review-conventions.md](references/review-conventions.md)
       before the PR — that pass is part of writing the test, not a later step
