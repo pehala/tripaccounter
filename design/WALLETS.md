@@ -93,6 +93,7 @@ page. No transfer that changes currency between two people.
 | **Default wallet** | The server creates `Card` (untracked, `is_default`) for every person, inside `roster.create_person`. Renameable. | The client supplying it. `curl` and the import tool would then have to know about wallets before they could create an item. `Card` is the one seeded user-visible string in `app/`, alongside the server-assigned `initial` and ISO-code country names; it is recorded as the exception, not a precedent. |
 | **Wallet currency** | None. A wallet holds any currency; its balance is per currency, like everything else. | A currency per wallet plus an `initial_amount`. Funding a tracked wallet is a transfer into it from `Card`, which is unlimited; bringing 500 EUR from home is the same transfer. |
 | **Currency exchange** | A transfer has two typed sides: what left the sending wallet and what arrived in the receiving one, each with its own currency. `20 EUR → 15 CHF` is one row. **Only between wallets of the same person**; a cross-owner transfer is single-currency. The two wallets may be the same one when the currencies differ (exchanging inside a mixed-currency `Cash`). | A stored rate — a rate is a lie with a timestamp (`DECISIONS.md` §2), and two typed amounts imply it without persisting it. Cross-owner exchange — it would leave `Σ net` per currency non-zero, and making it balance needs the conversion the design forbids. |
+| **Migration** | Wallets go into a rewritten `0001_initial.py` that spells out every table with explicit `op.create_table` calls — a frozen schema, no `metadata.create_all`. No `0002`, no backfill. | A guarded `0002` with a data migration. The app is unpublished, so there is no database to migrate; and today's `0001` creates whatever `models.py` currently says, which means every future migration would have to guard against tables that already exist. Freezing it now fixes both. |
 | **Where balances show** | A new **Wallets** tab, `/t/{slug}/wallets`, fed by `GET /trips/{slug}/wallets` on first open. | Inside the Balances tab (mixes person nets with pot balances) or Statistics (spend-only). Wallet CRUD stays in Setup, like every roster entity. |
 
 Out of scope, deliberately: a limit or budget on a wallet, a stored or displayed
@@ -319,19 +320,21 @@ ride `GET /items`; the Wallets tab is one call on first open and none after.
 `Trip.transfers` (cascade); `LineItem.wallet_id` with `fk_item_wallet_trip`; extend
 every `overlaps=` string on `LineItem`'s relationships with `wallet`.
 
-### Migration — `alembic/versions/0002_wallets.py`, hand-written and **guarded**
-- `0001_initial.py` runs `SQLModel.metadata.create_all` over the *current* models, so
-  on a fresh database (every test run, `tests/backend/conftest.py`) 0001 already
-  creates the new tables and column. 0002 checks `inspect(bind).has_table("wallet")`
-  and `"wallet_id" in get_columns("line_item")` and skips what exists.
-- On an existing database: `create_table` ×2 → `INSERT INTO wallet … SELECT trip_id,
-  id, 'Card', 0, 1, 0 FROM person` → drop `share_owed` (SQLite batch mode renames
-  `line_item`, and a view referencing it makes the rename fail) →
-  `batch_alter_table("line_item")`: add nullable `wallet_id`, `UPDATE line_item SET
-  wallet_id = (SELECT id FROM wallet WHERE person_id = line_item.payer_id AND
-  is_default)`, alter to `NOT NULL` + composite FK + index → recreate the view.
-- CI runs `alembic check`: the end state must equal the metadata, constraint names
-  included. The backfill path is exercised only by hand (§8).
+### Migration — `alembic/versions/0001_initial.py`, rewritten and frozen
+- Today `0001` runs `SQLModel.metadata.create_all(bind)`, so it creates whatever
+  `app/models.py` says at the moment it runs. That is not a migration, it is a
+  snapshot that moves. The app is unpublished, so `0001` is rewritten in place: one
+  explicit `op.create_table(...)` per table — `trip`, `person`, `wallet`,
+  `trip_currency`, `trip_country`, `label`, `item_label`, `line_item`,
+  `wallet_transfer`, `item_share` — with every column, constraint name and index
+  written out, then `op.execute(create_share_owed_view)`. `downgrade` drops the view
+  and the tables in reverse order. Wallets are simply part of the schema.
+- Constraint and index names must match the models exactly — CI's `alembic check`
+  compares the migrated database to `SQLModel.metadata` and fails on any drift, so
+  the frozen file cannot silently fall behind. From here on a schema change is a
+  real `0002`, and `make migration` autogenerates it against a stable baseline.
+- `dev.db` files that exist locally predate the freeze and are simply deleted
+  (`make clean`); nothing is backfilled anywhere.
 
 ### Services
 - `roster.py`: `create_person` also calls `create_default_wallet`; `app/seed.py`
@@ -419,7 +422,7 @@ Each step leaves `make test_backend` green; `make lint` is green from step 6 on 
 four error codes, their catalog keys and their `API.md` rows land together).
 
 1. **Docs**: fold §2–§3 into `ERD.md`, `API.md`, `DECISIONS.md`.
-2. **Models + errors + migration.** Hand-check the backfill on a seeded pre-feature `dev.db`.
+2. **Models + errors + frozen `0001`.** `uv run alembic check` clean; Story 7 passes.
 3. **Roster + wallets CRUD + `TripOut.wallets`**, `seed.py`, import tool. `make openapi`.
 4. **Items `wallet_id`**, CSV header.
 5. **Transfers** router, items envelope, JSON export.
@@ -430,8 +433,8 @@ four error codes, their catalog keys and their `API.md` rows land together).
 10. **Transfer form.**
 11. **Feed merge, `TransferRow`, `DayGroup`.**
 12. **Wallets tab.**
-13. **End-to-end scenarios** (§9): the backend stories, the committed pre-wallets
-    database, and the Playwright flows — in the existing suites.
+13. **End-to-end scenarios** (§9): the backend stories and the Playwright flows — in
+    the existing suites.
 14. `FRONTEND.md`, `MOCKAPI.md`, `BACKEND.md` touch-ups (the §6 test table gains the
     two scenario files); delete §6–§9 of this file.
 
@@ -444,16 +447,9 @@ make openapi-check   # committed spec matches the schemas
 uv run alembic check # metadata == migrated schema, as CI does
 ```
 
-The migration backfill is covered by Story 7 (§9.1) against the committed
-`tests/backend/fixtures/pre_wallets.db`, so the manual check below is a spot check,
-not the only proof.
-
-Manual data-migration check: on `main`, `make migrate seed`; copy `dev.db`; switch to
-the branch; `make migrate`; `select count(*) from line_item where wallet_id is null`
-must be `0` and `select count(*) from wallet` one per person. Then `make
-start_dev_server`: add a tracked wallet in Setup, fund it by transfer, overspend it,
-open the Wallets tab and see the red row; export CSV and confirm the `wallet_id`
-column.
+Manual check: `make clean migrate seed start_dev_server`; add a tracked wallet in
+Setup, fund it by transfer, overspend it, open the Wallets tab and see the red row;
+export CSV and confirm the `wallet_id` column.
 
 PR title: `feat(wallets): per-person wallets, transfers and a wallets tab`.
 
@@ -547,16 +543,18 @@ existing pattern in `test_import_sheet.py`), read back over `client`: every item
 `wallet_id` is its payer's `Card`, `GET /wallets` lists two `Card`s with `balances:
 []`, `GET /items` has `transfers: []`.
 
-**Story 7 — the migration path.** `tests/backend/fixtures/pre_wallets.db`: a SQLite
-file committed once, produced on `main` by `make migrate seed` (the demo trip, five
-items, no wallet tables). The test copies it to `tmp_path`, runs
-`command.upgrade(cfg, "head")` against it, opens a `TestClient` on that file, and
-asserts: `GET /trips/iceland-2026` has four wallets, all named `Card`, all
-`is_default`, all untracked; every item's `wallet_id` is its payer's `Card`; `GET
-/wallets` returns `balances: []` throughout; `alembic check` on that connection
-reports no drift. A second `upgrade` is a no-op (idempotence of the guards). This is
-the only test that touches a file database, and the only one that exercises the
-backfill.
+**Story 7 — the frozen migration is the schema.** No database file, no fixture on
+disk: the `engine` fixture already builds every test database by running
+`command.upgrade(cfg, "head")` on an in-memory SQLite. This story asserts that what
+`0001` builds is exactly what the models describe — `alembic.autogenerate.
+compare_metadata(MigrationContext, SQLModel.metadata)` returns an empty list on the
+migrated connection (the same comparison CI's `alembic check` makes, now inside the
+suite so it fails locally first). Then `downgrade base` followed by `upgrade head`
+on the same connection leaves the inspector's table set, the `share_owed` view and
+`compare_metadata` unchanged — the frozen file is reversible. Finally a trip created
+through `POST /trips` on that database has one `Card` per person and an item posted
+without `wallet_id` lands on the payer's `Card` — the seeded default is a property of
+the write path, not of any migration step.
 
 ### 9.2 UI flows (mock API)
 
