@@ -61,7 +61,8 @@ export function Items() {
                    trip=${store.trip} locale=${locale} onSelect=${(item) => setModalItem(item)} />
     `)}
 
-    <button class="btn btn-primary btn-lg rounded-pill fab" onClick=${() => setModalItem(null)}>
+    <button class="btn btn-primary btn-lg rounded-pill fab" aria-label=${t('items.add_expense')}
+            onClick=${() => setModalItem(null)}>
       <i class="bi bi-plus-lg"></i></button>
 
     ${modalItem !== undefined && html`

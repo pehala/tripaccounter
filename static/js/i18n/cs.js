@@ -9,6 +9,7 @@ export default {
   'nav.setup': 'Nastavení',
   'nav.total': 'Celkem',
   'nav.jump_to': 'Přejít na',
+  'nav.sections': 'Sekce výletu',
 
   'settings.menu': 'Nastavení',
   'lang.en': 'English',
@@ -43,6 +44,7 @@ export default {
   'items.paid_by': 'zaplatil/a {name}',
   'items.map': 'mapa',
   'items.add': 'Výdaj',
+  'items.add_expense': 'Přidat výdaj',
 
   'split.equal.one': 'rovným dílem, {n} osoba',
   'split.equal.few': 'rovným dílem, {n} lidé',

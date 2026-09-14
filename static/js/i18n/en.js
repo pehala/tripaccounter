@@ -9,6 +9,7 @@ export default {
   'nav.setup': 'Setup',
   'nav.total': 'Total',
   'nav.jump_to': 'Jump to',
+  'nav.sections': 'Trip sections',
 
   'settings.menu': 'Settings',
   'lang.en': 'English',
@@ -42,6 +43,7 @@ export default {
   'items.paid_by': '{name} paid',
   'items.map': 'map',
   'items.add': 'Expense',
+  'items.add_expense': 'Add expense',
 
   'split.equal.one': 'equally, {n} way',
   'split.equal.other': 'equally, {n} ways',
