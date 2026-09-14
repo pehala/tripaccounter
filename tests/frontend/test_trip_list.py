@@ -38,9 +38,9 @@ def new_trip_form(page, mockserver):
 
 
 @pytest.fixture
-def czech_new_trip_form(js, new_trip_form):
+def czech_new_trip_form(new_trip_form):
     """Return the new-trip form with the UI switched to Czech in place."""
-    js("i18n/index.js", "setLocale", "cs")
+    new_trip_form.evaluate("async () => (await import('/js/i18n/index.js')).setLocale('cs')")
     expect(new_trip_form.locator("html")).to_have_attribute("lang", "cs")
     return new_trip_form
 

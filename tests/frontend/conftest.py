@@ -157,26 +157,34 @@ def count_requests(page):
     return attach
 
 
-@pytest.fixture
-def js(page, mockserver):
+@pytest.fixture(scope="session")
+def js(browser):
     """Return `js(module, name, *args, locale=None)`: call an export of /js/<module>.
 
     Evaluates `(await import('/js/<module>'))[name](...args)` in a document served by
     the mock; with `locale`, calls i18n `setLocale(locale)` first. For inputs and
     actions only: never compute an expected value with it, write the literal.
+
+    One document for the whole session: a call renders nothing and every call site
+    names its own locale, so there is no page state to carry between tests. A test
+    that needs a module imported for the first time asks for `page` and `mockserver`.
     """
-    page.goto(f"{mockserver}/")
+    context = browser.new_context(timezone_id="UTC")
+    page = context.new_page()
+    with MockServer(load_fixture("trip.json")) as server:
+        page.goto(f"{server.url}/")
 
-    def call(module, name, *args, locale=None):
-        return page.evaluate(
-            """async ({ module, name, args, locale }) => {
-                if (locale) (await import('/js/i18n/index.js')).setLocale(locale);
-                return (await import(`/js/${module}`))[name](...args);
-            }""",
-            {"module": module, "name": name, "args": list(args), "locale": locale},
-        )
+        def call(module, name, *args, locale=None):
+            return page.evaluate(
+                """async ({ module, name, args, locale }) => {
+                    if (locale) (await import('/js/i18n/index.js')).setLocale(locale);
+                    return (await import(`/js/${module}`))[name](...args);
+                }""",
+                {"module": module, "name": name, "args": list(args), "locale": locale},
+            )
 
-    return call
+        yield call
+    context.close()
 
 
 # --- navigation -------------------------------------------------------------------
