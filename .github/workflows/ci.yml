@@ -55,8 +55,7 @@ jobs:
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with: { enable-cache: true, python-version: "${{ matrix.python }}" }
       - run: uv sync --frozen
-      - run: make migrate
-      - run: uv run python -m alembic check
+      - run: make migrate-check
       - run: make test_backend
 
   frontend:

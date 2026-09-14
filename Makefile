@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 .PHONY: help install install_dev lock start_server start_dev_server seed test \
-        test_backend test_frontend test_tools lint fmt lock-check migrate migration openapi \
-        openapi-check clean
+        test_backend test_frontend test_tools lint fmt lock-check migrate migrate-check \
+        migration openapi openapi-check clean
 
 PW := --browser chromium --tracing retain-on-failure \
       --screenshot only-on-failure --output test-results
@@ -59,6 +59,12 @@ lock-check:      ## uv.lock matches pyproject.toml
 
 migrate:         ## alembic upgrade head
 	$(RUN) alembic upgrade head
+
+migrate-check:   ## fail if models drifted from migrations (alembic check), against a scratch DB
+	@tmp=$$(mktemp -u --suffix .db); \
+	trap 'rm -f "$$tmp"' EXIT; \
+	TA_DATABASE_URL="sqlite:///$$tmp" $(RUN) alembic upgrade head && \
+	TA_DATABASE_URL="sqlite:///$$tmp" $(RUN) alembic check
 
 migration:       ## new autogenerate revision: make migration m="add foo"
 	$(RUN) alembic revision --autogenerate -m "$(m)"

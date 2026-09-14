@@ -25,5 +25,7 @@ pre-push:
   commands:
     lint:
       run: make lint
+    migrate-check:
+      run: make migrate-check
     backend-tests:
       run: make test_backend
