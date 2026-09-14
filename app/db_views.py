@@ -20,7 +20,6 @@ class CreateView(DDLElement):
     """DDL element that creates a view from a compiled `Select`."""
 
     def __init__(self, name: str, selectable) -> None:
-        """Store the view name and the selectable it is created from."""
         self.name = name
         self.selectable = selectable
 
@@ -29,7 +28,6 @@ class DropView(DDLElement):
     """DDL element that drops a view by name."""
 
     def __init__(self, name: str) -> None:
-        """Store the view name to drop."""
         self.name = name
 
 

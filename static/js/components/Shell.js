@@ -26,11 +26,8 @@ function useRecentTrips() {
   return [trips || [], toggleRef];
 }
 
-// The one piece of chrome every route shares: nav back to the trip list (with
-// a quick-jump to recent trips), a shortcut to start a new trip, and language
-// + theme — rendered once here so no view has to place them itself.
-// Everything route-specific — trip list, new-trip form, a trip's own header
-// and tabs — is `children`, drawn by app.js underneath this.
+// `children` is everything route-specific (trip list, new-trip form, a
+// trip's own header and tabs), drawn by app.js underneath this nav.
 export function Shell({ children }) {
   const [recentTrips, toggleRef] = useRecentTrips();
 

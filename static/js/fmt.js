@@ -1,8 +1,6 @@
-// One Intl.*Format instance per locale — constructing one per cell is the
-// real performance trap here (design/FRONTEND.md §4 rule 6).
-// Day and month are formatted separately and joined "day month" ourselves:
-// Intl's combined {day, month} order is locale-dependent (US English puts the
-// month first), and this app's convention — set by the mockup — is day-first.
+// One Intl.*Format instance per locale (perf: design/FRONTEND.md §4 rule 6).
+// Day/month formatted separately and joined "day month" ourselves — Intl's
+// combined order is locale-dependent (US puts month first); this app is always day-first.
 const dayFmts = {};
 function dayFmt(locale) {
   return dayFmts[locale] ??= new Intl.DateTimeFormat(locale, { day: 'numeric' });

@@ -50,11 +50,9 @@ export function t(key, params = {}) {
   const cat = CATALOGS[locale];
   const pluralKey = `${key}.${params.n !== undefined ? ruleFor(locale).select(params.n) : ''}`;
   const known = key in cat || key in en || (params.n !== undefined && (pluralKey in cat || pluralKey in en));
-  // A code the catalog does not know (a backend addition the frontend hasn't
-  // caught up on yet — see design/FRONTEND.md §4 rule 4, design/API.md §4): render the
-  // code and its params instead of the bare, unreadable dotted key. Every code
-  // API.md actually defines has a real catalog entry (test_i18n.py), so this
-  // path is a forward-compatibility net, not the common case.
+  // Backend forward-compat fallback (design/FRONTEND.md §4 rule 4): an err code
+  // the catalog doesn't know yet renders as code + params, not a bare dotted key.
+  // Every code API.md actually defines has a catalog entry (test_i18n.py).
   if (!known && key.startsWith('err.')) {
     const code = key.slice('err.'.length);
     const rendered = Object.entries(params).map(([name, value]) => `${name} ${value}`).join(', ');

@@ -10,12 +10,9 @@ import { CollapsibleSection } from '../components/CollapsibleSection.js';
 import { RatesForm } from '../components/RatesForm.js';
 import { SideNav, MobilePillNav } from '../components/SideNav.js';
 
-// Single markup renderer for a currency's own balance *or* the Total's
-// converted-and-netted figures — both normalize into this same shape
-// (`people` a person_id -> net Map, `suggestions` a plain array) so the net
-// bars and settle-up list are written once, not once per currency and again
-// for the Total. `showNote` is false for the Total: its settle-up list isn't
-// the real, never-converted settle-up the note describes.
+// Shared renderer for a currency's own balance *or* the Total's converted
+// figures. `showNote` is false for the Total: its settle-up list isn't the
+// real, never-converted one the note describes.
 function BalanceBlock({ id, badgeLabel, code, totalSpent, people, suggestions, trip, locale, extra, showSections = true, showNote = true }) {
   const personName = (pid) => trip.people.find((p) => p.id === pid)?.name || '';
   const maxAbs = Math.max(1e-9, ...[...people.values()].map((net) => Math.abs(net)));
@@ -76,11 +73,8 @@ function CurrencyBalanceBlock({ balance, trip, locale }) {
   `;
 }
 
-// The Total is another entry in the currency switcher: converted nets and a
-// converted, pair-netted settle-up list, only once every currency has a
-// confirmed rate into the chosen target — never a partial or misleading
-// figure, and never a fresh minimum-transfer plan (that stays `settle.py`'s
-// job; this only converts and sums what it already computed per currency).
+// Converted, pair-netted totals — never a fresh minimum-transfer plan (that
+// stays `settle.py`'s job; this only converts and sums per-currency results).
 function TotalBalances({ balances, trip, ratesState, onTargetChange, onRateChange, locale }) {
   const primary = trip.currencies.find((c) => c.is_primary) || trip.currencies[0];
   const target = trip.currencies.find((c) => c.id === ratesState.target) || primary;

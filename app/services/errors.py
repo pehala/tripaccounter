@@ -41,7 +41,6 @@ class FieldError(Exception):
             FieldError._by_code[cls.code] = cls
 
     def __init__(self, params: dict[str, Any] | None = None) -> None:
-        """Store the error's params."""
         self.params = params or {}
         super().__init__(self.code)
 
@@ -79,7 +78,6 @@ class TooLongError(FieldError):
     param_names = ("max",)
 
     def __init__(self, max: int) -> None:
-        """Store the field's max length."""
         super().__init__({"max": max})
 
 
@@ -114,7 +112,6 @@ class LabelWhitespaceError(FieldError):
     param_names = ("value",)
 
     def __init__(self, value: Any) -> None:
-        """Store the offending value."""
         super().__init__({"value": value})
 
 
@@ -137,7 +134,6 @@ class SumMismatchError(FieldError):
     param_names = ("diff", "currency_code")
 
     def __init__(self, diff: int, currency_code: str) -> None:
-        """Store the mismatch amount and its currency code."""
         super().__init__({"diff": diff, "currency_code": currency_code})
 
 
@@ -154,7 +150,6 @@ class TooPreciseError(FieldError):
     param_names = ("max",)
 
     def __init__(self, max: int) -> None:
-        """Store the field's max fraction digits."""
         super().__init__({"max": max})
 
 
@@ -177,7 +172,6 @@ class DuplicateError(ConflictFieldError):
     param_names = ("name",)
 
     def __init__(self, name: str) -> None:
-        """Store the conflicting name."""
         super().__init__({"name": name})
 
 
@@ -194,7 +188,6 @@ class InUseError(ConflictFieldError):
     param_names = ("count", "name")
 
     def __init__(self, count: int, name: str) -> None:
-        """Store the referencing count and the row's name."""
         super().__init__({"count": count, "name": name})
 
 
@@ -225,7 +218,6 @@ class ApiError(Exception):
         params: dict[str, Any] | None = None,
         fields: dict[str, FieldError] | None = None,
     ) -> None:
-        """Store the error's params and any per-field errors."""
         self.params = params or {}
         self.fields = fields or {}
         super().__init__(self.code)
@@ -253,7 +245,6 @@ class NotFoundError(ApiError):
     param_names = ("resource",)
 
     def __init__(self, resource: str) -> None:
-        """Store the name of the missing resource."""
         super().__init__({"resource": resource})
 
 
@@ -264,7 +255,6 @@ class ConflictError(ApiError):
     code = "conflict"
 
     def __init__(self, fields: dict[str, FieldError]) -> None:
-        """Store the conflicting field errors."""
         super().__init__(fields=fields)
 
 
@@ -275,7 +265,6 @@ class ValidationError(ApiError):
     code = "validation_error"
 
     def __init__(self, fields: dict[str, FieldError]) -> None:
-        """Store the invalid field errors."""
         super().__init__(fields=fields)
 
 
@@ -287,7 +276,6 @@ class InternalError(ApiError):
     param_names = ("ref",)
 
     def __init__(self, ref: str) -> None:
-        """Store the log correlation id."""
         super().__init__({"ref": ref})
 
 

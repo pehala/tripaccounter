@@ -1,11 +1,7 @@
-// User-typed exchange rates for the statistics Total section — never sent to
-// the server, never stored with the trip (design/FRONTEND.md §4 rule 1).
-// One object per trip: { target: currencyId|null, values: { [currencyId]: string } }.
-// `target` is which currency everything converts into (defaults to the trip's
-// primary when null); `values` are raw typed strings, relative to `target`, so
-// an input can hold "" or a partial "1." while typing. Switching `target`
-// clears `values` — a rate typed against one target means something different
-// against another, so stale values would silently lie.
+// User-typed exchange rates for the stats Total section — local only, never
+// sent to the server or stored with the trip (design/FRONTEND.md §4 rule 1).
+// { target: currencyId|null, values: { [currencyId]: rawString } }; switching
+// target clears values, since a rate typed against one target lies against another.
 function key(slug) {
   return `rates:${slug}`;
 }
