@@ -29,7 +29,6 @@ class ParseError(Exception):
     params: dict[str, Any]
 
     def __init__(self, params: dict[str, Any] | None = None) -> None:
-        """Store the error's params."""
         self.params = params or {}
         super().__init__(self.code)
 
@@ -52,7 +51,6 @@ class TooPreciseError(ParseError):
     code = "too_precise"
 
     def __init__(self, max: int) -> None:
-        """`max` is the allowed number of fraction digits."""
         super().__init__({"max": max})
 
 

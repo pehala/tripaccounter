@@ -1,21 +1,13 @@
 import { html } from '../h.js';
 import { toggleCollapse, showCollapse } from '../collapse.js';
 
-// The sidebar links are plain `<a href="#id">`s — the tab is the URL path
-// (Trip.js's `tab` prop), not the hash, so the browser's own anchor scrolling
-// just works, `scroll-margin-top` (app.css) keeps it clear of the sticky
-// header, and a link can be copied or opened in a new tab like any other.
-
-// One collapsible card per entry (a currency, or Total) in the sidebar: the
-// whole row is one link that both scrolls straight to that section (native
-// anchor navigation) and toggles its sub-links (the Collapse API, so the
-// click still opens/closes even though `href` — not `data-bs-toggle` — is
-// what would otherwise make Bootstrap swallow the anchor's own default
-// action). Each sub-link opens that exact section before scrolling to it.
-// Same bordered-card idiom as CollapsibleSection/SplitEditor — a plain
-// `.list-group` nested inside a `.list-group-item` mis-renders its border
-// past the first collapsed entry, so this sidebar deliberately does not use
-// Bootstrap's list-group at all.
+// Links are plain `<a href="#id">` — the tab is the URL path (Trip.js's `tab`
+// prop), not the hash, so native anchor scrolling, copy-link and open-in-tab
+// all work for free (`scroll-margin-top` in app.css clears the sticky header).
+// Each card's own link also toggles its sub-links via the Collapse API in
+// onClick, since `data-bs-toggle` would swallow the anchor's own scroll.
+// No Bootstrap `.list-group` here: nested inside a `.list-group-item` its
+// border mis-renders past the first collapsed entry.
 function NavEntry({ id, label, groups }) {
   const bodyId = `nav-${id}-body`;
 

@@ -13,8 +13,5 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./dev.db"
     static_dir: Path = Path(__file__).resolve().parent.parent / "static"
 
-    # Identity of this build — an image tag, a git sha, any string unique per build.
-    # Set, the static assets are mounted under `/s/{build_id}/`, so a proxy can cache
-    # them permanently; unset, they are served unversioned at `/`, which is what the
-    # dev server wants. See DEPLOY.md.
+    # Image tag / git sha; empty for dev. Drives the asset mount in app/main.py — see DEPLOY.md.
     build_id: str = ""

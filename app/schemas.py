@@ -585,10 +585,8 @@ class PreviewSplitOut(BaseModel):
 
 
 # ---- Response envelopes -------------------------------------------------------
-# Every response is a single JSON object carrying its payload under a named key,
-# which leaves room to add `meta` later without breaking a client
-# (design/API.md §1). The routes declare these models, so the generated schema
-# and `/docs` show the same envelope the handler returns.
+# One named-key object per response (design/API.md §1), declared per route so
+# the generated schema matches what the handler returns.
 
 
 class TripEnvelope(BaseModel):

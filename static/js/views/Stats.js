@@ -17,11 +17,9 @@ function pct(amount, total) {
   return total > 0 ? Math.round((amount / total) * 100) : 0;
 }
 
-// Single markup renderer for a currency's own stats *or* the Total's
-// converted figures — both normalize into this same shape (byLabel/byCountry
-// as {label|country_id, amount}[], byPerson as a person_id -> amount Map,
-// byDay as {date, amount}[]) so the four stat sections are written once,
-// instead of once per currency and again for the Total.
+// Shared renderer for a currency's own stats *or* the Total's converted
+// figures — both normalize to this same shape before calling in, so the four
+// stat sections aren't written once per currency and again for the Total.
 function StatBlock({ id, badgeLabel, code, total, byLabel, byCountry, byPerson, byDay, trip, locale, extra, showSections = true }) {
   const countryName = (cid) => trip.countries.find((c) => c.id === cid)?.name || '';
   const countryFlag = (cid) => trip.countries.find((c) => c.id === cid)?.flag || '';
@@ -103,12 +101,8 @@ function CurrencyBlock({ stat, trip, locale }) {
   `;
 }
 
-// The Total is another entry in the currency switcher, not a silent
-// best-effort sum: it only renders once every currency has a confirmed rate
-// into the chosen target (see `allRatesSet`), so there is never a partial or
-// misleading figure on screen — just the form, or the whole answer. Its
-// figures are normalized into the same shape `StatBlock` expects from a
-// currency, so the four stat sections aren't written a second time here.
+// Only renders once every currency has a confirmed rate (`allRatesSet`) —
+// never a partial or misleading sum, just the rates form or the whole answer.
 function TotalBlock({ stats, trip, ratesState, onTargetChange, onRateChange, locale }) {
   const primary = trip.currencies.find((c) => c.is_primary) || trip.currencies[0];
   const target = trip.currencies.find((c) => c.id === ratesState.target) || primary;

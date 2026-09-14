@@ -1,17 +1,10 @@
 import { html } from '../h.js';
 
-// Same collapse idiom as SplitEditor.js: a plain Bootstrap button + `.collapse`
-// div, no custom JS state. Collapsed by default (`defaultOpen` opts a
-// particular section in, e.g. balances' settle-up — the one figure worth
-// seeing without a click) so a currency with several sections stays
-// scannable; `summary` (if given) stays visible even while collapsed.
-// `parentId`, if given, makes every section sharing it an accordion —
-// opening one closes the others under the same parent — without adopting
-// Bootstrap's `.accordion` visual classes; worth it for statistics' four
-// sections, not for balances' two short ones, so it's optional. Callers own
-// the id scheme (`sec-{ownerId}-{group}` bodies, `sec-accordion-{ownerId}`
-// parent when used — statistics and balances are never mounted at once, so
-// the two pages never collide even reusing the same scheme).
+// Plain Bootstrap button + `.collapse` div, no custom JS state (same idiom as
+// SplitEditor.js). `parentId`, if given, makes every section sharing it an
+// accordion via `data-bs-parent`. Callers own the id scheme
+// (`sec-{ownerId}-{group}` bodies, `sec-accordion-{ownerId}` parent) — safe to
+// reuse across pages only because statistics and balances are never mounted at once.
 export function CollapsibleSection({ id, parentId, icon, title, summary, children, defaultOpen = false }) {
   const bodyId = `${id}-body`;
 
