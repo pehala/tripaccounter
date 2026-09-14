@@ -116,7 +116,7 @@ Rule references: `P-n` → [common-pitfalls.md](../references/common-pitfalls.md
 
 1. **Run it:**
    ```bash
-   uv run pytest tests/backend/test_splits.py::test_equal_split_pads_the_roster -v
+   uv run python -m pytest tests/backend/test_splits.py::test_equal_split_pads_the_roster -v
    ```
 
 2. **Make it fail on purpose.** Change one expected literal and confirm the test goes
@@ -125,14 +125,14 @@ Rule references: `P-n` → [common-pitfalls.md](../references/common-pitfalls.md
 
 3. **Run the file, then the suite:**
    ```bash
-   uv run pytest tests/backend/test_splits.py -q
+   uv run python -m pytest tests/backend/test_splits.py -q
    make test_backend
    ```
 
 4. **Check isolation** — the test must pass alone and after everything else:
    ```bash
-   uv run pytest tests/backend/test_splits.py::test_equal_split_pads_the_roster -q
-   uv run pytest tests/backend -q
+   uv run python -m pytest tests/backend/test_splits.py::test_equal_split_pads_the_roster -q
+   uv run python -m pytest tests/backend -q
    ```
 
 5. **Lint, then review your own diff** against
