@@ -99,7 +99,6 @@ export default {
   'stats.rates_note': 'Zadáno zde, uloženo v localStorage, nikdy neodesláno na server, nikdy neuloženo s výletem. Týká se jen této sekce — bilance, vyrovnání a statistiky jednotlivých měn zůstávají nedotčené. Změna cílové měny vymaže zadané kurzy pro tu předchozí.',
   'stats.rates_missing': 'Doplňte kurz pro každou měnu, abyste viděli celkový součet.',
   'stats.total_note': 'Čísla níže používají kurzy výše — ne oficiální.',
-  'stats.toggle_section': 'Přepnout sekci',
 
   'action.save': 'Uložit',
   'action.cancel': 'Zrušit',

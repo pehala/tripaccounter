@@ -96,7 +96,6 @@ export default {
   'stats.rates_note': "Typed here, kept in localStorage, never sent to the server, never stored with the trip. Affects this section only — balances, settle-up and each currency's own stats stay untouched. Changing the target currency clears any rates you've typed for the previous one.",
   'stats.rates_missing': 'Add a rate for every currency to see the total.',
   'stats.total_note': "Figures below use the rates above — nobody's official exchange rate.",
-  'stats.toggle_section': 'Toggle section',
 
   'action.save': 'Save',
   'action.cancel': 'Cancel',

@@ -102,11 +102,15 @@ def test_stat_sections_are_collapsed_by_default(stats_page, fixture_data):
 
 
 def test_sidebar_link_jumps_to_currency_section(stats_page, fixture_data):
-    """Clicking a currency's sidebar button scrolls its heading into view without navigating."""
+    """Clicking a currency's sidebar link is a real anchor: it scrolls in and updates the hash.
+
+    The tab itself is the URL path, not the hash, so a deep link like this is
+    shareable without disturbing which tab is showing.
+    """
     eur = next(s for s in fixture_data["stats"]["stats"] if s["currency_code"] == "EUR")
-    url_before = stats_page.url
+    base_url = stats_page.url
 
-    stats_page.locator(".stats-nav button", has_text="EUR").click()
+    stats_page.locator(".stats-nav a", has_text="EUR").click()
 
-    expect(stats_page).to_have_url(url_before)
+    expect(stats_page).to_have_url(f"{base_url}#cur-{eur['currency_id']}")
     expect(stats_page.locator(f"#cur-{eur['currency_id']}")).to_be_in_viewport()

@@ -107,12 +107,12 @@ def test_per_currency_totals_are_unaffected_by_the_total_rates(stats_page, fixtu
 
 
 def test_total_switch_is_in_the_sidebar_and_scrolls_to_it(stats_page):
-    """The Total is reachable exactly like a currency: a nav entry that scrolls to it."""
-    url_before = stats_page.url
+    """The Total is reachable exactly like a currency: a real anchor link that scrolls to it."""
+    base_url = stats_page.url
 
-    stats_page.locator(".stats-nav button", has_text="Total").click()
+    stats_page.locator(".stats-nav a", has_text="Total").click()
 
-    expect(stats_page).to_have_url(url_before)
+    expect(stats_page).to_have_url(f"{base_url}#cur-total")
     expect(stats_page.locator("#cur-total")).to_be_in_viewport()
 
 

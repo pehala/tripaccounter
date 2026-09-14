@@ -46,31 +46,28 @@ function combineGroup(stats, groupKey, rowKey, targetId, values, locale) {
   return totals;
 }
 
-// The sidebar can't be plain <a href="#..."> links: location.hash IS the tab
-// (Trip.js reads it as `items`/`balances`/`stats`/`setup`), so navigating the
-// hash to a section id would blank the page instead of switching tabs.
-// Scroll directly, no hash involved. `scroll-margin-top` (app.css) keeps the
-// target clear of the sticky header instead of landing half-hidden under it.
-function scrollToId(id) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+// The sidebar links are plain `<a href="#id">`s — the tab is the URL path
+// (Trip.js's `tab` prop), not the hash, so the browser's own anchor scrolling
+// just works, `scroll-margin-top` (app.css) keeps it clear of the sticky
+// header, and a link can be copied or opened in a new tab like any other.
+// These two helpers only ever drive the Bootstrap collapse, never scrolling.
+function toggleCollapse(id) {
+  const el = document.getElementById(id);
+  if (el && window.bootstrap) window.bootstrap.Collapse.getOrCreateInstance(el, { toggle: false }).toggle();
 }
 
-// A sidebar sub-link jumps to a specific stat type, which is collapsed by
-// default in the content column — scrolling there alone would land on a
-// header that looks identical to its neighbors. Force that one section open
-// first so the destination is unambiguous.
-function scrollToSection(headingId, bodyId) {
-  const body = document.getElementById(bodyId);
-  if (body && !body.classList.contains('show') && window.bootstrap) {
-    window.bootstrap.Collapse.getOrCreateInstance(body, { toggle: false }).show();
-  }
-  scrollToId(headingId);
+function showCollapse(id) {
+  const el = document.getElementById(id);
+  if (el && window.bootstrap) window.bootstrap.Collapse.getOrCreateInstance(el, { toggle: false }).show();
 }
 
 // Same collapse idiom as SplitEditor.js: a plain Bootstrap button + `.collapse`
 // div, no custom JS state. Collapsed by default (no `show`) so a currency with
 // many stat types stays scannable; `summary` (if given) stays visible even
-// while collapsed.
+// while collapsed. `data-bs-parent` makes the four sections of one currency
+// (or Total) an accordion — opening one closes the others under the same
+// parent id — without adopting Bootstrap's `.accordion` visual classes; see
+// the wrapping div in StatBlock that supplies that parent id.
 function StatSection({ currencyId, group, icon, title, summary, children }) {
   const headingId = `stat-${currencyId}-${group}`;
   const bodyId = `${headingId}-body`;
@@ -84,7 +81,7 @@ function StatSection({ currencyId, group, icon, title, summary, children }) {
         ${summary && html`<span class="text-body-secondary ms-auto small">${summary}</span>`}
         <i class="bi bi-chevron-down"></i>
       </button>
-      <div class="collapse" id=${bodyId}>
+      <div class="collapse" id=${bodyId} data-bs-parent="#stat-accordion-${currencyId}">
         <div class="px-3 pb-3 border-top pt-2">${children}</div>
       </div>
     </div>
@@ -110,56 +107,58 @@ function StatBlock({ id, badgeLabel, code, total, byLabel, byCountry, byPerson, 
       ${extra}
 
       ${showSections && html`
-        <${StatSection} currencyId=${id} group="by_label" icon="bi-tags" title=${t('stats.by_label')}>
-          <ul class="list-group list-group-flush">
-            ${byLabel.map((row) => html`
-              <li key=${row.label ?? ''} class="list-group-item">
-                <div class="d-flex justify-content-between">
-                  ${row.label ? html`<${LabelBadge} name=${row.label} />` : html`<span class="text-body-secondary fst-italic">${t('stats.unlabelled')}</span>`}
-                  <span class="num">${money(row.amount, locale)} ${code} <small class="text-body-secondary">${pct(row.amount, total)}%</small></span>
-                </div>
-                <div class="progress mt-1" style="height:.35rem"><div class="progress-bar" style="width:${pct(row.amount, total)}%"></div></div>
-              </li>
-            `)}
-          </ul>
-          <div class="alert alert-secondary py-2 px-3 small mt-2 mb-0">${t('stats.overlap_note')}</div>
-        <//>
+        <div id="stat-accordion-${id}">
+          <${StatSection} currencyId=${id} group="by_label" icon="bi-tags" title=${t('stats.by_label')}>
+            <ul class="list-group list-group-flush">
+              ${byLabel.map((row) => html`
+                <li key=${row.label ?? ''} class="list-group-item">
+                  <div class="d-flex justify-content-between">
+                    ${row.label ? html`<${LabelBadge} name=${row.label} />` : html`<span class="text-body-secondary fst-italic">${t('stats.unlabelled')}</span>`}
+                    <span class="num">${money(row.amount, locale)} ${code} <small class="text-body-secondary">${pct(row.amount, total)}%</small></span>
+                  </div>
+                  <div class="progress mt-1" style="height:.35rem"><div class="progress-bar" style="width:${pct(row.amount, total)}%"></div></div>
+                </li>
+              `)}
+            </ul>
+            <div class="alert alert-secondary py-2 px-3 small mt-2 mb-0">${t('stats.overlap_note')}</div>
+          <//>
 
-        <${StatSection} currencyId=${id} group="by_country" icon="bi-geo-alt" title=${t('stats.by_country')}>
-          <ul class="list-group list-group-flush">
-            ${byCountry.map((row) => html`
-              <li key=${row.country_id} class="list-group-item">
-                <div class="d-flex justify-content-between">
-                  <span>${countryFlag(row.country_id)} ${countryName(row.country_id)}</span>
-                  <span class="num">${money(row.amount, locale)} ${code} <small class="text-body-secondary">${pct(row.amount, total)}%</small></span>
-                </div>
-                <div class="progress mt-1" style="height:.35rem"><div class="progress-bar" style="width:${pct(row.amount, total)}%"></div></div>
-              </li>
-            `)}
-          </ul>
-        <//>
+          <${StatSection} currencyId=${id} group="by_country" icon="bi-geo-alt" title=${t('stats.by_country')}>
+            <ul class="list-group list-group-flush">
+              ${byCountry.map((row) => html`
+                <li key=${row.country_id} class="list-group-item">
+                  <div class="d-flex justify-content-between">
+                    <span>${countryFlag(row.country_id)} ${countryName(row.country_id)}</span>
+                    <span class="num">${money(row.amount, locale)} ${code} <small class="text-body-secondary">${pct(row.amount, total)}%</small></span>
+                  </div>
+                  <div class="progress mt-1" style="height:.35rem"><div class="progress-bar" style="width:${pct(row.amount, total)}%"></div></div>
+                </li>
+              `)}
+            </ul>
+          <//>
 
-        <${StatSection} currencyId=${id} group="by_person" icon="bi-people" title=${t('stats.by_person')} summary=${t('stats.by_person_note')}>
-          <ul class="list-group list-group-flush">
-            ${trip.people.filter((p) => byPerson.has(p.id)).map((p) => html`
-              <li key=${p.id} class="list-group-item d-flex justify-content-between">
-                <span>${p.name}${p.default_weight !== '1' && html`<small class="text-body-secondary"> ${p.default_weight} ${t('stats.share')}</small>`}</span>
-                <span class="num">${money(byPerson.get(p.id), locale)} ${code}</span>
-              </li>
-            `)}
-          </ul>
-        <//>
+          <${StatSection} currencyId=${id} group="by_person" icon="bi-people" title=${t('stats.by_person')} summary=${t('stats.by_person_note')}>
+            <ul class="list-group list-group-flush">
+              ${trip.people.filter((p) => byPerson.has(p.id)).map((p) => html`
+                <li key=${p.id} class="list-group-item d-flex justify-content-between">
+                  <span>${p.name}${p.default_weight !== '1' && html`<small class="text-body-secondary"> ${p.default_weight} ${t('stats.share')}</small>`}</span>
+                  <span class="num">${money(byPerson.get(p.id), locale)} ${code}</span>
+                </li>
+              `)}
+            </ul>
+          <//>
 
-        <${StatSection} currencyId=${id} group="by_day" icon="bi-calendar3" title=${t('stats.by_day')}>
-          <ul class="list-group list-group-flush">
-            ${byDay.map((row) => html`
-              <li key=${row.date} class="list-group-item d-flex justify-content-between">
-                <span>${fmtDate(row.date, locale)}</span>
-                <span class="num">${money(row.amount, locale)} ${code}</span>
-              </li>
-            `)}
-          </ul>
-        <//>
+          <${StatSection} currencyId=${id} group="by_day" icon="bi-calendar3" title=${t('stats.by_day')}>
+            <ul class="list-group list-group-flush">
+              ${byDay.map((row) => html`
+                <li key=${row.date} class="list-group-item d-flex justify-content-between">
+                  <span>${fmtDate(row.date, locale)}</span>
+                  <span class="num">${money(row.amount, locale)} ${code}</span>
+                </li>
+              `)}
+            </ul>
+          <//>
+        </div>
       `}
     </section>
   `;
@@ -257,33 +256,31 @@ function TotalBlock({ stats, trip, ratesState, onTargetChange, onRateChange, loc
   `;
 }
 
-// One collapsible card per currency (or Total) in the sidebar: the badge
-// scrolls straight to that section; the chevron is a separate toggle for its
-// four stat-type sub-links; each sub-link opens that exact stat section in
-// the content column before scrolling to it. Same bordered-card idiom as
-// StatSection/SplitEditor above — a plain `.list-group` nested inside a
-// `.list-group-item` mis-renders its border past the first collapsed entry,
-// so this sidebar deliberately does not use Bootstrap's list-group at all.
+// One collapsible card per currency (or Total) in the sidebar: the whole row
+// is one link that both scrolls straight to that section (native anchor
+// navigation) and toggles its four stat-type sub-links (the Collapse API, so
+// the click still opens/closes even though `href` — not `data-bs-toggle` —
+// is what would otherwise make Bootstrap swallow the anchor's own default
+// action). Each sub-link opens that exact stat section before scrolling to
+// it. Same bordered-card idiom as StatSection/SplitEditor above — a plain
+// `.list-group` nested inside a `.list-group-item` mis-renders its border
+// past the first collapsed entry, so this sidebar deliberately does not use
+// Bootstrap's list-group at all.
 function NavEntry({ id, label }) {
   const bodyId = `nav-${id}-body`;
 
   return html`
     <div class="border rounded mb-2">
-      <div class="d-flex align-items-stretch">
-        <button type="button" class="btn flex-grow-1 text-start d-flex align-items-center px-3 py-2"
-                onClick=${() => scrollToId(`cur-${id}`)}>
-          <span class="badge text-bg-primary">${label}</span>
-        </button>
-        <button type="button" class="btn px-2" data-bs-toggle="collapse" data-bs-target="#${bodyId}"
-                aria-label=${t('stats.toggle_section')}>
-          <i class="bi bi-chevron-down"></i>
-        </button>
-      </div>
+      <a href="#cur-${id}" class="btn w-100 text-start d-flex align-items-center gap-2 px-3 py-2"
+         onClick=${() => toggleCollapse(bodyId)}>
+        <span class="badge text-bg-primary">${label}</span>
+        <i class="bi bi-chevron-down ms-auto"></i>
+      </a>
       <div class="collapse" id=${bodyId}>
         <div class="d-flex flex-column border-top py-1">
           ${STAT_GROUPS.map((g) => html`
-            <button key=${g} type="button" class="btn text-start ps-4 py-1 small"
-                    onClick=${() => scrollToSection(`stat-${id}-${g}`, `stat-${id}-${g}-body`)}>${t(`stats.${g}`)}</button>
+            <a key=${g} href="#stat-${id}-${g}" class="btn text-start ps-4 py-1 small"
+               onClick=${() => showCollapse(`stat-${id}-${g}-body`)}>${t(`stats.${g}`)}</a>
           `)}
         </div>
       </div>
@@ -317,16 +314,14 @@ export function Stats() {
     <div class="d-md-none sticky-top stats-nav-mobile mb-2 bg-body-tertiary py-1">
       <div class="nav nav-pills flex-row flex-nowrap overflow-x-auto gap-1">
         ${multiCurrency && html`
-          <button type="button" class="nav-link text-nowrap border-0 bg-transparent"
-                  onClick=${() => scrollToId('cur-total')}>
+          <a href="#cur-total" class="nav-link text-nowrap border-0 bg-transparent">
             <span class="badge text-bg-primary">${t('stats.total_tab')}</span>
-          </button>
+          </a>
         `}
         ${store.stats.map((stat) => html`
-          <button key=${stat.currency_id} type="button" class="nav-link text-nowrap border-0 bg-transparent"
-                  onClick=${() => scrollToId(`cur-${stat.currency_id}`)}>
+          <a key=${stat.currency_id} href="#cur-${stat.currency_id}" class="nav-link text-nowrap border-0 bg-transparent">
             <span class="badge text-bg-primary">${stat.currency_code}</span>
-          </button>
+          </a>
         `)}
       </div>
     </div>
