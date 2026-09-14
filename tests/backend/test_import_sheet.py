@@ -381,6 +381,16 @@ def test_apply_creates_the_roster_it_referred_to(client, imported):
     assert countries == [("BE", True, 8), ("CZ", False, 2), ("DE", False, 8), ("LU", False, 6)]
 
 
+def test_apply_sets_every_items_wallet_to_the_payers_default_card(client, imported):
+    """The sheet knows nothing about wallets: every row lands on the payer's default `Card`."""
+    trip = client.get(f"/api/v1/trips/{imported.slug}").json()["trip"]
+    default_wallet_of = {w["person_id"]: w["id"] for w in trip["wallets"] if w["is_default"]}
+    assert {w["name"] for w in trip["wallets"]} == {"Card"}
+
+    items = client.get(f"/api/v1/trips/{imported.slug}/items").json()["items"]
+    assert all(item["wallet_id"] == default_wallet_of[item["payer_id"]] for item in items)
+
+
 def test_apply_carries_labels_and_notes_onto_the_items(client, imported):
     """Each row's category becomes its one label, and a note cell becomes the item's note."""
     items = client.get(f"/api/v1/trips/{imported.slug}/items").json()["items"]

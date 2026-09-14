@@ -131,6 +131,84 @@ def test_unparseable_map_url_is_stored_not_an_error(client, trip, item_body):
     assert item["lon"] is None
 
 
+def test_create_item_omitted_wallet_id_uses_payer_default(
+    client, trip, people, default_wallet_of, item_body
+):
+    """Omitting `wallet_id` on create falls back to the payer's default wallet."""
+    bob = people[2]["id"]
+    response = client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(payer_id=bob))
+    assert response.json()["item"]["wallet_id"] == default_wallet_of(bob)["id"]
+
+
+def test_create_item_wallet_not_owned_by_payer_is_wallet_owner_mismatch(
+    client, trip, people, default_wallet_of, item_body
+):
+    """A wallet id that belongs to someone else is rejected."""
+    petr, ann = people[0]["id"], people[1]["id"]
+    response = client.post(
+        f"/api/v1/trips/{trip['slug']}/items",
+        json=item_body(payer_id=ann, wallet_id=default_wallet_of(petr)["id"]),
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"]["wallet_id"] == {
+        "code": "wallet_owner_mismatch",
+        "params": {},
+    }
+
+
+def test_patch_item_payer_change_resets_wallet_to_new_payers_default(
+    client, trip, people, default_wallet_of, item_body
+):
+    """Changing `payer_id` with no `wallet_id` re-defaults to the new payer's wallet."""
+    petr, ann = people[0]["id"], people[1]["id"]
+    created = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(payer_id=petr)
+    ).json()["item"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{created['id']}", json={"payer_id": ann}
+    )
+    assert response.status_code == 200
+    assert response.json()["item"]["wallet_id"] == default_wallet_of(ann)["id"]
+
+
+def test_patch_item_wallet_owner_mismatch_leaves_item_unchanged(
+    client, trip, people, default_wallet_of, item_body
+):
+    """A mismatched wallet_id on PATCH is rejected and the item is not touched."""
+    petr, ann = people[0]["id"], people[1]["id"]
+    created = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(payer_id=ann, name="Original")
+    ).json()["item"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{created['id']}",
+        json={"wallet_id": default_wallet_of(petr)["id"], "name": "Changed"},
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"]["wallet_id"]["code"] == "wallet_owner_mismatch"
+
+    unchanged = client.get(f"/api/v1/trips/{trip['slug']}/items/{created['id']}").json()["item"]
+    assert unchanged == created
+
+
+def test_patch_item_payer_and_wallet_together_is_accepted(
+    client, trip, people, default_wallet_of, item_body
+):
+    """A PATCH naming both the new payer and their wallet in one body succeeds."""
+    petr, ann = people[0]["id"], people[1]["id"]
+    created = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(payer_id=ann)
+    ).json()["item"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{created['id']}",
+        json={"payer_id": petr, "wallet_id": default_wallet_of(petr)["id"]},
+    )
+    assert response.status_code == 200
+    assert response.json()["item"]["wallet_id"] == default_wallet_of(petr)["id"]
+
+
 def test_item_id_from_another_trip_is_404(client, trip, item_body):
     """An item id that belongs to a different trip is not_found, not leaked."""
     other = client.post(

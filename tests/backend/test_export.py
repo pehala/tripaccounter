@@ -52,6 +52,7 @@ def test_csv_export_header_and_first_row_are_the_contract(client, trip, people, 
         "currency_code",
         "amount",
         "payer_id",
+        "wallet_id",
         "country_id",
         "person_id",
         "weight",
@@ -62,6 +63,7 @@ def test_csv_export_header_and_first_row_are_the_contract(client, trip, people, 
     assert first["currency_code"] == "ISK"
     assert first["amount"] == "480"
     assert first["payer_id"] == str(people[0]["id"])
+    assert first["wallet_id"] == str(trip["wallets"][0]["id"])
     assert first["person_id"] == str(people[0]["id"])
     assert first["weight"] == "1"
     assert first["owed"] == "240"
@@ -82,6 +84,7 @@ def test_json_export_contains_trip_and_items(client, trip, item_body):
     assert body["trip"]["slug"] == trip["slug"]
     assert len(body["items"]) == 1
     assert body["items"][0] == created
+    assert body["transfers"] == []
 
 
 def test_export_of_empty_trip_is_not_500(client, trip):

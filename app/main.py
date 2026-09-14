@@ -21,7 +21,9 @@ from app.routers import (
     labels,
     people,
     reports,
+    transfers,
     trips,
+    wallets,
 )
 from app.services.errors import (
     FIELD_ERROR_PARAMS,
@@ -46,6 +48,8 @@ ROUTERS = (
     people.router,
     currencies.router,
     countries.router,
+    wallets.router,
+    transfers.router,
     labels.router,
     reports.router,
     export.router,

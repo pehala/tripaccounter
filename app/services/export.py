@@ -6,8 +6,8 @@ import io
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import LineItem, Trip
-from app.schemas import ITEM_LOAD_OPTIONS, ItemOut, TripOut
+from app.models import LineItem, Trip, WalletTransfer
+from app.schemas import ITEM_LOAD_OPTIONS, TRANSFER_LOAD_OPTIONS, ItemOut, TransferOut, TripOut
 from app.services import splits
 from app.services.money import AMOUNT_SCALE, to_wire
 from app.services.roster import country_item_counts
@@ -19,6 +19,7 @@ CSV_HEADER = [
     "currency_code",
     "amount",
     "payer_id",
+    "wallet_id",
     "country_id",
     "person_id",
     "weight",
@@ -66,6 +67,7 @@ def export_csv(session: Session, trip: Trip) -> str:
                     item.currency.code,
                     to_wire(item.amount_minor, AMOUNT_SCALE),
                     item.payer_id,
+                    item.wallet_id,
                     item.country_id,
                     share["person_id"],
                     share["weight"],
@@ -90,7 +92,18 @@ def export_json(session: Session, trip: Trip) -> dict:
     roster_ids = [
         person.id for person in sorted(trip.people, key=lambda p: p.sort_order) if person.active
     ]
+    transfers = (
+        session.execute(
+            select(WalletTransfer)
+            .where(WalletTransfer.trip_id == trip.id)
+            .options(*TRANSFER_LOAD_OPTIONS)
+            .order_by(WalletTransfer.occurred_at.desc(), WalletTransfer.id.desc())
+        )
+        .scalars()
+        .all()
+    )
     return {
         "trip": TripOut.from_trip(trip, country_item_counts(session, trip.id)),
         "items": [ItemOut.from_item(item, roster_ids) for item in items],
+        "transfers": [TransferOut.from_transfer(t) for t in transfers],
     }

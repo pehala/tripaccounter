@@ -87,12 +87,36 @@
           "person_id": {
             "title": "Person Id",
             "type": "integer"
+          },
+          "received": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Received"
+          },
+          "sent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Sent"
           }
         },
         "required": [
           "person_id",
           "paid",
           "owed",
+          "sent",
+          "received",
           "net"
         ],
         "title": "BalancePersonOut",
@@ -575,7 +599,7 @@
         "type": "object"
       },
       "ItemListEnvelope": {
-        "description": "`{ \"items\": [Item], \"day_totals\": [DayTotal] }`.",
+        "description": "`{ \"items\": [Item], \"day_totals\": [DayTotal], \"transfers\": [Transfer] }`.",
         "properties": {
           "day_totals": {
             "items": {
@@ -590,11 +614,19 @@
             },
             "title": "Items",
             "type": "array"
+          },
+          "transfers": {
+            "items": {
+              "$ref": "#/components/schemas/TransferOut"
+            },
+            "title": "Transfers",
+            "type": "array"
           }
         },
         "required": [
           "items",
-          "day_totals"
+          "day_totals",
+          "transfers"
         ],
         "title": "ItemListEnvelope",
         "type": "object"
@@ -702,6 +734,10 @@
           "updated_at": {
             "title": "Updated At",
             "type": "string"
+          },
+          "wallet_id": {
+            "title": "Wallet Id",
+            "type": "integer"
           }
         },
         "required": [
@@ -714,6 +750,7 @@
           "amount",
           "payer_id",
           "country_id",
+          "wallet_id",
           "labels",
           "map_url",
           "lat",
@@ -891,6 +928,17 @@
               }
             ],
             "title": "Split Mode"
+          },
+          "wallet_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wallet Id"
           }
         },
         "title": "ItemWrite",
@@ -1549,6 +1597,236 @@
         "title": "SuggestionOut",
         "type": "object"
       },
+      "TransferEnvelope": {
+        "description": "`{ \"transfer\": Transfer }`.",
+        "properties": {
+          "transfer": {
+            "$ref": "#/components/schemas/TransferOut"
+          }
+        },
+        "required": [
+          "transfer"
+        ],
+        "title": "TransferEnvelope",
+        "type": "object"
+      },
+      "TransferListEnvelope": {
+        "description": "`{ \"transfers\": [Transfer] }`.",
+        "properties": {
+          "transfers": {
+            "items": {
+              "$ref": "#/components/schemas/TransferOut"
+            },
+            "title": "Transfers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "transfers"
+        ],
+        "title": "TransferListEnvelope",
+        "type": "object"
+      },
+      "TransferOut": {
+        "description": "Wire representation of a wallet transfer: both typed sides, no rate.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "from_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "From Amount"
+          },
+          "from_currency_code": {
+            "title": "From Currency Code",
+            "type": "string"
+          },
+          "from_currency_id": {
+            "title": "From Currency Id",
+            "type": "integer"
+          },
+          "from_wallet_id": {
+            "title": "From Wallet Id",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "to_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "To Amount"
+          },
+          "to_currency_code": {
+            "title": "To Currency Code",
+            "type": "string"
+          },
+          "to_currency_id": {
+            "title": "To Currency Id",
+            "type": "integer"
+          },
+          "to_wallet_id": {
+            "title": "To Wallet Id",
+            "type": "integer"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "occurred_at",
+          "from_wallet_id",
+          "from_amount",
+          "from_currency_id",
+          "from_currency_code",
+          "to_wallet_id",
+          "to_amount",
+          "to_currency_id",
+          "to_currency_code",
+          "note",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TransferOut",
+        "type": "object"
+      },
+      "TransferWrite": {
+        "additionalProperties": false,
+        "description": "Request body for creating or updating a wallet transfer.",
+        "properties": {
+          "from_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Amount"
+          },
+          "from_currency_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Currency Id"
+          },
+          "from_wallet_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Wallet Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "to_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Amount"
+          },
+          "to_currency_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Currency Id"
+          },
+          "to_wallet_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Wallet Id"
+          }
+        },
+        "title": "TransferWrite",
+        "type": "object"
+      },
       "TripCreate": {
         "additionalProperties": false,
         "description": "Request body for creating a trip with its roster, currencies, and countries.",
@@ -1745,6 +2023,13 @@
           "updated_at": {
             "title": "Updated At",
             "type": "string"
+          },
+          "wallets": {
+            "items": {
+              "$ref": "#/components/schemas/WalletOut"
+            },
+            "title": "Wallets",
+            "type": "array"
           }
         },
         "required": [
@@ -1758,6 +2043,7 @@
           "people",
           "currencies",
           "countries",
+          "wallets",
           "created_at",
           "updated_at"
         ],
@@ -1910,6 +2196,272 @@
           }
         },
         "title": "TripUpdate",
+        "type": "object"
+      },
+      "WalletBalanceOut": {
+        "description": "Wire representation of one wallet's activity in one currency.",
+        "properties": {
+          "balance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Balance"
+          },
+          "currency_code": {
+            "title": "Currency Code",
+            "type": "string"
+          },
+          "currency_id": {
+            "title": "Currency Id",
+            "type": "integer"
+          },
+          "received": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Received"
+          },
+          "sent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Sent"
+          },
+          "spent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Spent"
+          }
+        },
+        "required": [
+          "currency_code",
+          "currency_id",
+          "received",
+          "sent",
+          "spent",
+          "balance"
+        ],
+        "title": "WalletBalanceOut",
+        "type": "object"
+      },
+      "WalletCreate": {
+        "additionalProperties": false,
+        "description": "Request body for creating a wallet.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "person_id": {
+            "title": "Person Id",
+            "type": "integer"
+          },
+          "tracked": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracked"
+          }
+        },
+        "required": [
+          "person_id",
+          "name"
+        ],
+        "title": "WalletCreate",
+        "type": "object"
+      },
+      "WalletEnvelope": {
+        "description": "`{ \"wallet\": Wallet }`.",
+        "properties": {
+          "wallet": {
+            "$ref": "#/components/schemas/WalletOut"
+          }
+        },
+        "required": [
+          "wallet"
+        ],
+        "title": "WalletEnvelope",
+        "type": "object"
+      },
+      "WalletListEnvelope": {
+        "description": "`{ \"wallets\": [WalletReport] }`, the balances report - `GET /trips/{slug}/wallets`.",
+        "properties": {
+          "wallets": {
+            "items": {
+              "$ref": "#/components/schemas/WalletReportOut"
+            },
+            "title": "Wallets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "wallets"
+        ],
+        "title": "WalletListEnvelope",
+        "type": "object"
+      },
+      "WalletOut": {
+        "description": "Wire representation of a wallet, roster form: no balances.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "person_id": {
+            "title": "Person Id",
+            "type": "integer"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          },
+          "tracked": {
+            "title": "Tracked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "person_id",
+          "name",
+          "tracked",
+          "is_default",
+          "sort_order"
+        ],
+        "title": "WalletOut",
+        "type": "object"
+      },
+      "WalletReportOut": {
+        "description": "A wallet plus its per-currency balances - `[]` for an untracked wallet.",
+        "properties": {
+          "balances": {
+            "items": {
+              "$ref": "#/components/schemas/WalletBalanceOut"
+            },
+            "title": "Balances",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "person_id": {
+            "title": "Person Id",
+            "type": "integer"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          },
+          "tracked": {
+            "title": "Tracked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "person_id",
+          "name",
+          "tracked",
+          "is_default",
+          "sort_order",
+          "balances"
+        ],
+        "title": "WalletReportOut",
+        "type": "object"
+      },
+      "WalletUpdate": {
+        "additionalProperties": false,
+        "description": "Request body for partially updating a wallet.",
+        "properties": {
+          "is_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Default"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "sort_order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sort Order"
+          },
+          "tracked": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracked"
+          }
+        },
+        "title": "WalletUpdate",
         "type": "object"
       }
     }
@@ -4023,6 +4575,654 @@
         "summary": "Get Stats",
         "tags": [
           "reports"
+        ]
+      }
+    },
+    "/api/v1/trips/{slug}/transfers": {
+      "get": {
+        "description": "List a trip's wallet transfers, newest first.",
+        "operationId": "list_transfers_api_v1_trips__slug__transfers_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferListEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List Transfers",
+        "tags": [
+          "transfers"
+        ]
+      },
+      "post": {
+        "description": "Create a new transfer between two wallets.",
+        "operationId": "create_transfer_api_v1_trips__slug__transfers_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Create Transfer",
+        "tags": [
+          "transfers"
+        ]
+      }
+    },
+    "/api/v1/trips/{slug}/transfers/{transfer_id}": {
+      "delete": {
+        "description": "Delete a transfer from a trip.",
+        "operationId": "delete_transfer_api_v1_trips__slug__transfers__transfer_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "title": "Transfer Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Delete Transfer",
+        "tags": [
+          "transfers"
+        ]
+      },
+      "get": {
+        "description": "Get a single transfer by id.",
+        "operationId": "get_transfer_api_v1_trips__slug__transfers__transfer_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "title": "Transfer Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get Transfer",
+        "tags": [
+          "transfers"
+        ]
+      },
+      "patch": {
+        "description": "Update a transfer's fields.",
+        "operationId": "update_transfer_api_v1_trips__slug__transfers__transfer_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transfer_id",
+            "required": true,
+            "schema": {
+              "title": "Transfer Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Update Transfer",
+        "tags": [
+          "transfers"
+        ]
+      }
+    },
+    "/api/v1/trips/{slug}/wallets": {
+      "get": {
+        "description": "Get every wallet on the trip with its per-currency balances.",
+        "operationId": "list_wallets_api_v1_trips__slug__wallets_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletListEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List Wallets",
+        "tags": [
+          "wallets"
+        ]
+      },
+      "post": {
+        "description": "Add a new wallet, owned by one of the trip's people.",
+        "operationId": "create_wallet_api_v1_trips__slug__wallets_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WalletCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Create Wallet",
+        "tags": [
+          "wallets"
+        ]
+      }
+    },
+    "/api/v1/trips/{slug}/wallets/{wallet_id}": {
+      "delete": {
+        "description": "Delete a wallet from a trip.",
+        "operationId": "delete_wallet_api_v1_trips__slug__wallets__wallet_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wallet_id",
+            "required": true,
+            "schema": {
+              "title": "Wallet Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Delete Wallet",
+        "tags": [
+          "wallets"
+        ]
+      },
+      "patch": {
+        "description": "Update a wallet's fields.",
+        "operationId": "update_wallet_api_v1_trips__slug__wallets__wallet_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wallet_id",
+            "required": true,
+            "schema": {
+              "title": "Wallet Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WalletUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Update Wallet",
+        "tags": [
+          "wallets"
         ]
       }
     }

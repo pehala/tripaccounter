@@ -155,6 +155,41 @@ def country(countries):
 
 
 @pytest.fixture()
+def wallets(trip):
+    """List the trip's wallets: each person's default `Card`, in owner sort_order."""
+    return trip["wallets"]
+
+
+@pytest.fixture()
+def default_wallet_of(wallets):
+    """Return a function that finds a person's default wallet by person id."""
+
+    def _find(person_id):
+        return next(w for w in wallets if w["person_id"] == person_id and w["is_default"])
+
+    return _find
+
+
+@pytest.fixture()
+def transfer_body(default_wallet_of, people, currencies):
+    """Return a function that builds a valid transfer POST body, with overrides."""
+
+    def _build(**overrides):
+        body = {
+            "from_wallet_id": default_wallet_of(people[0]["id"])["id"],
+            "from_amount": "100.00",
+            "from_currency_id": currencies[0]["id"],
+            "to_wallet_id": default_wallet_of(people[1]["id"])["id"],
+            "occurred_at": "2026-09-14T12:00:00",
+            "note": None,
+        }
+        body.update(overrides)
+        return body
+
+    return _build
+
+
+@pytest.fixture()
 def item_body(trip, people, currencies, countries):
     """Return a function that builds a valid item POST body, with overrides."""
 

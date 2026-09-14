@@ -1,21 +1,62 @@
 """Compute per-currency balances and settle-up suggestions.
 
-SQL GROUP BY aggregates over `share_owed` and `line_item.amount_minor` — the
-client never sums a column.
+SQL GROUP BY aggregates over `share_owed`, `line_item.amount_minor` and
+`wallet_transfer` — the client never sums a column. A transfer only enters a
+person's `sent`/`received` (and so `net`) when it crosses owners: by the
+`cross_owner_exchange` rule such a transfer is always single-currency, so it
+adds equal and opposite hundredths and never needs a conversion to balance.
 """
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.db_views import share_owed_view
-from app.models import LineItem, Person, TripCurrency
+from app.models import LineItem, Person, TripCurrency, Wallet, WalletTransfer
 from app.schemas import BalanceBlockOut, BalancePersonOut, SuggestionOut
 from app.services import settle
 from app.services.money import AMOUNT_SCALE, MICRO_PER_MINOR, MICRO_SCALE, to_wire
 
 
+def _cross_owner_by_person(session: Session, trip_id: int, currency_id: int) -> tuple[dict, dict]:
+    """Return `({person_id: sent_minor}, {person_id: received_minor})` for cross-owner transfers.
+
+    Cross-owner transfers are single-currency (`cross_owner_exchange` forbids
+    otherwise), so filtering each side by its own currency column picks up
+    exactly the transfers that touch `currency_id` at all.
+    """
+    from_wallet = aliased(Wallet)
+    to_wallet = aliased(Wallet)
+    sent = dict(
+        session.execute(
+            select(from_wallet.person_id, func.sum(WalletTransfer.from_amount_minor))
+            .join(from_wallet, WalletTransfer.from_wallet_id == from_wallet.id)
+            .join(to_wallet, WalletTransfer.to_wallet_id == to_wallet.id)
+            .where(
+                WalletTransfer.trip_id == trip_id,
+                WalletTransfer.from_currency_id == currency_id,
+                from_wallet.person_id != to_wallet.person_id,
+            )
+            .group_by(from_wallet.person_id)
+        ).all()
+    )
+    received = dict(
+        session.execute(
+            select(to_wallet.person_id, func.sum(WalletTransfer.to_amount_minor))
+            .join(from_wallet, WalletTransfer.from_wallet_id == from_wallet.id)
+            .join(to_wallet, WalletTransfer.to_wallet_id == to_wallet.id)
+            .where(
+                WalletTransfer.trip_id == trip_id,
+                WalletTransfer.to_currency_id == currency_id,
+                from_wallet.person_id != to_wallet.person_id,
+            )
+            .group_by(to_wallet.person_id)
+        ).all()
+    )
+    return sent, received
+
+
 def compute_balances(session: Session, trip_id: int) -> list[BalanceBlockOut]:
-    """Return each currency's total spend, per-person paid/owed/net, and settle-up suggestions."""
+    """Return each currency's total spend, per-person balance fields, and settle-up suggestions."""
     currencies = (
         session.execute(
             select(TripCurrency)
@@ -39,7 +80,8 @@ def compute_balances(session: Session, trip_id: int) -> list[BalanceBlockOut]:
                 LineItem.trip_id == trip_id, LineItem.currency_id == currency.id
             )
         ).scalar_one()
-        if not total_spent_minor:
+        sent_minor, received_minor = _cross_owner_by_person(session, trip_id, currency.id)
+        if not total_spent_minor and not sent_minor and not received_minor:
             continue
 
         paid_minor = dict(
@@ -65,13 +107,17 @@ def compute_balances(session: Session, trip_id: int) -> list[BalanceBlockOut]:
         for person in people:
             paid = paid_minor.get(person.id, 0)
             owed = owed_micro.get(person.id, 0)
-            net = paid * MICRO_PER_MINOR - owed
+            sent = sent_minor.get(person.id, 0)
+            received = received_minor.get(person.id, 0)
+            net = paid * MICRO_PER_MINOR - owed + (sent - received) * MICRO_PER_MINOR
             net_micro[person.id] = net
             person_blocks.append(
                 BalancePersonOut(
                     person_id=person.id,
                     paid=to_wire(paid, AMOUNT_SCALE),
                     owed=to_wire(owed, MICRO_SCALE),
+                    sent=to_wire(sent, AMOUNT_SCALE),
+                    received=to_wire(received, AMOUNT_SCALE),
                     net=to_wire(net, MICRO_SCALE),
                 )
             )

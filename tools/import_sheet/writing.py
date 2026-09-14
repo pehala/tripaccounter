@@ -46,6 +46,8 @@ def apply(session, plan, trip):
 
     for planned in plan.items:
         currency = currencies[planned.currency_code]
+        payer = people[planned.payer]
+        wallet = roster.default_wallet(session, payer.id)
         body = ItemWrite(
             name=planned.name,
             note=planned.note,
@@ -67,7 +69,8 @@ def apply(session, plan, trip):
             occurred_at=body.occurred_at,
             currency_id=currency.id,
             amount_minor=to_hundredths(body.amount),
-            payer_id=people[planned.payer].id,
+            payer_id=payer.id,
+            wallet_id=wallet.id,
             country_id=countries[planned.country_code].id,
             split_mode=body.split_mode,
         )

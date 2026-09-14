@@ -1,15 +1,41 @@
-"""People / currencies / countries: the uniform CRUD validations."""
+"""People / currencies / countries / wallets: the uniform CRUD validations."""
 
 import re
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import ItemShare, LineItem, Person, Trip, TripCountry, TripCurrency
-from app.services.errors import DuplicateError, InUseError, InvalidCodeError
+from app.models import (
+    ItemShare,
+    LineItem,
+    Person,
+    Trip,
+    TripCountry,
+    TripCurrency,
+    Wallet,
+    WalletTransfer,
+)
+from app.services.errors import (
+    DuplicateError,
+    InUseError,
+    InvalidCodeError,
+    IsDefaultError,
+    RequiredError,
+    TooLongError,
+)
 from app.services.labels import PALETTE
 
 CODE_RE = re.compile(r"^[A-Za-z]{3}$")
+
+DEFAULT_WALLET_NAME = "Card"
+WALLET_NAME_MAX = 60
+
+
+def _validate_wallet_name(name: str) -> None:
+    if len(name.strip()) < 1:
+        raise RequiredError()
+    if len(name) > WALLET_NAME_MAX:
+        raise TooLongError(max=WALLET_NAME_MAX)
 
 
 # ---- Person ------------------------------------------------------------------
@@ -38,6 +64,7 @@ def create_person(
     )
     session.add(person)
     session.flush()
+    create_default_wallet(session, person)
     return person
 
 
@@ -65,7 +92,7 @@ def update_person(  # noqa: PLR0913, PLR0917
 
 
 def delete_person(session: Session, person: Person) -> None:
-    """Delete a person, raising if they still pay or share any item."""
+    """Delete a person, raising if they still pay/share any item or hold a wallet in a transfer."""
     referenced = session.execute(
         select(func.count()).select_from(LineItem).where(LineItem.payer_id == person.id)
     ).scalar_one()
@@ -76,6 +103,20 @@ def delete_person(session: Session, person: Person) -> None:
     ).scalar_one()
     if share_count:
         raise InUseError(count=share_count, name=person.name)
+    transfer_count = session.execute(
+        select(func.count())
+        .select_from(WalletTransfer)
+        .join(
+            Wallet,
+            or_(
+                WalletTransfer.from_wallet_id == Wallet.id,
+                WalletTransfer.to_wallet_id == Wallet.id,
+            ),
+        )
+        .where(Wallet.person_id == person.id)
+    ).scalar_one()
+    if transfer_count:
+        raise InUseError(count=transfer_count, name=person.name)
     session.delete(person)
     session.flush()
 
@@ -137,12 +178,24 @@ def update_currency(
 
 
 def delete_currency(session: Session, currency: TripCurrency) -> None:
-    """Delete a currency, raising if any item still uses it."""
+    """Delete a currency, raising if any item or transfer still uses it."""
     referenced = session.execute(
         select(func.count()).select_from(LineItem).where(LineItem.currency_id == currency.id)
     ).scalar_one()
     if referenced:
         raise InUseError(count=referenced, name=currency.code)
+    transfer_count = session.execute(
+        select(func.count())
+        .select_from(WalletTransfer)
+        .where(
+            or_(
+                WalletTransfer.from_currency_id == currency.id,
+                WalletTransfer.to_currency_id == currency.id,
+            )
+        )
+    ).scalar_one()
+    if transfer_count:
+        raise InUseError(count=transfer_count, name=currency.code)
     session.delete(currency)
     session.flush()
 
@@ -230,3 +283,112 @@ def country_item_counts(session: Session, trip_id: int) -> dict[int, int]:
         .group_by(LineItem.country_id)
     ).all()
     return dict(rows)
+
+
+# ---- Wallet ------------------------------------------------------------------
+
+
+def create_default_wallet(session: Session, person: Person) -> Wallet:
+    """Create a person's default wallet, `Card`, untracked - `roster.create_person`'s own doing.
+
+    The one seeded user-visible string in `app/` (WALLETS.md "Default wallet"),
+    alongside the server-assigned `initial` and ISO country names.
+    """
+    wallet = Wallet(
+        trip_id=person.trip_id,
+        person_id=person.id,
+        name=DEFAULT_WALLET_NAME,
+        tracked=False,
+        is_default=True,
+        sort_order=0,
+    )
+    session.add(wallet)
+    session.flush()
+    return wallet
+
+
+def default_wallet(session: Session, person_id: int) -> Wallet:
+    """Return a person's default wallet."""
+    return session.execute(
+        select(Wallet).where(Wallet.person_id == person_id, Wallet.is_default == True)  # noqa: E712
+    ).scalar_one()
+
+
+def create_wallet(
+    session: Session, trip: Trip, person: Person, name: str, tracked: bool | None
+) -> Wallet:
+    """Create a wallet for a person, raising on a missing/too-long/duplicate name."""
+    _validate_wallet_name(name)
+    exists = session.execute(
+        select(Wallet.id).where(Wallet.person_id == person.id, Wallet.name == name)
+    ).first()
+    if exists:
+        raise DuplicateError(name=name)
+
+    count = session.execute(
+        select(func.count()).select_from(Wallet).where(Wallet.person_id == person.id)
+    ).scalar_one()
+    wallet = Wallet(
+        trip_id=trip.id,
+        person_id=person.id,
+        name=name,
+        tracked=bool(tracked),
+        is_default=False,
+        sort_order=count,
+    )
+    session.add(wallet)
+    session.flush()
+    return wallet
+
+
+def update_wallet(  # noqa: PLR0913, PLR0917
+    session: Session, wallet: Wallet, name, tracked, is_default, sort_order
+) -> Wallet:
+    """Apply the given field updates to a wallet, raising on an invalid/duplicate name."""
+    if name is not None and name != wallet.name:
+        _validate_wallet_name(name)
+        exists = session.execute(
+            select(Wallet.id).where(
+                Wallet.person_id == wallet.person_id, Wallet.name == name, Wallet.id != wallet.id
+            )
+        ).first()
+        if exists:
+            raise DuplicateError(name=name)
+        wallet.name = name
+    if tracked is not None:
+        wallet.tracked = tracked
+    if is_default:
+        session.execute(
+            Wallet.__table__.update()
+            .where(Wallet.person_id == wallet.person_id)
+            .values(is_default=False)
+        )
+        wallet.is_default = True
+    if sort_order is not None:
+        wallet.sort_order = sort_order
+    session.flush()
+    return wallet
+
+
+def delete_wallet(session: Session, wallet: Wallet) -> None:
+    """Delete a wallet, raising if it is a person's default or still referenced."""
+    if wallet.is_default:
+        raise IsDefaultError()
+    item_count = session.execute(
+        select(func.count()).select_from(LineItem).where(LineItem.wallet_id == wallet.id)
+    ).scalar_one()
+    transfer_count = session.execute(
+        select(func.count())
+        .select_from(WalletTransfer)
+        .where(
+            or_(
+                WalletTransfer.from_wallet_id == wallet.id,
+                WalletTransfer.to_wallet_id == wallet.id,
+            )
+        )
+    ).scalar_one()
+    total = item_count + transfer_count
+    if total:
+        raise InUseError(count=total, name=wallet.name)
+    session.delete(wallet)
+    session.flush()
