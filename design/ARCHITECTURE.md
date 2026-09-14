@@ -166,9 +166,10 @@ flowchart LR
 exactly zero, and `Σ suggestions` is exactly zero. Both are asserted, from both sides.
 
 **No currency is ever converted server-side.** Balances and each currency's own
-statistics are per currency, full stop. The single conversion anywhere is the
-statistics page's Total section, a switch alongside the currencies that multiplies
-by rates the user typed into their own browser and only computes once every
+statistics are per currency, full stop. The only conversion anywhere is each page's
+own Total section — on both balances and statistics — a switch alongside the
+currencies that multiplies by rates the user typed into their own browser (shared
+between the two pages, one rate set per trip) and only computes once every
 currency has one — those rates are never sent here and never stored.
 
 ## 5. The contract seam

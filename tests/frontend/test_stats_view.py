@@ -18,8 +18,8 @@ OVERLAP_CAVEAT = (
 
 def expand(page, currency_id, group):
     """Open one stat section's collapse body."""
-    page.locator(f'[data-bs-target="#stat-{currency_id}-{group}-body"]').click()
-    page.locator(f"#stat-{currency_id}-{group}-body.show").wait_for()
+    page.locator(f'[data-bs-target="#sec-{currency_id}-{group}-body"]').click()
+    page.locator(f"#sec-{currency_id}-{group}-body.show").wait_for()
 
 
 @pytest.fixture
@@ -67,7 +67,7 @@ def test_overlap_caveat_is_inside_the_by_label_section(stats_page, fixture_data)
     isk = next(s for s in fixture_data["stats"]["stats"] if s["currency_code"] == "ISK")
     expand(stats_page, isk["currency_id"], "by_label")
 
-    by_label_section = stats_page.locator(f"#stat-{isk['currency_id']}-by_label")
+    by_label_section = stats_page.locator(f"#sec-{isk['currency_id']}-by_label")
     expect(by_label_section).to_contain_text(OVERLAP_CAVEAT)
 
 
@@ -95,7 +95,7 @@ def test_stat_sections_are_collapsed_by_default(stats_page, fixture_data):
     """A stat section's body is not visible until its header is clicked."""
     isk = next(s for s in fixture_data["stats"]["stats"] if s["currency_code"] == "ISK")
 
-    body = stats_page.locator(f"#stat-{isk['currency_id']}-by_label-body")
+    body = stats_page.locator(f"#sec-{isk['currency_id']}-by_label-body")
     expect(body).to_be_hidden()
     expand(stats_page, isk["currency_id"], "by_label")
     expect(body).to_be_visible()
@@ -110,7 +110,7 @@ def test_sidebar_link_jumps_to_currency_section(stats_page, fixture_data):
     eur = next(s for s in fixture_data["stats"]["stats"] if s["currency_code"] == "EUR")
     base_url = stats_page.url
 
-    stats_page.locator(".stats-nav a", has_text="EUR").click()
+    stats_page.locator(".side-nav a", has_text="EUR").click()
 
     expect(stats_page).to_have_url(f"{base_url}#cur-{eur['currency_id']}")
     expect(stats_page.locator(f"#cur-{eur['currency_id']}")).to_be_in_viewport()

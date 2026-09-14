@@ -154,10 +154,11 @@ erDiagram
 - **No currency conversion happens server-side, ever.** Balances are computed and
   displayed *per currency*. A trip with EUR + ISK produces two independent balance
   tables and two independent settlement suggestions.
-- The Statistics page's Total switch may show a converted sum across currencies, but
+- Both the Statistics and Balances pages' Total switch may show a converted sum (or,
+  for Balances, converted-and-netted settle-up suggestions) across currencies, but
   the rates are typed by the user in the browser, live **only** in the browser
-  (`localStorage`), and the Total shows nothing until every currency has one. Never
-  sent to the API, never stored in the DB.
+  (`localStorage`, shared between the two pages), and the Total shows nothing until
+  every currency has one. Never sent to the API, never stored in the DB.
 
 **Splits**
 - `split_mode = equal`: a row per selected person, `weight_scaled = 10000`,

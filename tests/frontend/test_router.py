@@ -11,7 +11,7 @@ from playwright.sync_api import expect
 def test_cold_load_with_tab_path_lands_directly_on_that_tab(balances_page):
     """A first paint at /balances renders the Balances tab active and never mounts the Items FAB."""
     expect(balances_page.locator(".nav-link.active")).to_have_text("Balances")
-    expect(balances_page.get_by_text("Balance", exact=False).first).to_be_visible()
+    expect(balances_page.locator(".balances-content").first).to_be_visible()
     assert balances_page.locator(".fab").count() == 0
 
 
@@ -31,7 +31,7 @@ def test_back_and_forward_switch_tabs_without_refetching_balances(
 
     items_page.go_forward()
     expect(items_page.locator(".nav-link.active")).to_have_text("Balances")
-    expect(items_page.get_by_text("Settle up").first).to_be_visible()
+    expect(items_page.locator(".balances-content").first).to_be_visible()
     assert len(balance_requests) == 1
 
 

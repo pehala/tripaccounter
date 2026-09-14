@@ -24,7 +24,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 # The landmarks are visible at every viewport width, so phone-width tests can use them.
 TABS = {
     "Items": ("items", lambda page: page.get_by_placeholder("filter by name or label")),
-    "Balances": ("balances", lambda page: page.get_by_text("Settle up").first),
+    "Balances": ("balances", lambda page: page.locator(".balances-content").first),
     "Statistics": ("stats", lambda page: page.locator(".stats-content").first),
     "Setup": ("setup", lambda page: page.get_by_text("People", exact=True)),
 }

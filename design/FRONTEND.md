@@ -37,7 +37,13 @@ static/
     ├── fmt.js            money(), signed(), parse(), date() — one cached
     │                     Intl.NumberFormat per locale
     ├── h.js              html = htm.bind(h)
-    ├── rates.js          the Total's typed rates, localStorage only, never sent
+    ├── rates.js          Total target currency + typed rates, one set per trip,
+    │                     shared by the balances and statistics pages — localStorage
+    │                     only, never sent
+    ├── convert.js        rateFor(), convert(), combineGroup(), combineSuggestions() —
+    │                     the money-combination math behind every page's Total
+    ├── collapse.js       toggleCollapse(), showCollapse() — tiny Bootstrap Collapse
+    │                     API wrappers, for a click that must also scroll natively
     ├── i18n/
     │   ├── index.js      LANGS, current locale, t(key, params), setLocale()
     │   ├── en.js         source catalog, flat dotted keys
@@ -46,7 +52,7 @@ static/
     │   ├── TripList.js  TripNew.js
     │   ├── Trip.js       header + nav-tabs, picks the tab view
     │   ├── Items.js      day groups, empty state, FAB
-    │   ├── Balances.js   one BalanceCard per currency
+    │   ├── Balances.js   per-currency + Total, collapsible sections, jump-to sidebar
     │   ├── Stats.js      per-currency + Total, collapsible sections, jump-to sidebar
     │   └── Setup.js      people / currencies / countries / labels / settings / export
     └── components/
@@ -54,11 +60,16 @@ static/
         │                   renders it once around whichever view is current
         ├── ThemeLangMenu.js  language + theme, lives only in Shell
         ├── Loading.js      one spinner, everywhere a store field isn't ready yet
+        ├── CollapsibleSection.js  one collapsed-by-default card; shares an
+        │                          accordion parent with its siblings
+        ├── SideNav.js      the jump-to sidebar + mobile pill row, shared by
+        │                   any page with a currency-first layout
+        ├── RatesForm.js    the "convert to" picker + one rate input per currency,
+        │                   shared by every page with a Total
         ├── ItemRow.js  DayGroup.js
         ├── ItemModal.js  add + edit, one component, two modes
         ├── SplitEditor.js  mode switch, weights/amounts, calls preview-split
         ├── LabelInput.js   space/comma-separated chips
-        ├── BalanceCard.js  diverging bars, settle-up list
         ├── Avatar.js  PersonChip.js  LabelBadge.js  Flash.js
         └── splitSummary.js  mode + weights → "equally, 4 ways" — UI wording, UI code
 ```
@@ -104,14 +115,17 @@ Note the dashed arrow: **a write is followed by a re-read, never by a local muta
    `stats.by_day` renders what the API gives, one row per day, no client-side
    arithmetic.
 
-   The exception is the statistics page's Total: a switch alongside the currencies
-   that multiplies each group total by a rate the user typed, **rounds each product to
-   two places**, and sums those rounded figures across currencies. It is all-or-
-   nothing — the Total renders nothing but the rate form until every currency has a
-   positive rate, never a partial sum quietly missing one. That sum is the only place
-   the frontend adds two amounts, and every operand is already the user's own
-   guesswork. The rates live in `localStorage`, are never posted back, and never come
-   near a balance, a settle-up figure, or any currency's own statistics.
+   The exception is each page's own Total — on both statistics and balances: a switch
+   alongside the currencies that multiplies each group total (statistics) or each
+   person's net and each settle-up suggestion (balances, netted by unordered person
+   pair) by a rate the user typed, **rounds each product to two places**, and sums
+   those rounded figures across currencies. It is all-or-nothing — the Total renders
+   nothing but the rate form until every currency has a positive rate, never a partial
+   sum quietly missing one. That sum is the only place the frontend adds two amounts,
+   and every operand is already the user's own guesswork. The rates live in
+   `localStorage`, shared between the two pages so one typed rate set serves both, are
+   never posted back, and never come near a currency's own balance, settle-up figure,
+   or statistics — only its Total.
 
 2. **No split computation.** `item.split.shares` arrives resolved: one entry per person
    in roster order, `owed: null` for anyone left out (render a dash), `owed: 0` meaning
