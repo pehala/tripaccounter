@@ -39,7 +39,12 @@ def test_no_horizontal_scroll_on_any_tab(phone_page, open_trip, tab):
 def test_fab_is_visible_at_phone_width(phone_items_page):
     """The floating add button shows at 400px, where the header 'Expense' button hides."""
     expect(phone_items_page.locator(".fab")).to_be_visible()
-    expect(phone_items_page.get_by_role("button", name="Expense")).to_be_hidden()
+    expect(phone_items_page.get_by_role("button", name="Expense", exact=True)).to_be_hidden()
+
+
+def test_fab_carries_an_accessible_name(phone_items_page):
+    """The icon-only FAB names itself for a screen reader, since its glyph carries no text."""
+    expect(phone_items_page.get_by_role("button", name="Add expense")).to_be_visible()
 
 
 def test_modal_is_full_screen_at_phone_width(phone_items_page):

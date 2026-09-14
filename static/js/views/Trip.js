@@ -67,13 +67,19 @@ export function Trip({ slug, tab }) {
           <h1 class="h5 mb-0">${trip.name}</h1>
           <small class="text-body-secondary">${subtitle}</small>
         </div>
-        <ul class="nav nav-tabs border-0 mt-2" role="tablist">
-          ${TABS.map(([key, labelKey]) => html`
-            <li key=${key} class="nav-item">
-              <a class="nav-link ${key === tab ? 'active' : ''}" href="/t/${slug}/${key}">${t(labelKey)}</a>
-            </li>
-          `)}
-        </ul>
+        <!-- Links doing real page loads, not ARIA tabs: aria-current marks the one
+             we are on, which is what a screen reader wants from a nav. -->
+        <nav class="mt-2" aria-label=${t('nav.sections')}>
+          <ul class="nav nav-tabs border-0">
+            ${TABS.map(([key, labelKey]) => html`
+              <li key=${key} class="nav-item">
+                <a class="nav-link ${key === tab ? 'active' : ''}"
+                   aria-current=${key === tab ? 'page' : null}
+                   href="/t/${slug}/${key}">${t(labelKey)}</a>
+              </li>
+            `)}
+          </ul>
+        </nav>
       </div>
     </header>
 

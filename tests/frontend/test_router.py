@@ -15,6 +15,16 @@ def test_cold_load_with_tab_path_lands_directly_on_that_tab(balances_page):
     assert balances_page.locator(".fab").count() == 0
 
 
+def test_active_tab_link_marks_itself_current(balances_page):
+    """The tab nav is links, not ARIA tabs, so the one we are on says aria-current=page."""
+    expect(balances_page.get_by_role("link", name="Balances")).to_have_attribute(
+        "aria-current", "page"
+    )
+    expect(balances_page.get_by_role("link", name="Items")).not_to_have_attribute(
+        "aria-current", "page"
+    )
+
+
 def test_back_and_forward_switch_tabs_without_refetching_balances(
     items_page, open_tab, count_requests
 ):
