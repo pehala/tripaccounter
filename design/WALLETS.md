@@ -422,7 +422,7 @@ Each step leaves `make test_backend` green; `make lint` is green from step 6 on 
 four error codes, their catalog keys and their `API.md` rows land together).
 
 1. **Docs**: fold §2–§3 into `ERD.md`, `API.md`, `DECISIONS.md`.
-2. **Models + errors + frozen `0001`.** `uv run alembic check` clean; Story 7 passes.
+2. **Models + errors + frozen `0001`.** `uv run alembic check` clean — that is the whole migration test; CI runs it.
 3. **Roster + wallets CRUD + `TripOut.wallets`**, `seed.py`, import tool. `make openapi`.
 4. **Items `wallet_id`**, CSV header.
 5. **Transfers** router, items envelope, JSON export.
@@ -542,19 +542,6 @@ insertion order).
 existing pattern in `test_import_sheet.py`), read back over `client`: every item's
 `wallet_id` is its payer's `Card`, `GET /wallets` lists two `Card`s with `balances:
 []`, `GET /items` has `transfers: []`.
-
-**Story 7 — the frozen migration is the schema.** No database file, no fixture on
-disk: the `engine` fixture already builds every test database by running
-`command.upgrade(cfg, "head")` on an in-memory SQLite. This story asserts that what
-`0001` builds is exactly what the models describe — `alembic.autogenerate.
-compare_metadata(MigrationContext, SQLModel.metadata)` returns an empty list on the
-migrated connection (the same comparison CI's `alembic check` makes, now inside the
-suite so it fails locally first). Then `downgrade base` followed by `upgrade head`
-on the same connection leaves the inspector's table set, the `share_owed` view and
-`compare_metadata` unchanged — the frozen file is reversible. Finally a trip created
-through `POST /trips` on that database has one `Card` per person and an item posted
-without `wallet_id` lands on the payer's `Card` — the seeded default is a property of
-the write path, not of any migration step.
 
 ### 9.2 UI flows (mock API)
 
