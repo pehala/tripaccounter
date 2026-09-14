@@ -8,7 +8,7 @@ export default {
   'nav.stats': 'Statistics',
   'nav.setup': 'Setup',
 
-  'lang.menu': 'Language · Jazyk',
+  'settings.menu': 'Settings',
   'lang.en': 'English',
   'lang.cs': 'Čeština',
   'theme.dark': 'Dark mode',
@@ -18,6 +18,7 @@ export default {
   'header.people.other': '{n} people',
 
   'trips.title': 'Trips',
+  'trips.all': 'All trips',
   'trips.empty': 'No trips yet.',
   'trips.new': 'New trip',
 

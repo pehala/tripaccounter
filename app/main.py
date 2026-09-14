@@ -192,6 +192,7 @@ def create_app() -> FastAPI:
     app.add_exception_handler(Exception, handle_unexpected)
 
     app.add_api_route("/", index_root, methods=["GET"], include_in_schema=False)
+    app.add_api_route("/trips/new", index_root, methods=["GET"], include_in_schema=False)
     app.add_api_route("/t/{slug}", index_trip, methods=["GET"], include_in_schema=False)
     app.add_api_route("/t/{slug}/{tab}", index_trip, methods=["GET"], include_in_schema=False)
 
