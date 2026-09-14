@@ -41,7 +41,12 @@ COLLECTION_OPERATIONS = (
     ("PATCH", (ID_SEGMENT,), "update"),
     ("DELETE", (ID_SEGMENT,), "delete"),
 )
-CONTENT_TYPES = {".html": "text/html", ".css": "text/css", ".js": "text/javascript"}
+CONTENT_TYPES = {
+    ".html": "text/html",
+    ".css": "text/css",
+    ".js": "text/javascript",
+    ".svg": "image/svg+xml",
+}
 INDEX_PATHS = ("/", "/trips/new")
 
 Response = tuple[int, Any]

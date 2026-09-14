@@ -275,6 +275,7 @@ def test_patch_on_a_multi_key_envelope_is_refused_at_build():
         pytest.param("/t/anything", 200, "text/html", id="trip-page"),
         pytest.param("/trips/new", 200, "text/html", id="new-trip-page"),
         pytest.param("/js/api.js", 200, "text/javascript", id="module"),
+        pytest.param("/favicon.svg", 200, "image/svg+xml", id="svg-asset"),
         pytest.param("/nope.js", 404, "application/json", id="missing"),
     ],
 )
