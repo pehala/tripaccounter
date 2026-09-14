@@ -73,9 +73,7 @@ make install         # uv sync --frozen, prod deps only
 make install_dev     # uv sync --frozen --group dev + chromium + lefthook
 make start_server     # production: backend + static on :8000, no reload
 make start_dev_server # backend + static on :8000, reload
-make test_backend    # pytest tests/backend -q
-make test_frontend   # playwright against fixtures
-make test_tools      # the mock API engine
+make test            # everything: tests/backend, tests/frontend, tests/tools
 make lint            # ruff check + format check + uv lock --check
 make openapi         # regenerate the committed openapi.json from app.openapi()
 make openapi-check   # what CI runs: fails if that file is stale

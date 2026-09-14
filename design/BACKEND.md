@@ -200,7 +200,7 @@ every change under `tests/`.
 make install_dev     # uv sync + chromium + lefthook hooks
 make migrate seed    # dev.db with the demo trip
 make start_dev_server
-make test_backend
+make test
 make openapi         # regenerate the committed spec after a shape change
 ```
 
