@@ -36,10 +36,10 @@ seed:            ## put the demo trip in the dev DB
 test: test_backend test_frontend test_tools   ## everything
 
 test_backend:    ## pytest tests/backend
-	$(RUN) pytest tests/backend -q -n 4
+	$(RUN) pytest tests/backend -q
 
 test_frontend:   ## playwright suite against fixtures. No DB, no app.
-	$(RUN) pytest tests/frontend -q -n 4 $(PW)
+	$(RUN) pytest tests/frontend -q $(PW)
 
 test_tools:      ## the test tooling itself: the mock API engine
 	$(RUN) pytest tests/tools -q
