@@ -3,8 +3,12 @@
         test_backend test_frontend test_tools lint fmt lock-check migrate migrate-check \
         migration openapi openapi-check clean
 
-PW := --browser chromium --tracing retain-on-failure \
-      --screenshot only-on-failure --output test-results
+# Traces are recorded for every test and cost about half the suite's CPU, so they
+# are opt-in: `make test_frontend TRACE=1`.
+PW := --browser chromium
+ifdef TRACE
+PW += --tracing retain-on-failure --screenshot only-on-failure --output test-results
+endif
 
 FILES ?= .
 
