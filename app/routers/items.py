@@ -7,9 +7,19 @@ from sqlalchemy import func, select
 
 from app.clock import ClockDep
 from app.deps import SessionDep, TripDep
-from app.models import ItemShare, LineItem, Person, TripCountry, TripCurrency, active_roster_ids
+from app.models import (
+    ItemShare,
+    LineItem,
+    Person,
+    TripCountry,
+    TripCurrency,
+    Wallet,
+    WalletTransfer,
+    active_roster_ids,
+)
 from app.schemas import (
     ITEM_LOAD_OPTIONS,
+    TRANSFER_LOAD_OPTIONS,
     DayCurrencyTotalOut,
     DayTotalOut,
     ItemEnvelope,
@@ -18,9 +28,10 @@ from app.schemas import (
     ItemWrite,
     PreviewSplitOut,
     PreviewSplitRequest,
+    TransferOut,
     error_responses,
 )
-from app.services import geo, splits
+from app.services import geo, roster, splits
 from app.services.errors import (
     FieldError,
     InactiveError,
@@ -30,6 +41,7 @@ from app.services.errors import (
     RequiredError,
     TooLongError,
     ValidationError,
+    WalletOwnerMismatchError,
 )
 from app.services.labels import release_item_labels, set_item_labels
 from app.services.money import AMOUNT_SCALE, to_hundredths, to_wire
@@ -54,8 +66,8 @@ def _validate_name(name: str | None, *, required: bool) -> FieldError | None:
     return None
 
 
-def _validate_refs(  # noqa: PLR0913, PLR0912
-    trip, currency_id, payer_id, country_id, session, *, creating: bool
+def _validate_refs(  # noqa: PLR0913, PLR0912, PLR0917
+    trip, currency_id, payer_id, country_id, wallet_id, session, *, creating: bool
 ) -> dict:
     fields: dict[str, FieldError] = {}
 
@@ -85,7 +97,27 @@ def _validate_refs(  # noqa: PLR0913, PLR0912
         if country is None or country.trip_id != trip.id:
             fields["country_id"] = NotInTripError()
 
+    if wallet_id is not None:
+        wallet = session.get(Wallet, wallet_id)
+        if wallet is None or wallet.trip_id != trip.id:
+            fields["wallet_id"] = NotInTripError()
+
     return fields
+
+
+def _resolve_wallet_id(trip, session: SessionDep, wallet_id, payer_id: int) -> int:
+    """Resolve the wallet an item write settles on: the one given, or the payer's default.
+
+    Raises `wallet_owner_mismatch` if the given wallet belongs to someone else.
+    Only called once `_validate_refs` has already confirmed `wallet_id` (if any)
+    exists in this trip and `payer_id` names an active person in it.
+    """
+    if wallet_id is None:
+        return roster.default_wallet(session, payer_id).id
+    wallet = session.get(Wallet, wallet_id)
+    if wallet.person_id != payer_id:
+        raise ValidationError({"wallet_id": WalletOwnerMismatchError()})
+    return wallet.id
 
 
 def _map_url_str(value) -> str | None:
@@ -207,9 +239,21 @@ def list_items(trip: TripDep, session: SessionDep):
             )
         )
 
+    transfer_rows = (
+        session.execute(
+            select(WalletTransfer)
+            .where(WalletTransfer.trip_id == trip.id)
+            .options(*TRANSFER_LOAD_OPTIONS)
+            .order_by(WalletTransfer.occurred_at.desc(), WalletTransfer.id.desc())
+        )
+        .scalars()
+        .all()
+    )
+
     return {
         "items": [ItemOut.from_item(item, roster_ids) for item in items],
         "day_totals": [DayTotalOut(date=day, totals=totals) for day, totals in day_totals.items()],
+        "transfers": [TransferOut.from_transfer(row) for row in transfer_rows],
     }
 
 
@@ -238,11 +282,19 @@ def create_item(body: ItemWrite, trip: TripDep, session: SessionDep, clock: Cloc
         fields["amount"] = InvalidAmountError()
     fields.update(
         _validate_refs(
-            trip, body.currency_id, body.payer_id, body.country_id, session, creating=True
+            trip,
+            body.currency_id,
+            body.payer_id,
+            body.country_id,
+            body.wallet_id,
+            session,
+            creating=True,
         )
     )
     if fields:
         raise ValidationError(fields)
+
+    wallet_id = _resolve_wallet_id(trip, session, body.wallet_id, body.payer_id)
 
     currency = session.get(TripCurrency, body.currency_id)
     mode = body.split_mode or "equal"
@@ -268,6 +320,7 @@ def create_item(body: ItemWrite, trip: TripDep, session: SessionDep, clock: Cloc
         amount_minor=to_hundredths(body.amount),
         payer_id=body.payer_id,
         country_id=body.country_id,
+        wallet_id=wallet_id,
         map_url=map_url,
         lat=lat,
         lon=lon,
@@ -298,7 +351,7 @@ def create_item(body: ItemWrite, trip: TripDep, session: SessionDep, clock: Cloc
     response_model=ItemEnvelope,
     responses=error_responses(400, 404, 422),
 )
-def update_item(item_id: int, body: ItemWrite, trip: TripDep, session: SessionDep):  # noqa: PLR0912
+def update_item(item_id: int, body: ItemWrite, trip: TripDep, session: SessionDep):  # noqa: PLR0912, PLR0915
     """Update an item's fields, and its shares if the split changed."""
     item = _get_item(trip, item_id, session)
 
@@ -308,11 +361,21 @@ def update_item(item_id: int, body: ItemWrite, trip: TripDep, session: SessionDe
         fields["name"] = name_error
     fields.update(
         _validate_refs(
-            trip, body.currency_id, body.payer_id, body.country_id, session, creating=False
+            trip,
+            body.currency_id,
+            body.payer_id,
+            body.country_id,
+            body.wallet_id,
+            session,
+            creating=False,
         )
     )
     if fields:
         raise ValidationError(fields)
+
+    new_payer_id = body.payer_id if body.payer_id is not None else item.payer_id
+    if body.wallet_id is not None or body.payer_id is not None:
+        item.wallet_id = _resolve_wallet_id(trip, session, body.wallet_id, new_payer_id)
 
     if body.name is not None:
         item.name = body.name

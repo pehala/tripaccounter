@@ -95,10 +95,12 @@ def test_total_combines_nets_once_every_currency_has_a_rate(balances_page, fixtu
 def test_opposite_direction_suggestions_net_to_one_line(balances_page):
     """The same pair owing each other in opposite directions across currencies nets to one line.
 
-    In the fixture, ISK has Ann (2) owing Eva (4) 34003.57; EUR and DKK both have
-    Eva (4) owing Ann (2) instead (13.33 and 120). With every rate set to 1, the
-    combined pair nets to Ann owing Eva 34003.57 - 13.33 - 120 = 33870.24 — one
-    line, in the direction the net favors, not two lines pointing both ways.
+    In the fixture, ISK has Ann (2) owing Eva (4) 29003.57 (Ann's ISK debt is lower
+    than her `owed` alone, since her wallet sent 5000 ISK to Bob's — WALLETS.md §5);
+    EUR and DKK both have Eva (4) owing Ann (2) instead (13.33 and 120). With every
+    rate set to 1, the combined pair nets to Ann owing Eva
+    29003.57 - 13.33 - 120 = 28870.24 — one line, in the direction the net favors,
+    not two lines pointing both ways.
 
     Settle-up is open by default, so no expand click is needed.
     """
@@ -108,7 +110,7 @@ def test_opposite_direction_suggestions_net_to_one_line(balances_page):
     ann_eva_rows = rows.filter(has_text="Ann").filter(has_text="Eva")
 
     expect(ann_eva_rows).to_have_count(1)
-    expect(ann_eva_rows.first).to_contain_text(fmt_money(balances_page, 33870.24))
+    expect(ann_eva_rows.first).to_contain_text(fmt_money(balances_page, 28870.24))
 
 
 @pytest.fixture

@@ -61,8 +61,8 @@ def test_one_net_section_and_one_settle_up_section_per_currency(
     ("currency_code", "name", "expected"),
     [
         pytest.param("ISK", "Petr", "-15,603.57", id="isk-petr-debit"),
-        pytest.param("ISK", "Ann", "-34,003.57", id="isk-ann-debit"),
-        pytest.param("ISK", "Bob", "-26,103.57", id="isk-bob-debit"),
+        pytest.param("ISK", "Ann", "-29,003.57", id="isk-ann-debit"),
+        pytest.param("ISK", "Bob", "-31,103.57", id="isk-bob-debit"),
         pytest.param("ISK", "Eva", "+75,710.71", id="isk-eva-credit"),
         pytest.param("EUR", "Petr", "-13.33", id="eur-petr-debit"),
         pytest.param("EUR", "Ann", "+26.67", id="eur-ann-credit"),
@@ -82,7 +82,7 @@ def test_net_value_is_signed_and_trimmed_to_two_places(person_row, currency_code
 @pytest.mark.parametrize(
     ("currency_code", "transfers"),
     [
-        pytest.param("ISK", [("Ann", "Eva"), ("Bob", "Eva"), ("Petr", "Eva")], id="isk"),
+        pytest.param("ISK", [("Bob", "Eva"), ("Ann", "Eva"), ("Petr", "Eva")], id="isk"),
         pytest.param("EUR", [("Petr", "Ann"), ("Eva", "Ann")], id="eur"),
         pytest.param("DKK", [("Petr", "Ann"), ("Bob", "Ann"), ("Eva", "Ann")], id="dkk"),
     ],

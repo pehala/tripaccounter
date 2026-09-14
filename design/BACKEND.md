@@ -34,15 +34,19 @@ app/
 │   │                   the greedy plan. THE one place money is rounded.
 │   ├── balances.py     per-currency paid/owed/net via SQL aggregates
 │   ├── stats.py        by_label / by_country / by_person / by_day, per currency
-│   ├── roster.py       people / currencies / countries CRUD + the in-use guards
+│   ├── roster.py       people / currencies / countries / wallets CRUD + the
+│   │                   in-use guards; `create_person` also seeds the default `Card`
+│   ├── wallets.py       wallet_balances(): received/sent/spent per tracked wallet
+│   ├── transfers.py     the plain/exchange resolve + validate rules for a transfer
 │   ├── labels.py       normalize, get-or-create, use_count
 │   ├── countries.py    flag from ISO code
 │   ├── slugs.py        slugify + collision suffix
 │   ├── geo.py          parse lat/lon out of a maps URL when not given
-│   ├── export.py       CSV (one row per share) and JSON (whole trip)
+│   ├── export.py       CSV (one row per share) and JSON (whole trip + transfers)
 │   └── errors.py       the {code, params} catalog. No text. Depends on nothing.
 └── routers/
     ├── trips.py  items.py  people.py  currencies.py  countries.py  labels.py
+    ├── wallets.py  transfers.py
     ├── reports.py      balances + stats
     └── export.py
 ```
@@ -180,7 +184,9 @@ lives, which is rarely where the code that answers it lives.
 | `test_splits.py` | every split mode end to end, roster padding, `0` vs `null`, `preview-split` matching a saved item byte for byte |
 | `test_roster.py` | `/people`, `/currencies`, `/countries` — the uniform CRUD shape, `409 duplicate`, `409 in_use`, `active: false` |
 | `test_labels.py` | auto-create, case-folding, the whitespace rejection, `use_count`, suggestion order |
-| `test_balances.py` | `net == paid − owed`, the zero-sum bound, suggestions replayed to prove they settle |
+| `test_balances.py` | `net == paid − owed + sent − received`, the zero-sum bound, suggestions replayed to prove they settle |
+| `test_wallets.py` | the wallet balances report — `received/sent/spent`, the overcharge sign, untracked `[]`, currency order |
+| `test_transfers.py` | transfer CRUD, the plain/exchange mirroring rule, `same_wallet`/`cross_owner_exchange`, exclusion from spend |
 | `test_stats.py` | group totals against the trip total, the deliberate `by_label` overlap, `by_person` as owed |
 | `test_export.py` | both formats, the pinned CSV header, an empty trip |
 | `test_validation.py` | the `API.md` §4 table, row by row, each as a real request |

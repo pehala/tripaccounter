@@ -1,15 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { html } from '../h.js';
 import { api } from '../api.js';
-import { reload } from '../store.js';
+import { reload, invalidateMoneyViews } from '../store.js';
 import { t, getLocale } from '../i18n/index.js';
 import { parse, money, fmtParams, toInputValue, fromInputValue } from '../fmt.js';
 import { pushFlash } from './Flash.js';
 import { PersonChip } from './PersonChip.js';
 import { LabelInput } from './LabelInput.js';
 import { SplitEditor } from './SplitEditor.js';
+import { TransferFields } from './TransferFields.js';
 
-function initialState(item, trip) {
+function walletsFor(trip, personId) {
+  return (trip.wallets || []).filter((w) => w.person_id === personId);
+}
+
+function defaultWalletFor(trip, personId) {
+  return walletsFor(trip, personId).find((w) => w.is_default);
+}
+
+function initialItemState(item, trip) {
   if (item) {
     const included = new Set(item.split.shares.filter((s) => s.weight !== null).map((s) => s.person_id));
     const weights = {};
@@ -24,6 +33,7 @@ function initialState(item, trip) {
       amount: String(item.amount),
       currencyId: item.currency_id,
       payerId: item.payer_id,
+      walletId: item.wallet_id,
       countryId: item.country_id,
       occurredAt: toInputValue(item.occurred_at),
       labels: [...item.labels],
@@ -39,11 +49,13 @@ function initialState(item, trip) {
   }
   const primary = trip.currencies.find((c) => c.is_primary) || trip.currencies[0];
   const defaultCountry = trip.countries.find((c) => c.is_default) || trip.countries[0];
+  const payerId = trip.people.find((p) => p.active)?.id ?? null;
   return {
     name: '',
     amount: '',
     currencyId: primary?.id ?? null,
-    payerId: trip.people.find((p) => p.active)?.id ?? null,
+    payerId,
+    walletId: defaultWalletFor(trip, payerId)?.id ?? null,
     countryId: defaultCountry?.id ?? null,
     occurredAt: toInputValue(new Date().toISOString()),
     labels: [],
@@ -58,14 +70,47 @@ function initialState(item, trip) {
   };
 }
 
-export function ItemModal({ trip, labels, item, onClose }) {
+function initialTransferState(transfer, trip) {
+  if (transfer) {
+    return {
+      fromWalletId: transfer.from_wallet_id,
+      fromAmount: String(transfer.from_amount),
+      fromCurrencyId: transfer.from_currency_id,
+      toWalletId: transfer.to_wallet_id,
+      toAmount: String(transfer.to_amount),
+      toCurrencyId: transfer.to_currency_id,
+      toEdited: transfer.to_currency_id !== transfer.from_currency_id || transfer.to_amount !== transfer.from_amount,
+      occurredAt: toInputValue(transfer.occurred_at),
+      note: transfer.note ?? '',
+    };
+  }
+  const primary = trip.currencies.find((c) => c.is_primary) || trip.currencies[0];
+  const firstWallet = (trip.wallets || [])[0];
+  return {
+    fromWalletId: firstWallet?.id ?? null,
+    fromAmount: '',
+    fromCurrencyId: primary?.id ?? null,
+    toWalletId: null,
+    toAmount: '',
+    toCurrencyId: primary?.id ?? null,
+    toEdited: false,
+    occurredAt: toInputValue(new Date().toISOString()),
+    note: '',
+  };
+}
+
+export function ItemModal({ trip, labels, entry, onClose }) {
   const locale = getLocale();
   const modalRef = useRef(null);
   const bsRef = useRef(null);
-  const isEdit = Boolean(item);
+  const isEdit = Boolean(entry);
+  const item = isEdit && entry.kind === 'item' ? entry.row : null;
+  const transfer = isEdit && entry.kind === 'transfer' ? entry.row : null;
+  const [kind, setKind] = useState(isEdit && entry.kind === 'transfer' ? 'transfer' : 'item');
   const activePeople = useMemo(() => trip.people.filter((p) => p.active), [trip]);
 
-  const [state, setState] = useState(() => initialState(item, trip));
+  const [state, setState] = useState(() => initialItemState(item, trip));
+  const [tstate, setTState] = useState(() => initialTransferState(transfer, trip));
   const [fieldErrors, setFieldErrors] = useState({});
   const [previewFailed, setPreviewFailed] = useState(false);
   const [previewError, setPreviewError] = useState(null);
@@ -84,6 +129,7 @@ export function ItemModal({ trip, labels, item, onClose }) {
   }, []);
 
   function set(patch) { setState((s) => ({ ...s, ...patch })); }
+  function setT(patch) { setTState((s) => ({ ...s, ...patch })); }
 
   function splitBody() {
     const people = [...state.included].map((id) => ({ id }));
@@ -160,13 +206,18 @@ export function ItemModal({ trip, labels, item, onClose }) {
     firePreview({ currencyId });
   }
 
-  function buildBody() {
+  function payerChanged(personId) {
+    set({ payerId: personId, walletId: defaultWalletFor(trip, personId)?.id ?? null });
+  }
+
+  function buildItemBody() {
     const amount = parse(state.amount, locale);
     return {
       name: state.name.trim(),
       amount,
       currency_id: state.currencyId,
       payer_id: state.payerId,
+      wallet_id: state.walletId,
       country_id: state.countryId,
       occurred_at: fromInputValue(state.occurredAt),
       labels: state.labels,
@@ -178,20 +229,59 @@ export function ItemModal({ trip, labels, item, onClose }) {
     };
   }
 
+  function buildTransferBody() {
+    return {
+      from_wallet_id: tstate.fromWalletId,
+      from_amount: parse(tstate.fromAmount, locale),
+      from_currency_id: tstate.fromCurrencyId,
+      to_wallet_id: tstate.toWalletId,
+      to_amount: parse(tstate.toAmount, locale),
+      to_currency_id: tstate.toCurrencyId,
+      occurred_at: fromInputValue(tstate.occurredAt),
+      note: tstate.note.trim() || null,
+    };
+  }
+
+  function fromAmountChanged(e) {
+    const value = e.target.value;
+    setTState((s) => ({ ...s, fromAmount: value, toAmount: s.toEdited ? s.toAmount : value }));
+  }
+
+  function fromCurrencyChanged(e) {
+    const value = Number(e.target.value);
+    setTState((s) => ({ ...s, fromCurrencyId: value, toCurrencyId: s.toEdited ? s.toCurrencyId : value }));
+  }
+
+  function toAmountChanged(e) {
+    setT({ toAmount: e.target.value, toEdited: true });
+  }
+
+  function toCurrencyChanged(e) {
+    setT({ toCurrencyId: Number(e.target.value), toEdited: true });
+  }
+
   async function save(e, again) {
     e.preventDefault();
     const form = e.target.closest('form');
     if (form && !form.reportValidity()) return;
     setSaving(true);
     setFieldErrors({});
-    const body = buildBody();
-    const hadNewLabel = state.labels.some((name) => !labels.some((l) => l.name.toLowerCase() === name));
     try {
-      if (isEdit) await api.patch(`/trips/${trip.slug}/items/${item.id}`, body);
-      else await api.post(`/trips/${trip.slug}/items`, body);
-      await reload('items');
-      if (hadNewLabel) await reload('labels');
-      if (again && !isEdit) {
+      if (kind === 'item') {
+        const body = buildItemBody();
+        const hadNewLabel = state.labels.some((name) => !labels.some((l) => l.name.toLowerCase() === name));
+        if (isEdit) await api.patch(`/trips/${trip.slug}/items/${item.id}`, body);
+        else await api.post(`/trips/${trip.slug}/items`, body);
+        await reload('items');
+        if (hadNewLabel) await reload('labels');
+      } else {
+        const body = buildTransferBody();
+        if (isEdit) await api.patch(`/trips/${trip.slug}/transfers/${transfer.id}`, body);
+        else await api.post(`/trips/${trip.slug}/transfers`, body);
+        await reload('items');
+      }
+      invalidateMoneyViews();
+      if (again && !isEdit && kind === 'item') {
         set({ name: '', amount: '', labels: [], preview: null });
       } else {
         onClose();
@@ -208,10 +298,13 @@ export function ItemModal({ trip, labels, item, onClose }) {
   }
 
   async function remove() {
-    if (!window.confirm(t('item.delete_confirm'))) return;
+    const confirmMsg = kind === 'item' ? t('item.delete_confirm') : t('transfer.delete_confirm');
+    if (!window.confirm(confirmMsg)) return;
     try {
-      await api.del(`/trips/${trip.slug}/items/${item.id}`);
+      if (kind === 'item') await api.del(`/trips/${trip.slug}/items/${item.id}`);
+      else await api.del(`/trips/${trip.slug}/transfers/${transfer.id}`);
       await reload('items');
+      invalidateMoneyViews();
       onClose();
     } catch (err) {
       pushFlash(t('err.' + err.code, fmtParams(err.params, locale)));
@@ -224,19 +317,42 @@ export function ItemModal({ trip, labels, item, onClose }) {
     return html`<div class="invalid-feedback d-block">${t('err.' + err.code, fmtParams(err.params, locale))}</div>`;
   }
 
+  const title = isEdit
+    ? (kind === 'item' ? t('item.edit_title') : t('transfer.edit_title'))
+    : (kind === 'item' ? t('item.new_title') : t('transfer.new_title'));
+
   return html`
     <div class="modal fade" ref=${modalRef} tabindex="-1">
       <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
         <form class="modal-content" onSubmit=${(e) => save(e, false)}>
-          <div class="modal-header py-2 ${isEdit ? 'bg-warning-subtle border-warning-subtle' : ''}">
+          <div class="modal-header py-2 ${isEdit && kind === 'item' ? 'bg-warning-subtle border-warning-subtle' : ''}">
             <h2 class="modal-title h6 mb-0 d-flex align-items-center gap-2">
               <i class="bi ${isEdit ? 'bi-pencil' : 'bi-plus-circle'}"></i>
-              ${isEdit ? t('item.edit_title') : t('item.new_title')}
+              ${title}
             </h2>
+            ${!isEdit && html`
+              <div class="btn-group btn-group-sm ms-2" role="group">
+                <button type="button" class="btn ${kind === 'item' ? 'btn-primary' : 'btn-outline-primary'}"
+                        onClick=${() => setKind('item')}>${t('item.kind.expense')}</button>
+                <button type="button" class="btn ${kind === 'transfer' ? 'btn-primary' : 'btn-outline-primary'}"
+                        onClick=${() => setKind('transfer')}>${t('item.kind.transfer')}</button>
+              </div>
+            `}
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label=${t('action.close')}></button>
           </div>
 
           <div class="modal-body">
+            ${kind === 'transfer' && html`
+              <${TransferFields} trip=${trip} state=${tstate} fieldError=${fieldError}
+                                  onFromWallet=${(e) => setT({ fromWalletId: Number(e.target.value) })}
+                                  onFromAmount=${fromAmountChanged} onFromCurrency=${fromCurrencyChanged}
+                                  onToWallet=${(e) => setT({ toWalletId: Number(e.target.value) })}
+                                  onToAmount=${toAmountChanged} onToCurrency=${toCurrencyChanged}
+                                  onNote=${(e) => setT({ note: e.target.value })}
+                                  onOccurredAt=${(e) => setT({ occurredAt: e.target.value })} />
+            `}
+
+            ${kind === 'item' && html`
             <div class="mb-3">
               <input class="form-control form-control-lg ${fieldErrors.name ? 'is-invalid' : ''}" name="name"
                      placeholder=${t('item.name_placeholder')} autocomplete="off" required autofocus
@@ -265,9 +381,16 @@ export function ItemModal({ trip, labels, item, onClose }) {
             <div class="who d-flex gap-1 flex-wrap mb-3">
               ${activePeople.map((p) => html`
                 <${PersonChip} key=${p.id} person=${p} type="radio" name="payer_id" id="pay-${p.id}"
-                                checked=${state.payerId === p.id} onChange=${() => set({ payerId: p.id })} />
+                                checked=${state.payerId === p.id} onChange=${() => payerChanged(p.id)} />
               `)}
             </div>
+
+            <label class="form-label small mb-1">${t('item.wallet_label')}</label>
+            <select class="form-select mb-3 ${fieldErrors.wallet_id ? 'is-invalid' : ''}" name="wallet_id"
+                    value=${state.walletId ?? ''} onChange=${(e) => set({ walletId: Number(e.target.value) })}>
+              ${walletsFor(trip, state.payerId).map((w) => html`<option key=${w.id} value=${w.id}>${w.name}</option>`)}
+            </select>
+            ${fieldError('wallet_id')}
 
             <${SplitEditor} people=${activePeople} mode=${state.splitMode} onModeChange=${changeMode}
                             included=${state.included} onToggle=${toggleIncluded}
@@ -311,6 +434,7 @@ export function ItemModal({ trip, labels, item, onClose }) {
                 ${fieldError('lat')}${fieldError('lon')}
               </div>
             </div>
+            `}
           </div>
 
           <div class="modal-footer py-2">
@@ -322,7 +446,7 @@ export function ItemModal({ trip, labels, item, onClose }) {
               <button type="button" class="btn btn-link link-secondary text-decoration-none me-auto d-none d-sm-inline"
                       data-bs-dismiss="modal">${t('item.cancel')}</button>
             `}
-            ${!isEdit && html`
+            ${!isEdit && kind === 'item' && html`
               <button type="button" class="btn btn-outline-primary" disabled=${saving}
                       onClick=${(e) => save(e, true)}>${t('item.save_another')}</button>
             `}

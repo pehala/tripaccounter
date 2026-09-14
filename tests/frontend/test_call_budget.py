@@ -105,3 +105,18 @@ def test_saving_an_item_makes_exactly_two_calls(filled_new_item_modal, count_req
     expect(filled_new_item_modal).to_be_hidden()
 
     assert len(calls) == 2
+
+
+def test_saving_a_transfer_makes_exactly_two_calls(new_item_modal, count_requests):
+    """A transfer save is POST /transfers + the re-read GET /items — two calls, same as an item."""
+    new_item_modal.get_by_role("button", name="Transfer", exact=True).click()
+    selects = new_item_modal.locator("form select")
+    selects.nth(0).select_option("1")
+    new_item_modal.locator('input[inputmode="decimal"]').first.fill("20000")
+    selects.nth(2).select_option("5")
+    calls = count_requests(API_CALLS)
+
+    new_item_modal.get_by_role("button", name="Save", exact=True).click()
+    expect(new_item_modal).to_be_hidden()
+
+    assert len(calls) == 2

@@ -6,7 +6,17 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.models import ItemShare, Label, LineItem, Person, Trip, TripCountry, TripCurrency
+from app.models import (
+    ItemShare,
+    Label,
+    LineItem,
+    Person,
+    Trip,
+    TripCountry,
+    TripCurrency,
+    Wallet,
+    WalletTransfer,
+)
 
 
 def seed_demo(session: Session) -> Trip:
@@ -40,6 +50,36 @@ def seed_demo(session: Session) -> Trip:
         ),
     ]
     session.add_all(people)
+    session.flush()
+
+    wallets = [
+        Wallet(
+            id=1, trip_id=1, person_id=1, name="Card", tracked=False, is_default=True, sort_order=0
+        ),
+        Wallet(
+            id=2, trip_id=1, person_id=2, name="Card", tracked=False, is_default=True, sort_order=0
+        ),
+        Wallet(
+            id=3, trip_id=1, person_id=3, name="Card", tracked=False, is_default=True, sort_order=0
+        ),
+        Wallet(
+            id=4, trip_id=1, person_id=4, name="Card", tracked=False, is_default=True, sort_order=0
+        ),
+        Wallet(
+            id=5, trip_id=1, person_id=1, name="Cash", tracked=True, is_default=False, sort_order=1
+        ),
+        Wallet(
+            id=6,
+            trip_id=1,
+            person_id=2,
+            name="Envelope",
+            tracked=True,
+            is_default=False,
+            sort_order=1,
+        ),
+    ]
+    session.add_all(wallets)
+    session.flush()
 
     currencies = [
         TripCurrency(id=1, trip_id=1, code="ISK", symbol="kr", is_primary=True, sort_order=0),
@@ -83,6 +123,7 @@ def seed_demo(session: Session) -> Trip:
         currency_id,
         amount_minor,
         payer_id,
+        wallet_id,
         country_id,
         label_names,
         map_url,
@@ -100,6 +141,7 @@ def seed_demo(session: Session) -> Trip:
             currency_id=currency_id,
             amount_minor=amount_minor,
             payer_id=payer_id,
+            wallet_id=wallet_id,
             country_id=country_id,
             map_url=map_url,
             lat=lat,
@@ -131,6 +173,7 @@ def seed_demo(session: Session) -> Trip:
         1,
         1_840_000,
         1,
+        5,
         1,
         ["food", "restaurant"],
         "https://maps.app.goo.gl/Kx9mNq2",
@@ -150,6 +193,7 @@ def seed_demo(session: Session) -> Trip:
         datetime(2026, 9, 14, 11, 5, tzinfo=UTC),
         1,
         790_000,
+        3,
         3,
         1,
         ["fuel", "transport"],
@@ -171,6 +215,7 @@ def seed_demo(session: Session) -> Trip:
         2,
         4_000,
         2,
+        2,
         1,
         ["fun", "spa"],
         None,
@@ -185,6 +230,7 @@ def seed_demo(session: Session) -> Trip:
         datetime(2026, 9, 13, 16, 0, tzinfo=UTC),
         1,
         9_600_000,
+        4,
         4,
         1,
         ["lodging"],
@@ -206,6 +252,7 @@ def seed_demo(session: Session) -> Trip:
         3,
         48_000,
         2,
+        6,
         2,
         ["airport", "food"],
         None,
@@ -219,6 +266,49 @@ def seed_demo(session: Session) -> Trip:
             (4, 10000, None, False),
         ],
     )
+
+    transfers = [
+        # T1: Ann -> Bob, cross-owner, lands between item39 and item40.
+        WalletTransfer(
+            id=1,
+            trip_id=1,
+            occurred_at=datetime(2026, 9, 13, 18, 0, tzinfo=UTC),
+            from_wallet_id=2,
+            from_currency_id=1,
+            from_amount_minor=500_000,
+            to_wallet_id=3,
+            to_currency_id=1,
+            to_amount_minor=500_000,
+            note=None,
+        ),
+        # T2: Petr funds Cash from Card, lands between item41 and item42.
+        WalletTransfer(
+            id=2,
+            trip_id=1,
+            occurred_at=datetime(2026, 9, 14, 12, 0, tzinfo=UTC),
+            from_wallet_id=1,
+            from_currency_id=1,
+            from_amount_minor=2_000_000,
+            to_wallet_id=5,
+            to_currency_id=1,
+            to_amount_minor=2_000_000,
+            note=None,
+        ),
+        # T3: Petr exchanges inside Cash, lands between item38 and item39.
+        WalletTransfer(
+            id=3,
+            trip_id=1,
+            occurred_at=datetime(2026, 9, 13, 9, 0, tzinfo=UTC),
+            from_wallet_id=5,
+            from_currency_id=2,
+            from_amount_minor=2_000,
+            to_wallet_id=5,
+            to_currency_id=3,
+            to_amount_minor=15_000,
+            note=None,
+        ),
+    ]
+    session.add_all(transfers)
 
     session.flush()
     return trip

@@ -191,6 +191,30 @@ class InUseError(ConflictFieldError):
         super().__init__({"count": count, "name": name})
 
 
+class WalletOwnerMismatchError(FieldError):
+    """The wallet named on an item isn't owned by that item's payer."""
+
+    code = "wallet_owner_mismatch"
+
+
+class SameWalletError(FieldError):
+    """A transfer's two sides name the same wallet in the same currency."""
+
+    code = "same_wallet"
+
+
+class CrossOwnerExchangeError(FieldError):
+    """A transfer between two different people's wallets also changes currency."""
+
+    code = "cross_owner_exchange"
+
+
+class IsDefaultError(ConflictFieldError):
+    """The wallet is a person's default and can't be deleted while it holds that role."""
+
+    code = "is_default"
+
+
 class ApiError(Exception):
     """The whole `{error: {code, params, fields?}}` envelope, with its HTTP status.
 

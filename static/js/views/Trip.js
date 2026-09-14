@@ -5,6 +5,7 @@ import { t, getLocale } from '../i18n/index.js';
 import { dateRange } from '../fmt.js';
 import { Items } from './Items.js';
 import { Balances } from './Balances.js';
+import { Wallets } from './Wallets.js';
 import { Stats } from './Stats.js';
 import { Setup } from './Setup.js';
 import { Flash } from '../components/Flash.js';
@@ -13,6 +14,7 @@ import { Loading } from '../components/Loading.js';
 const TABS = [
   ['items', 'nav.items'],
   ['balances', 'nav.balances'],
+  ['wallets', 'nav.wallets'],
   ['stats', 'nav.stats'],
   ['setup', 'nav.setup'],
 ];
@@ -86,6 +88,7 @@ export function Trip({ slug, tab }) {
     <main class="container py-3" style="max-width:48rem">
       ${tab === 'items' && html`<${Items} />`}
       ${tab === 'balances' && html`<${Balances} />`}
+      ${tab === 'wallets' && html`<${Wallets} />`}
       ${tab === 'stats' && html`<${Stats} />`}
       ${tab === 'setup' && html`<${Setup} />`}
     </main>

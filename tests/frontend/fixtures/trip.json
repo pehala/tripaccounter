@@ -90,6 +90,20 @@
           "item_count": 1
         }
       ],
+      "wallets": [
+        {"id": 1, "person_id": 1, "name": "Card", "tracked": false, "is_default": true, "sort_order": 0, "balances": []},
+        {"id": 5, "person_id": 1, "name": "Cash", "tracked": true, "is_default": false, "sort_order": 1, "balances": [
+          {"currency_code": "ISK", "currency_id": 1, "received": 20000, "sent": 0, "spent": 18400, "balance": 1600},
+          {"currency_code": "EUR", "currency_id": 2, "received": 0, "sent": 20, "spent": 0, "balance": -20},
+          {"currency_code": "DKK", "currency_id": 3, "received": 150, "sent": 0, "spent": 0, "balance": 150}
+        ]},
+        {"id": 2, "person_id": 2, "name": "Card", "tracked": false, "is_default": true, "sort_order": 0, "balances": []},
+        {"id": 6, "person_id": 2, "name": "Envelope", "tracked": true, "is_default": false, "sort_order": 1, "balances": [
+          {"currency_code": "DKK", "currency_id": 3, "received": 0, "sent": 0, "spent": 480, "balance": -480}
+        ]},
+        {"id": 3, "person_id": 3, "name": "Card", "tracked": false, "is_default": true, "sort_order": 0, "balances": []},
+        {"id": 4, "person_id": 4, "name": "Card", "tracked": false, "is_default": true, "sort_order": 0, "balances": []}
+      ],
       "created_at": "2026-09-01T08:12:00Z",
       "updated_at": "2026-09-12T14:02:00Z"
     }
@@ -169,6 +183,7 @@
         "currency_id": 1,
         "amount": 18400,
         "payer_id": 1,
+        "wallet_id": 5,
         "country_id": 1,
         "labels": [
           "food",
@@ -214,6 +229,7 @@
         "currency_id": 1,
         "amount": 7900,
         "payer_id": 3,
+        "wallet_id": 3,
         "country_id": 1,
         "labels": [
           "fuel",
@@ -259,6 +275,7 @@
         "currency_id": 2,
         "amount": 40.0,
         "payer_id": 2,
+        "wallet_id": 2,
         "country_id": 1,
         "labels": [
           "fun",
@@ -304,6 +321,7 @@
         "currency_id": 1,
         "amount": 96000,
         "payer_id": 4,
+        "wallet_id": 4,
         "country_id": 1,
         "labels": [
           "lodging"
@@ -348,6 +366,7 @@
         "currency_id": 3,
         "amount": 480.0,
         "payer_id": 2,
+        "wallet_id": 6,
         "country_id": 2,
         "labels": [
           "airport",
@@ -405,6 +424,53 @@
           {"currency_code": "DKK", "currency_id": 3, "amount": 480.0}
         ]
       }
+    ],
+    "transfers": [
+      {
+        "id": 2,
+        "occurred_at": "2026-09-14T12:00:00Z",
+        "from_wallet_id": 1,
+        "from_amount": 20000,
+        "from_currency_id": 1,
+        "from_currency_code": "ISK",
+        "to_wallet_id": 5,
+        "to_amount": 20000,
+        "to_currency_id": 1,
+        "to_currency_code": "ISK",
+        "note": null,
+        "created_at": "2026-09-14T12:00:00Z",
+        "updated_at": "2026-09-14T12:00:00Z"
+      },
+      {
+        "id": 1,
+        "occurred_at": "2026-09-13T18:00:00Z",
+        "from_wallet_id": 2,
+        "from_amount": 5000,
+        "from_currency_id": 1,
+        "from_currency_code": "ISK",
+        "to_wallet_id": 3,
+        "to_amount": 5000,
+        "to_currency_id": 1,
+        "to_currency_code": "ISK",
+        "note": null,
+        "created_at": "2026-09-13T18:00:00Z",
+        "updated_at": "2026-09-13T18:00:00Z"
+      },
+      {
+        "id": 3,
+        "occurred_at": "2026-09-13T09:00:00Z",
+        "from_wallet_id": 5,
+        "from_amount": 20,
+        "from_currency_id": 2,
+        "from_currency_code": "EUR",
+        "to_wallet_id": 5,
+        "to_amount": 150,
+        "to_currency_id": 3,
+        "to_currency_code": "DKK",
+        "note": null,
+        "created_at": "2026-09-13T09:00:00Z",
+        "updated_at": "2026-09-13T09:00:00Z"
+      }
     ]
   },
   "balances": {
@@ -418,37 +484,45 @@
             "person_id": 1,
             "paid": 18400,
             "owed": 34003.571428,
+            "sent": 0,
+            "received": 0,
             "net": -15603.571428
           },
           {
             "person_id": 2,
             "paid": 0,
             "owed": 34003.571428,
-            "net": -34003.571428
+            "sent": 5000,
+            "received": 0,
+            "net": -29003.571428
           },
           {
             "person_id": 3,
             "paid": 7900,
             "owed": 34003.571428,
-            "net": -26103.571428
+            "sent": 0,
+            "received": 5000,
+            "net": -31103.571428
           },
           {
             "person_id": 4,
             "paid": 96000,
             "owed": 20289.285714,
+            "sent": 0,
+            "received": 0,
             "net": 75710.714286
           }
         ],
         "suggestions": [
           {
-            "from_person_id": 2,
-            "to_person_id": 4,
-            "amount": 34003.57
-          },
-          {
             "from_person_id": 3,
             "to_person_id": 4,
-            "amount": 26103.57
+            "amount": 31103.57
+          },
+          {
+            "from_person_id": 2,
+            "to_person_id": 4,
+            "amount": 29003.57
           },
           {
             "from_person_id": 1,
@@ -466,24 +540,32 @@
             "person_id": 1,
             "paid": 0,
             "owed": 13.333333,
+            "sent": 0,
+            "received": 0,
             "net": -13.333333
           },
           {
             "person_id": 2,
             "paid": 40,
             "owed": 13.333333,
+            "sent": 0,
+            "received": 0,
             "net": 26.666667
           },
           {
             "person_id": 3,
             "paid": 0,
             "owed": 0,
+            "sent": 0,
+            "received": 0,
             "net": 0
           },
           {
             "person_id": 4,
             "paid": 0,
             "owed": 13.333333,
+            "sent": 0,
+            "received": 0,
             "net": -13.333333
           }
         ],
@@ -509,24 +591,32 @@
             "person_id": 1,
             "paid": 0,
             "owed": 120,
+            "sent": 0,
+            "received": 0,
             "net": -120
           },
           {
             "person_id": 2,
             "paid": 480,
             "owed": 120,
+            "sent": 0,
+            "received": 0,
             "net": 360
           },
           {
             "person_id": 3,
             "paid": 0,
             "owed": 120,
+            "sent": 0,
+            "received": 0,
             "net": -120
           },
           {
             "person_id": 4,
             "paid": 0,
             "owed": 120,
+            "sent": 0,
+            "received": 0,
             "net": -120
           }
         ],
@@ -747,7 +837,18 @@
       "item": "item",
       "insert": "head",
       "defaults": {"currency_code": "ISK", "split": {"mode": "equal", "shares": []}},
-      "extra": {"day_totals": "#/items/day_totals"}
+      "extra": {"day_totals": "#/items/day_totals", "transfers": "#/items/transfers"}
+    },
+    "/api/v1/trips/iceland-2026/transfers": {
+      "collection": "#/items/transfers",
+      "item": "transfer",
+      "insert": "head",
+      "defaults": {"from_currency_code": "ISK", "to_currency_code": "ISK", "note": null}
+    },
+    "/api/v1/trips/iceland-2026/wallets": {
+      "collection": "#/trip/trip/wallets",
+      "item": "wallet",
+      "defaults": {"tracked": false, "is_default": false, "balances": []}
     },
     "/api/v1/trips/iceland-2026/items/preview-split": {
       "POST": {

@@ -23,7 +23,16 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 from sqlalchemy.orm import joinedload, selectinload
 
-from app.models import Label, LineItem, Person, Trip, TripCountry, TripCurrency
+from app.models import (
+    Label,
+    LineItem,
+    Person,
+    Trip,
+    TripCountry,
+    TripCurrency,
+    Wallet,
+    WalletTransfer,
+)
 from app.services.countries import flag_from_code
 from app.services.money import AMOUNT_SCALE, to_wire
 from app.services.parsing import ParseError, parse_amount, parse_coordinate, parse_weight
@@ -193,6 +202,23 @@ class LabelUpdate(Strict):
     name: LabelToken | None = None
 
 
+class WalletCreate(Strict):
+    """Request body for creating a wallet."""
+
+    person_id: int
+    name: str
+    tracked: bool | None = None
+
+
+class WalletUpdate(Strict):
+    """Request body for partially updating a wallet."""
+
+    name: str | None = None
+    tracked: bool | None = None
+    is_default: bool | None = None
+    sort_order: int | None = None
+
+
 class TripCreate(Strict):
     """Request body for creating a trip with its roster, currencies, and countries."""
 
@@ -233,6 +259,7 @@ class ItemWrite(Strict):
     currency_id: int | None = None
     payer_id: int | None = None
     country_id: int | None = None
+    wallet_id: int | None = None
     occurred_at: OccurredAt = None
     labels: list[LabelToken] | None = None
     map_url: MapUrl = None
@@ -246,6 +273,27 @@ class ItemWrite(Strict):
         if (self.lat is None) != (self.lon is None):
             raise _invalid_coordinates_error()
         return self
+
+
+# ---- Transfers -----------------------------------------------------------------
+# One write shape for create and update, like ItemWrite: every field optional
+# here, required-ness for a create and the plain/exchange mirroring rule for
+# `to_amount`/`to_currency_id` both live in app/services/transfers.py, since
+# the mirroring rule reads differently depending on whether a value is being
+# created fresh or is defaulting from a row already on file.
+
+
+class TransferWrite(Strict):
+    """Request body for creating or updating a wallet transfer."""
+
+    from_wallet_id: int | None = None
+    from_amount: Amount | None = None
+    from_currency_id: int | None = None
+    to_wallet_id: int | None = None
+    to_amount: Amount | None = None
+    to_currency_id: int | None = None
+    occurred_at: OccurredAt = None
+    note: str | None = None
 
 
 class PreviewSplitRequest(BaseModel):
@@ -290,6 +338,46 @@ class PersonOut(BaseModel):
             sort_order=person.sort_order,
             active=person.active,
         )
+
+
+class WalletOut(BaseModel):
+    """Wire representation of a wallet, roster form: no balances."""
+
+    id: int
+    person_id: int
+    name: str
+    tracked: bool
+    is_default: bool
+    sort_order: int
+
+    @classmethod
+    def from_wallet(cls, wallet: Wallet) -> "WalletOut":
+        """Build a WalletOut from a Wallet model instance."""
+        return cls(
+            id=wallet.id,
+            person_id=wallet.person_id,
+            name=wallet.name,
+            tracked=wallet.tracked,
+            is_default=wallet.is_default,
+            sort_order=wallet.sort_order,
+        )
+
+
+class WalletBalanceOut(BaseModel):
+    """Wire representation of one wallet's activity in one currency."""
+
+    currency_code: str
+    currency_id: int
+    received: Number
+    sent: Number
+    spent: Number
+    balance: Number
+
+
+class WalletReportOut(WalletOut):
+    """A wallet plus its per-currency balances - `[]` for an untracked wallet."""
+
+    balances: list[WalletBalanceOut]
 
 
 class CurrencyOut(BaseModel):
@@ -365,12 +453,14 @@ class TripOut(BaseModel):
     people: list[PersonOut]
     currencies: list[CurrencyOut]
     countries: list[CountryOut]
+    wallets: list[WalletOut]
     created_at: str
     updated_at: str
 
     @classmethod
     def from_trip(cls, trip: Trip, country_item_counts: dict[int, int]) -> "TripOut":
         """Build a TripOut from a Trip model instance and its country item counts."""
+        people = sorted(trip.people, key=lambda p: p.sort_order)
         return cls(
             id=trip.id,
             slug=trip.slug,
@@ -379,10 +469,15 @@ class TripOut(BaseModel):
             end_date=trip.end_date,
             note=trip.note,
             archived=trip.archived,
-            people=[PersonOut.from_person(p) for p in trip.people],
+            people=[PersonOut.from_person(p) for p in people],
             currencies=[CurrencyOut.from_currency(c) for c in trip.currencies],
             countries=[
                 CountryOut.from_country(c, country_item_counts.get(c.id, 0)) for c in trip.countries
+            ],
+            wallets=[
+                WalletOut.from_wallet(w)
+                for p in people
+                for w in sorted(p.wallets, key=lambda w: w.sort_order)
             ],
             created_at=_iso_z(trip.created_at),
             updated_at=_iso_z(trip.updated_at),
@@ -447,6 +542,13 @@ ITEM_LOAD_OPTIONS = (
     selectinload(LineItem.label_rows),
 )
 
+# `from_transfer` reads both currencies' codes; both are many-to-one, so
+# joining them doesn't multiply rows.
+TRANSFER_LOAD_OPTIONS = (
+    joinedload(WalletTransfer.from_currency),
+    joinedload(WalletTransfer.to_currency),
+)
+
 
 class ItemOut(BaseModel):
     """Wire representation of a line item."""
@@ -460,6 +562,7 @@ class ItemOut(BaseModel):
     amount: Number
     payer_id: int
     country_id: int
+    wallet_id: int
     labels: list[str]
     map_url: str | None
     lat: str | None
@@ -491,6 +594,7 @@ class ItemOut(BaseModel):
             amount=to_wire(item.amount_minor, AMOUNT_SCALE),
             payer_id=item.payer_id,
             country_id=item.country_id,
+            wallet_id=item.wallet_id,
             labels=sorted(label.name_norm for label in item.label_rows),
             map_url=item.map_url,
             lat=item.lat,
@@ -501,12 +605,51 @@ class ItemOut(BaseModel):
         )
 
 
+class TransferOut(BaseModel):
+    """Wire representation of a wallet transfer: both typed sides, no rate."""
+
+    id: int
+    occurred_at: str
+    from_wallet_id: int
+    from_amount: Number
+    from_currency_id: int
+    from_currency_code: str
+    to_wallet_id: int
+    to_amount: Number
+    to_currency_id: int
+    to_currency_code: str
+    note: str | None
+    created_at: str
+    updated_at: str
+
+    @classmethod
+    def from_transfer(cls, transfer: WalletTransfer) -> "TransferOut":
+        """Build a TransferOut from a WalletTransfer model instance."""
+        return cls(
+            id=transfer.id,
+            occurred_at=_iso_z(transfer.occurred_at),
+            from_wallet_id=transfer.from_wallet_id,
+            from_amount=to_wire(transfer.from_amount_minor, AMOUNT_SCALE),
+            from_currency_id=transfer.from_currency_id,
+            from_currency_code=transfer.from_currency.code,
+            to_wallet_id=transfer.to_wallet_id,
+            to_amount=to_wire(transfer.to_amount_minor, AMOUNT_SCALE),
+            to_currency_id=transfer.to_currency_id,
+            to_currency_code=transfer.to_currency.code,
+            note=transfer.note,
+            created_at=_iso_z(transfer.created_at),
+            updated_at=_iso_z(transfer.updated_at),
+        )
+
+
 class BalancePersonOut(BaseModel):
     """Wire representation of one person's balance in a currency."""
 
     person_id: int
     paid: Number
     owed: Number
+    sent: Number
+    received: Number
     net: Number
 
 
@@ -623,10 +766,11 @@ class DayTotalOut(BaseModel):
 
 
 class ItemListEnvelope(BaseModel):
-    """`{ "items": [Item], "day_totals": [DayTotal] }`."""
+    """`{ "items": [Item], "day_totals": [DayTotal], "transfers": [Transfer] }`."""
 
     items: list[ItemOut]
     day_totals: list[DayTotalOut]
+    transfers: list[TransferOut]
 
 
 class PersonEnvelope(BaseModel):
@@ -681,6 +825,30 @@ class BalancesEnvelope(BaseModel):
     """`{ "balances": [BalanceBlock] }`, one block per currency with any activity."""
 
     balances: list[BalanceBlockOut]
+
+
+class WalletEnvelope(BaseModel):
+    """`{ "wallet": Wallet }`."""
+
+    wallet: WalletOut
+
+
+class WalletListEnvelope(BaseModel):
+    """`{ "wallets": [WalletReport] }`, the balances report - `GET /trips/{slug}/wallets`."""
+
+    wallets: list[WalletReportOut]
+
+
+class TransferEnvelope(BaseModel):
+    """`{ "transfer": Transfer }`."""
+
+    transfer: TransferOut
+
+
+class TransferListEnvelope(BaseModel):
+    """`{ "transfers": [Transfer] }`."""
+
+    transfers: list[TransferOut]
 
 
 # ---- Errors -------------------------------------------------------------------

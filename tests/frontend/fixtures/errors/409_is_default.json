@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "conflict",
+    "params": {},
+    "fields": {
+      "id": { "code": "is_default", "params": {} }
+    }
+  }
+}

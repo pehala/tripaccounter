@@ -29,6 +29,7 @@ def test_save_posts_the_built_body_and_the_row_appears(items_page, new_item_moda
         "amount": "5000",
         "currency_id": 1,
         "payer_id": 2,
+        "wallet_id": 2,
         "country_id": 1,
         "occurred_at": body["occurred_at"],
         "labels": [],
@@ -101,6 +102,7 @@ def test_patch_sends_the_built_body_on_save(open_edit_modal, count_requests):
         "amount": "18400",
         "currency_id": 1,
         "payer_id": 1,
+        "wallet_id": 5,
         "country_id": 1,
         "occurred_at": body["occurred_at"],
         "labels": ["food", "restaurant"],
@@ -141,3 +143,25 @@ def test_save_and_add_another_keeps_modal_open_and_resets_only_name_and_amount(
     expect(new_item_modal).to_have_count(1)
     expect(new_item_modal.locator('input[name="amount"]')).to_have_value("")
     expect(new_item_modal.locator("#pay-3")).to_be_checked()
+
+
+# --- wallets ----------------------------------------------------------------
+
+
+def test_new_expense_wallet_select_defaults_to_the_payers_default_wallet(new_item_modal):
+    """A new expense preselects Petr's default wallet, Card, before anything is touched."""
+    expect(new_item_modal.locator('select[name="wallet_id"]')).to_have_value("1")
+
+
+def test_changing_payer_resets_the_wallet_select_to_the_new_payers_default(new_item_modal):
+    """Picking a different payer chip re-defaults the wallet select to their own Card."""
+    new_item_modal.locator('label[for="pay-2"]').click()
+
+    expect(new_item_modal.locator('select[name="wallet_id"]')).to_have_value("2")
+
+
+def test_edit_preselects_the_items_own_wallet(open_edit_modal):
+    """Dinner was paid from Petr's Cash, not his default Card - the select shows Cash."""
+    modal = open_edit_modal("Dinner at Messinn")
+
+    expect(modal.locator('select[name="wallet_id"]')).to_have_value("5")

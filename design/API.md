@@ -230,6 +230,44 @@ rounding; wording is the client's business.
 - `payer_id` need not appear with a non-null share: you can pay for a meal you did
   not eat.
 
+### Wallets
+A wallet is a pot of money a person spends from. Every person gets one on creation,
+named `Card`, **untracked** and **default** — the server's own doing, so a plain
+`curl` client that never mentions wallets still gets correct items. `is_default` is
+not just a form hint here: it is the wallet an item write falls back to when it
+omits `wallet_id`. A wallet is owned by exactly one person and only that person's
+own items and transfers can name it.
+
+**Tracked vs. untracked.** An untracked wallet (the default `Card`) has no balance
+and no limit — nothing is computed for it, `GET /trips/{slug}/wallets` answers `[]`
+for its `balances`. A tracked wallet's balance is `received − sent − spent` per
+currency it has touched; negative means it was overcharged (spent, or sent out,
+more than it ever received) — the client renders that sign, the server just reports
+it. `wallet_id` on an item must belong to that item's `payer_id`, or `422
+wallet_owner_mismatch`.
+
+### Transfers
+Money moved between two wallets, a different kind of row from an item: no country,
+no split, no label. **A plain transfer** carries one amount and one currency —
+`to_amount`/`to_currency_id` default to the from side when omitted, so a client
+posting a plain transfer only ever sends one amount. **An exchange** has two typed
+sides — what left the sending wallet, what arrived in the receiving one — with no
+stored rate; it is allowed only between two wallets **the same person owns** (`422
+cross_owner_exchange` otherwise), and the two wallets may be identical when the
+currencies differ (exchanging inside one mixed-currency wallet). The same wallet on
+both sides in the same currency is meaningless (`422 same_wallet`).
+
+`GET /trips/{slug}/items` carries transfers too, under `transfers`, sorted the same
+way items are (`occurred_at DESC, id DESC`) — a client merges the two lists by
+timestamp to paint one feed. A transfer is **movement, not spending**: `day_totals`,
+every statistics group and `total_spent` stay sums of items only.
+
+A transfer between two different people's wallets is the one case that changes who
+owes whom: it enters `sent`/`received` on the balances endpoint below and is always
+single-currency (an exchange cannot cross owners). A transfer between one person's
+own wallets, plain or exchange, moves nothing between people and never appears in
+`sent`/`received` — only in the wallet report above.
+
 ---
 
 ## 3. What the operations promise
@@ -275,22 +313,27 @@ arithmetic.
 
 ### Balances
 `paid` and `total_spent` are sums of typed amounts: two places. `owed` and `net` are
-sums over the share view: six places. `net = paid − owed`; positive means they are
-owed money. The sign is the data — the `+` in front of a credit is the client's
-choice.
+sums over the share view: six places. `sent`/`received` are typed sums (two places)
+of **cross-owner transfers only**, in that currency — a transfer between one
+person's own wallets never appears here (see Transfers, above). `net = paid − owed +
+sent − received`; positive means they are owed money. The sign is the data — the `+`
+in front of a credit is the client's choice.
 
 `suggestions` is **the one rounded output** in the whole system: nets rounded to
 hundredths with a zero-sum correction (largest rounding error adjusted first, ties by
 `sort_order`), then the greedy minimum-transfer plan — at most n−1 entries, amounts in
 hundredths, summing to zero exactly. Who hands whom how much at the end of the trip.
-**Nothing records that a transfer happened**: the trip is settled once, when it is
-over, and the app is not a ledger of paybacks.
+**Nothing records that a settle-up suggestion was paid**: the trip is settled once,
+when it is over, and the app is not a ledger of paybacks. A wallet transfer is
+different — it is a real, recorded movement of money, which is exactly why a
+cross-owner one is allowed to shift `net`.
 
-One block per currency that has any activity; a currency nobody spent is absent.
-**Nothing is converted between currencies on this endpoint.** The one client-side
-exception, shared with the statistics page, is this page's own Total switch: it
-converts and sums `people[].net`, and nets `suggestions[]` by unordered person pair,
-only once every currency has a positive typed rate — see "Statistics" below.
+One block per currency that has any item **or any cross-owner transfer**; a currency
+neither spent nor moved between people is absent. **Nothing is converted between
+currencies on this endpoint.** The one client-side exception, shared with the
+statistics page, is this page's own Total switch: it converts and sums
+`people[].net`, and nets `suggestions[]` by unordered person pair, only once every
+currency has a positive typed rate — see "Statistics" below.
 `|sum(people[].net)| < 0.00001` per currency — a client may assert it;
 `sum(suggestions)` balances exactly.
 
@@ -324,9 +367,11 @@ Total.
 ### Export
 `?format=csv|json`, both `Content-Disposition: attachment`. CSV is **share-grained** —
 one row per share, so a four-person item is four rows — and its header row is part of
-the contract, because something parses it. JSON carries the same `trip` and `items`
-blocks the API returns, field for field. An empty trip exports a header and nothing
-else, not a `500`.
+the contract, because something parses it: `item_id, name, occurred_at,
+currency_code, amount, payer_id, wallet_id, country_id, person_id, weight, owed`.
+Transfers are not share-grained and stay out of the CSV entirely. JSON carries the
+same `trip`, `items` and `transfers` blocks the API returns, field for field. An
+empty trip exports a header and nothing else, not a `500`.
 
 ---
 
@@ -356,6 +401,13 @@ rule, its code and its intended meaning sit in one row.
 | country `name` | unique per trip | `duplicate` | `{name}` | "Country already on the trip." |
 | any `DELETE` | row referenced | `in_use` | `{count, name}` | "Iceland is used by 4 items." |
 | trip `people` / `currencies` / `countries` | ≥ 1 each on create | `empty` | | "Add at least one." |
+| wallet `name` | 1–60 chars, unique per owner | `required` / `too_long` / `duplicate` | `{max}` / `{name}` | "Already a wallet by that name." |
+| wallet `person_id` | belongs to this trip | `not_in_trip` | | "Unknown person." |
+| item `wallet_id` | belongs to this trip; owned by `payer_id` | `not_in_trip` / `wallet_owner_mismatch` | | "That wallet isn't the payer's." |
+| `from_wallet_id`, `to_wallet_id` | required, in trip; same wallet only when the currencies differ | `required` / `not_in_trip` / `same_wallet` | | "Pick two different wallets." |
+| `from_amount`, `to_amount` | canonical grammar, `> 0` | `invalid_amount` | | "Enter an amount." |
+| `from_currency_id`, `to_currency_id` | in trip; differ only when both wallets have one owner | `not_in_trip` / `cross_owner_exchange` | | "Exchange only between your own wallets." |
+| `DELETE` default wallet | refused | `is_default` | | "Make another wallet the default first." |
 
 A new rule adds a row here, the code to `services/errors.py`, and an `err.<code>`
 key to every frontend catalog **in the same commit** — `test_errors.py` and

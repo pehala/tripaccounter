@@ -3,8 +3,9 @@
 from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import DefaultClause, engine_from_config, pool
 from sqlmodel import SQLModel
+from sqlmodel.sql.sqltypes import AutoString
 
 import app.models  # noqa: F401  registers all tables on SQLModel.metadata
 from alembic import context
@@ -20,17 +21,47 @@ if config.config_file_name is not None and Path(config.config_file_name).exists(
 config.set_main_option("sqlalchemy.url", Settings().database_url)
 target_metadata = SQLModel.metadata
 
+NOW_TEXTS = {"CURRENT_TIMESTAMP", "NOW"}
+
+
+def render_item(type_: str, obj: object, autogen_context) -> str | bool:
+    """Render two autogenerate outputs back to portable, import-free SQLAlchemy.
+
+    Left to itself, `--autogenerate` renders a `server_default=func.now()`
+    column as the *compiled* default text (`sa.text('CURRENT_TIMESTAMP')` on
+    SQLite, something else on Postgres) and SQLModel's `AutoString` as
+    `sqlmodel.sql.sqltypes.AutoString(...)`, which needs an `import sqlmodel`
+    no migration otherwise has. Rendering the default back to `sa.func.now()`
+    keeps it portable across dialects; rendering `AutoString` as the plain
+    `sa.String` it wraps drops the dependency on SQLModel's own import path -
+    a migration should outlive whichever ORM library wrote it.
+    """
+    if type_ == "type" and isinstance(obj, AutoString):
+        return f"sa.String(length={obj.length})" if obj.length else "sa.String()"
+    is_now_default = (
+        type_ == "server_default"
+        and isinstance(obj, DefaultClause)
+        and str(obj.arg).strip("()").upper() in NOW_TEXTS
+    )
+    if is_now_default:
+        return "sa.func.now()"
+    return False
+
 
 def run_migrations_offline() -> None:
     """Emit migration SQL against the configured URL without opening a connection."""
     url = config.get_main_option("sqlalchemy.url")
-    context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
+    context.configure(
+        url=url, target_metadata=target_metadata, literal_binds=True, render_item=render_item
+    )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def _do_run_migrations(connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection, target_metadata=target_metadata, render_item=render_item
+    )
     with context.begin_transaction():
         context.run_migrations()
 

@@ -121,3 +121,63 @@ def test_list_orders_are_sort_order(client, trip, people):
     response = client.get(f"/api/v1/trips/{trip['slug']}/people").json()["people"]
     assert [p["sort_order"] for p in response] == [0, 1, 2, 3]
     assert [p["name"] for p in response] == [p["name"] for p in people]
+
+
+def test_create_person_gets_a_default_card_wallet(client, trip):
+    """Every new person gets an untracked, default `Card` wallet, server-side."""
+    response = client.post(f"/api/v1/trips/{trip['slug']}/people", json={"name": "Frank"})
+    person_id = response.json()["person"]["id"]
+
+    updated_trip = client.get(f"/api/v1/trips/{trip['slug']}").json()["trip"]
+    franks_wallets = [w for w in updated_trip["wallets"] if w["person_id"] == person_id]
+
+    assert len(franks_wallets) == 1
+    assert franks_wallets[0] == {
+        "id": franks_wallets[0]["id"],
+        "person_id": person_id,
+        "name": "Card",
+        "tracked": False,
+        "is_default": True,
+        "sort_order": 0,
+    }
+
+
+def test_delete_person_referenced_by_transfer_is_409_in_use(
+    client, trip, people, default_wallet_of
+):
+    """A person whose wallet appears in a transfer can't be deleted, even with no items."""
+    ann, bob = people[1]["id"], people[2]["id"]
+    client.post(
+        f"/api/v1/trips/{trip['slug']}/transfers",
+        json={
+            "from_wallet_id": default_wallet_of(ann)["id"],
+            "from_amount": "50",
+            "from_currency_id": trip["currencies"][0]["id"],
+            "to_wallet_id": default_wallet_of(bob)["id"],
+        },
+    )
+
+    response = client.delete(f"/api/v1/trips/{trip['slug']}/people/{ann}")
+    assert response.status_code == 409
+    assert response.json()["error"]["fields"]["id"]["code"] == "in_use"
+
+
+def test_delete_currency_referenced_by_transfer_is_409_in_use(
+    client, trip, people, default_wallet_of, currencies
+):
+    """A currency used only by a transfer, never an item, still can't be deleted."""
+    ann, bob = people[1]["id"], people[2]["id"]
+    eur = currencies[1]["id"]
+    client.post(
+        f"/api/v1/trips/{trip['slug']}/transfers",
+        json={
+            "from_wallet_id": default_wallet_of(ann)["id"],
+            "from_amount": "50",
+            "from_currency_id": eur,
+            "to_wallet_id": default_wallet_of(bob)["id"],
+        },
+    )
+
+    response = client.delete(f"/api/v1/trips/{trip['slug']}/currencies/{eur}")
+    assert response.status_code == 409
+    assert response.json()["error"]["fields"]["id"]["code"] == "in_use"

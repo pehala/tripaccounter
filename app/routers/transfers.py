@@ -1,0 +1,107 @@
+"""Wallet transfer routes: create, list, update, delete."""
+
+from fastapi import APIRouter, Response
+from sqlalchemy import select
+
+from app.clock import ClockDep
+from app.deps import SessionDep, TripDep
+from app.models import WalletTransfer
+from app.schemas import (
+    TRANSFER_LOAD_OPTIONS,
+    TransferEnvelope,
+    TransferListEnvelope,
+    TransferOut,
+    TransferWrite,
+    error_responses,
+)
+from app.services import transfers as transfer_service
+from app.services.errors import NotFoundError, ValidationError
+
+router = APIRouter(tags=["transfers"])
+
+
+def _get_transfer(trip, transfer_id: int, session: SessionDep) -> WalletTransfer:
+    transfer = session.get(WalletTransfer, transfer_id, options=TRANSFER_LOAD_OPTIONS)
+    if transfer is None or transfer.trip_id != trip.id:
+        raise NotFoundError("transfer")
+    return transfer
+
+
+@router.get(
+    "/trips/{slug}/transfers", response_model=TransferListEnvelope, responses=error_responses(404)
+)
+def list_transfers(trip: TripDep, session: SessionDep):
+    """List a trip's wallet transfers, newest first."""
+    rows = (
+        session.execute(
+            select(WalletTransfer)
+            .where(WalletTransfer.trip_id == trip.id)
+            .options(*TRANSFER_LOAD_OPTIONS)
+            .order_by(WalletTransfer.occurred_at.desc(), WalletTransfer.id.desc())
+        )
+        .scalars()
+        .all()
+    )
+    return {"transfers": [TransferOut.from_transfer(row) for row in rows]}
+
+
+@router.post(
+    "/trips/{slug}/transfers",
+    status_code=201,
+    response_model=TransferEnvelope,
+    responses=error_responses(400, 404, 422),
+)
+def create_transfer(body: TransferWrite, trip: TripDep, session: SessionDep, clock: ClockDep):
+    """Create a new transfer between two wallets."""
+    resolved = transfer_service.resolve_write(body, None)
+    fields = transfer_service.validate(session, trip, resolved, creating=True)
+    if fields:
+        raise ValidationError(fields)
+
+    transfer = WalletTransfer(trip_id=trip.id)
+    transfer_service.apply_write(transfer, resolved, body.occurred_at or clock, body.note)
+    session.add(transfer)
+    session.flush()
+    session.refresh(transfer)
+    return {"transfer": TransferOut.from_transfer(transfer)}
+
+
+@router.get(
+    "/trips/{slug}/transfers/{transfer_id}",
+    response_model=TransferEnvelope,
+    responses=error_responses(404),
+)
+def get_transfer(transfer_id: int, trip: TripDep, session: SessionDep):
+    """Get a single transfer by id."""
+    transfer = _get_transfer(trip, transfer_id, session)
+    return {"transfer": TransferOut.from_transfer(transfer)}
+
+
+@router.patch(
+    "/trips/{slug}/transfers/{transfer_id}",
+    response_model=TransferEnvelope,
+    responses=error_responses(400, 404, 422),
+)
+def update_transfer(transfer_id: int, body: TransferWrite, trip: TripDep, session: SessionDep):
+    """Update a transfer's fields."""
+    transfer = _get_transfer(trip, transfer_id, session)
+    resolved = transfer_service.resolve_write(body, transfer)
+    fields = transfer_service.validate(session, trip, resolved, creating=False)
+    if fields:
+        raise ValidationError(fields)
+
+    transfer_service.apply_write(transfer, resolved, body.occurred_at, body.note)
+    session.flush()
+    session.refresh(transfer)
+    return {"transfer": TransferOut.from_transfer(transfer)}
+
+
+@router.delete(
+    "/trips/{slug}/transfers/{transfer_id}", status_code=204, responses=error_responses(404)
+)
+def delete_transfer(transfer_id: int, trip: TripDep, session: SessionDep):
+    """Delete a transfer from a trip."""
+    transfer = _get_transfer(trip, transfer_id, session)
+    session.delete(transfer)
+    session.flush()
+    return Response(status_code=204)

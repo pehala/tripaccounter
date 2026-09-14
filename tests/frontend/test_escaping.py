@@ -42,3 +42,23 @@ def test_hostile_text_renders_literally_and_never_executes(hostile_page, dialogs
     expect(hostile_page.get_by_text(hostile_text)).to_be_visible()
     assert hostile_page.locator("script", has_text="alert").count() == 0
     assert dialogs == []
+
+
+def test_hostile_wallet_name_renders_literally_in_wallets_and_setup(dialogs, open_trip):
+    """A wallet named `<i>x</i>` shows as literal text on the Wallets tab and in Setup."""
+    wallets_page = open_trip("wallets")
+    expect(wallets_page.get_by_text("<i>x</i>")).to_be_visible()
+    assert wallets_page.locator("i", has_text="x").count() == 0
+
+    setup_page = open_trip("setup")
+    expect(setup_page.get_by_text("<i>x</i>")).to_be_visible()
+    assert dialogs == []
+
+
+def test_hostile_transfer_note_renders_literally_in_the_feed(dialogs, open_trip):
+    """A transfer note with markup shows as literal text in the feed, never as a script tag."""
+    page = open_trip()
+
+    expect(page.get_by_text("alert('note')", exact=False)).to_be_visible()
+    assert page.locator("script", has_text="alert").count() == 0
+    assert dialogs == []

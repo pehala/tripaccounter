@@ -45,6 +45,13 @@ def test_back_and_forward_switch_tabs_without_refetching_balances(
     assert len(balance_requests) == 1
 
 
+def test_cold_load_with_wallets_path_lands_directly_on_that_tab(open_trip):
+    """A first paint at /wallets renders the Wallets tab active, deep-linked like any other."""
+    page = open_trip("wallets")
+
+    expect(page.locator(".nav-link.active")).to_have_text("Wallets")
+
+
 def test_unknown_slug_renders_the_notfound_view(page, mockserver):
     """A slug the mock has never heard of renders the 404 view, not a blank shell."""
     page.goto(f"{mockserver}/t/does-not-exist")

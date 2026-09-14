@@ -46,6 +46,7 @@ def in_use_row(setup_card, refused_delete):
         ),
         pytest.param("Countries", "li", [("Name", "Norway")], "Norway", id="countries"),
         pytest.param("Labels", ".badge", [("Label", "snacks")], "snacks", id="labels"),
+        pytest.param("Wallets", "li", [("Name", "Backpack")], "Backpack", id="wallets"),
     ],
 )
 def test_add(setup_card, header, row_selector, fields, shown):
@@ -67,6 +68,7 @@ def test_add(setup_card, header, row_selector, fields, shown):
         pytest.param("Currencies", "li", "€", "euro", id="currencies"),
         pytest.param("Countries", "li", "Iceland", "Ísland", id="countries"),
         pytest.param("Labels", ".badge", "drinks", "beer", id="labels"),
+        pytest.param("Wallets", "li", "Envelope", "Purse", id="wallets"),
     ],
 )
 def test_rename(setup_card, header, row_selector, current, renamed):
@@ -88,6 +90,7 @@ def test_rename(setup_card, header, row_selector, current, renamed):
         pytest.param("Currencies", "li", "DKK", "Delete", id="currencies"),
         pytest.param("Countries", "li", "Denmark", "Delete", id="countries"),
         pytest.param("Labels", ".badge", "drinks", "Remove", id="labels"),
+        pytest.param("Wallets", "li", "Cash", "Delete", id="wallets"),
     ],
 )
 def test_delete(setup_card, header, row_selector, row_text, remove_label):
@@ -128,3 +131,37 @@ def test_trip_dates_edit_updates_the_shown_range(setup_card):
     section.get_by_role("button", name="Save", exact=True).click()
 
     expect(section.get_by_text("10–25 Sep")).to_be_visible()
+
+
+# --- wallets ----------------------------------------------------------------
+
+
+def test_default_wallet_offers_no_delete(setup_card):
+    """A person's default wallet (Card) never shows a Delete button - it can only fail."""
+    card_row = setup_card("Wallets").locator("li").filter(has_text="Card").first
+
+    expect(card_row.get_by_label("Delete")).to_have_count(0)
+
+
+def test_untrack_then_track_flips_the_wallets_text_and_action(setup_card):
+    """Untrack sends `PATCH {tracked: false}` and Track reverses it; the row's text follows."""
+    row = setup_card("Wallets").locator("li").filter(has_text="Envelope")
+    expect(row).to_contain_text("tracked")
+    expect(row).not_to_contain_text("untracked")
+
+    row.get_by_role("button", name="Untrack", exact=True).click()
+    expect(row).to_contain_text("untracked")
+
+    row.get_by_role("button", name="Track", exact=True).click()
+    expect(row).to_contain_text("tracked")
+    expect(row).not_to_contain_text("untracked")
+
+
+def test_make_default_moves_the_default_flag(setup_card):
+    """Make default on a non-default wallet promotes it; the old default loses its Delete-hiding."""
+    row = setup_card("Wallets").locator("li").filter(has_text="Cash")
+
+    row.get_by_role("button", name="Make default").click()
+
+    expect(row).to_contain_text("default")
+    expect(row.get_by_label("Delete")).to_have_count(0)
