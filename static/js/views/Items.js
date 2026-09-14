@@ -6,24 +6,55 @@ import { DayGroup } from '../components/DayGroup.js';
 import { ItemModal } from '../components/ItemModal.js';
 import { Loading } from '../components/Loading.js';
 
-function groupByDay(items) {
+// Items and transfers merge into one feed, newest first; on an exact tie an
+// item sorts before a transfer, then by id descending (design/WALLETS.md §2
+// "One fetch for the feed" - ordering rows by timestamp is not money
+// arithmetic, so it is allowed client-side).
+function mergeFeed(items, transfers) {
+  const entries = [
+    ...items.map((row) => ({ kind: 'item', row })),
+    ...transfers.map((row) => ({ kind: 'transfer', row })),
+  ];
+  entries.sort((a, b) => {
+    if (a.row.occurred_at !== b.row.occurred_at) {
+      return a.row.occurred_at < b.row.occurred_at ? 1 : -1;
+    }
+    if (a.kind !== b.kind) return a.kind === 'item' ? -1 : 1;
+    return b.row.id - a.row.id;
+  });
+  return entries;
+}
+
+function groupByDay(entries) {
   const groups = [];
   let current = null;
-  for (const item of items) {
-    const day = item.occurred_at.slice(0, 10);
+  for (const entry of entries) {
+    const day = entry.row.occurred_at.slice(0, 10);
     if (!current || current.date !== day) {
-      current = { date: day, items: [] };
+      current = { date: day, entries: [] };
       groups.push(current);
     }
-    current.items.push(item);
+    current.entries.push(entry);
   }
   return groups;
+}
+
+function matches(entry, needle, walletName) {
+  if (entry.kind === 'item') {
+    const item = entry.row;
+    return item.name.toLowerCase().includes(needle) || item.labels.some((l) => l.includes(needle));
+  }
+  const transfer = entry.row;
+  const note = (transfer.note || '').toLowerCase();
+  const fromName = (walletName(transfer.from_wallet_id) || '').toLowerCase();
+  const toName = (walletName(transfer.to_wallet_id) || '').toLowerCase();
+  return note.includes(needle) || fromName.includes(needle) || toName.includes(needle);
 }
 
 export function Items() {
   const store = useStore();
   const [filter, setFilter] = useState('');
-  const [modalItem, setModalItem] = useState(undefined); // undefined = closed, null = new, object = edit
+  const [modalEntry, setModalEntry] = useState(undefined); // undefined = closed, null = new, {kind,row} = edit
   const locale = getLocale();
 
   useEffect(() => {
@@ -33,11 +64,10 @@ export function Items() {
 
   if (!store.items) return html`<${Loading} />`;
 
-  const items = store.items;
+  const walletName = (id) => (store.trip.wallets || []).find((w) => w.id === id)?.name;
   const needle = filter.trim().toLowerCase();
-  const filtered = needle
-    ? items.filter((item) => item.name.toLowerCase().includes(needle) || item.labels.some((l) => l.includes(needle)))
-    : items;
+  const feed = mergeFeed(store.items, store.transfers || []);
+  const filtered = needle ? feed.filter((entry) => matches(entry, needle, walletName)) : feed;
   const groups = groupByDay(filtered);
   // day_totals covers every item for the day; once a filter hides some of them
   // the total no longer matches what's on screen, so don't show it.
@@ -47,7 +77,7 @@ export function Items() {
 
   return html`
     <div class="d-flex align-items-center gap-2 mb-3">
-      <button class="btn btn-primary px-4 d-none d-md-inline-block" onClick=${() => setModalItem(null)}>
+      <button class="btn btn-primary px-4 d-none d-md-inline-block" onClick=${() => setModalEntry(null)}>
         <i class="bi bi-plus-lg"></i> ${t('items.add')}</button>
       <div class="input-group input-group-sm ms-auto" style="max-width:16rem">
         <span class="input-group-text bg-body"><i class="bi bi-search"></i></span>
@@ -57,17 +87,17 @@ export function Items() {
     </div>
     ${groups.length === 0 && html`<p class="text-body-secondary">${t('items.empty')}</p>`}
     ${groups.map((group) => html`
-      <${DayGroup} key=${group.date} date=${group.date} items=${group.items} totals=${totalsByDay[group.date]}
-                   trip=${store.trip} locale=${locale} onSelect=${(item) => setModalItem(item)} />
+      <${DayGroup} key=${group.date} date=${group.date} entries=${group.entries} totals=${totalsByDay[group.date]}
+                   trip=${store.trip} locale=${locale} onSelect=${(entry) => setModalEntry(entry)} />
     `)}
 
     <button class="btn btn-primary btn-lg rounded-pill fab" aria-label=${t('items.add_expense')}
-            onClick=${() => setModalItem(null)}>
+            onClick=${() => setModalEntry(null)}>
       <i class="bi bi-plus-lg"></i></button>
 
-    ${modalItem !== undefined && html`
-      <${ItemModal} trip=${store.trip} labels=${store.labels || []} item=${modalItem}
-                    onClose=${() => setModalItem(undefined)} />
+    ${modalEntry !== undefined && html`
+      <${ItemModal} trip=${store.trip} labels=${store.labels || []} entry=${modalEntry}
+                    onClose=${() => setModalEntry(undefined)} />
     `}
   `;
 }

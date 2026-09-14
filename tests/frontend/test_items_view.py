@@ -7,6 +7,8 @@ roster order, and a person with no share (`owed: null`) gets no chip at all;
 `items.day_totals`, one chip per currency, hidden while a filter is active.
 """
 
+import re
+
 import pytest
 from playwright.sync_api import expect
 
@@ -137,3 +139,59 @@ def test_day_totals_hidden_while_filtering(items_page):
     items_page.get_by_placeholder("filter by name or label").fill("Dinner")
 
     expect(items_page.locator(".day-sep .num span")).to_have_count(0)
+
+
+# --- wallets and transfers -------------------------------------------------
+
+
+def test_feed_merges_items_and_transfers_by_occurred_at(items_page):
+    """Transfers sit between items in the merged feed, sorted by occurred_at like items are.
+
+    Fixture order (WALLETS.md §5): 42, T2, 41, 40, T1, 39, T3, 38.
+    """
+    rows = items_page.locator(ROW)
+    kinds = [
+        "transfer" if "transfer-row" in (cls or "") else "item"
+        for cls in rows.evaluate_all("els => els.map(e => e.className)")
+    ]
+    assert kinds == ["item", "transfer", "item", "item", "transfer", "item", "transfer", "item"]
+
+
+def test_transfer_row_shows_both_wallets_and_the_amount(items_page):
+    """A transfer row names both wallets and shows the moved amount, muted."""
+    row = items_page.locator(f"{ROW}.transfer-row").filter(has_text="Cash")
+
+    expect(row.first).to_contain_text("Card")
+    expect(row.first).to_contain_text("Cash")
+    expect(row.first).to_contain_text("20,000 ISK")
+
+
+def test_transfer_row_shows_both_sides_of_an_exchange(items_page):
+    """An exchange's row shows both amounts and currencies, with an arrow between them, no rate."""
+    row = items_page.locator(f"{ROW}.transfer-row", has_text="20 EUR")
+
+    expect(row).to_contain_text("20 EUR")
+    expect(row).to_contain_text("150 DKK")
+
+
+def test_filter_matches_a_transfer_by_wallet_name(items_page):
+    """Filtering by a wallet's name shows only the transfers naming it, no items."""
+    items_page.get_by_placeholder("filter by name or label").fill("cash")
+
+    rows = items_page.locator(ROW)
+    expect(rows).to_have_count(2)
+    expect(rows).to_have_class([re.compile("transfer-row"), re.compile("transfer-row")])
+
+
+def test_item_row_shows_wallet_name_when_not_the_payers_default(items_page):
+    """Dinner is paid from Petr's Cash, not his default Card, so the row names the wallet."""
+    row = items_page.locator(ROW, has_text="Dinner at Messinn")
+
+    expect(row).to_contain_text("Cash")
+
+
+def test_item_row_hides_wallet_name_when_it_is_the_payers_default(items_page):
+    """Fuel is paid from Bob's default Card, so no wallet name clutters the row."""
+    row = items_page.locator(ROW, has_text="Fuel")
+
+    expect(row.locator("small").first).not_to_contain_text("Card")

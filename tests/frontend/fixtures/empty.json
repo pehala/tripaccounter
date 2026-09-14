@@ -49,6 +49,10 @@
           "item_count": 0
         }
       ],
+      "wallets": [
+        {"id": 1, "person_id": 1, "name": "Card", "tracked": false, "is_default": true, "sort_order": 0, "balances": []},
+        {"id": 2, "person_id": 2, "name": "Card", "tracked": false, "is_default": true, "sort_order": 0, "balances": []}
+      ],
       "created_at": "2026-09-01T08:12:00Z",
       "updated_at": "2026-09-01T08:12:00Z"
     }
@@ -57,7 +61,8 @@
     "labels": []
   },
   "items": {
-    "items": []
+    "items": [],
+    "transfers": []
   },
   "balances": {
     "balances": []
@@ -97,7 +102,19 @@
     "/api/v1/trips/empty-trip/items": {
       "collection": "#/items/items",
       "item": "item",
-      "insert": "head"
+      "insert": "head",
+      "extra": {"transfers": "#/items/transfers"}
+    },
+    "/api/v1/trips/empty-trip/transfers": {
+      "collection": "#/items/transfers",
+      "item": "transfer",
+      "insert": "head",
+      "defaults": {"from_currency_code": "ISK", "to_currency_code": "ISK", "note": null}
+    },
+    "/api/v1/trips/empty-trip/wallets": {
+      "collection": "#/trip/trip/wallets",
+      "item": "wallet",
+      "defaults": {"tracked": false, "is_default": false, "balances": []}
     },
     "/api/v1/trips/empty-trip/items/preview-split": {
       "POST": {

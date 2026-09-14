@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'preact/hooks';
 import { api } from './api.js';
 
-// Per-trip state: trip, labels, items, balances, stats. Plain object + subscribers,
-// so any component can read it with useStore() and re-render when it changes.
+// Per-trip state: trip, labels, items, transfers, balances, wallets, stats. Plain
+// object + subscribers, so any component can read it with useStore() and re-render
+// when it changes.
 const state = {
   slug: null,
   trip: null,
   labels: null,
   items: null,
   dayTotals: null,
+  transfers: null,
   balances: null,
+  wallets: null,
   stats: null,
   error: null,
 };
@@ -33,8 +36,10 @@ const LOADERS = {
   items: (slug) => api.get(`/trips/${slug}/items`).then((r) => {
     state.items = r.items;
     state.dayTotals = r.day_totals;
+    state.transfers = r.transfers;
   }),
   balances: (slug) => api.get(`/trips/${slug}/balances`).then((r) => { state.balances = r.balances; }),
+  wallets: (slug) => api.get(`/trips/${slug}/wallets`).then((r) => { state.wallets = r.wallets; }),
   stats: (slug) => api.get(`/trips/${slug}/stats`).then((r) => { state.stats = r.stats; }),
 };
 
@@ -43,9 +48,19 @@ export async function reload(kind) {
   notify();
 }
 
+// A write that can change money movement (an item or a transfer) invalidates the
+// two tabs that summarize it, so the next visit refetches instead of showing a
+// stale figure - the same store.x ? skip : reload(x) pattern Balances/Wallets use.
+export function invalidateMoneyViews() {
+  state.wallets = null;
+  state.balances = null;
+  notify();
+}
+
 export async function load(slug) {
   state.slug = slug;
-  state.trip = state.labels = state.items = state.dayTotals = state.balances = state.stats = null;
+  state.trip = state.labels = state.items = state.dayTotals = null;
+  state.transfers = state.balances = state.wallets = state.stats = null;
   state.error = null;
   notify();
   try {

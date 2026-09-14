@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "validation_error",
+    "params": {},
+    "fields": {
+      "to_currency_id": { "code": "cross_owner_exchange", "params": {} }
+    }
+  }
+}
