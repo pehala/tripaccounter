@@ -47,6 +47,15 @@ only ever hits the server on a direct link, a bookmark, or a hard refresh. `ETag
 plus `Cache-Control: no-cache`, so even that cold load can come back as an empty
 `304` when nothing changed since the last visit.
 
+**The static half is versioned rather than revalidated.** With `TA_BUILD_ID` set, the
+static mount moves from `/` to `/s/{build_id}/` and `index.html` is served with its
+own two asset references rewritten to match — a relative `import` inside a module
+inherits the prefix for free, so nothing under `js/` is ever rewritten and no build
+step appears. Every asset URL is then unique to its build, which is what lets the
+proxy in front cache them permanently; `index.html`, which names the build id, is the
+one file kept on `no-cache`. Unset, the assets sit at `/` uncacheable, which is what
+the dev server wants. [`../DEPLOY.md`](../DEPLOY.md) has the nginx side.
+
 ## 2. One request, end to end
 
 ```mermaid

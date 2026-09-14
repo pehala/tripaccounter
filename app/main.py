@@ -2,11 +2,13 @@
 
 import hashlib
 import logging
+import re
 import uuid
+from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -33,7 +35,10 @@ from app.services.errors import (
 )
 
 logger = logging.getLogger("app")
-settings = Settings()
+
+# index.html's own assets are the only root-relative references in it; the four CDN
+# tags are absolute `https://` URLs and do not match.
+LOCAL_ASSET_REF = re.compile(r'\b(href|src)="/')
 
 ROUTERS = (
     trips.router,
@@ -120,14 +125,51 @@ class ETagMiddleware(BaseHTTPMiddleware):
         )
 
 
-async def index_root() -> FileResponse:
-    """Serve the frontend's index page at the site root."""
-    return FileResponse(settings.static_dir / "index.html")
+def index_html(index_file: Path, asset_prefix: str) -> bytes:
+    """Read `index.html`, pointing its own asset references at the versioned mount.
+
+    This is the whole of the manifest lookup Django spends `staticfiles.json` on:
+    the build id lives in one prefix, and a relative `import` inside a module
+    inherits it for free, so nothing under `js/` is ever rewritten.
+    """
+    html = index_file.read_text()
+    if asset_prefix:
+        html = LOCAL_ASSET_REF.sub(rf'\1="{asset_prefix}/', html)
+    return html.encode()
 
 
-async def index_trip(slug: str, tab: str | None = None) -> FileResponse:
-    """Serve the frontend's index page for a trip deep link, tab included."""
-    return FileResponse(settings.static_dir / "index.html")
+def add_index_routes(app: FastAPI, index_file: Path, asset_prefix: str) -> None:
+    """Serve `index.html` on the four frontend routes, revalidated against its ETag.
+
+    The body is read and prefixed once, at startup, so the routes answer from memory.
+    `no-cache` is what keeps a new build reachable: the page names the current build
+    id, so a client that cached it could never learn about the next one.
+    """
+    body = index_html(index_file, asset_prefix)
+    etag = f'"{hashlib.sha256(body).hexdigest()}"'
+    headers = {"etag": etag, "cache-control": "no-cache"}
+
+    def index_response(request: Request) -> Response:
+        """Answer with the page, or an empty 304 when the client already holds it."""
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers=headers)
+        return Response(content=body, headers=headers, media_type="text/html")
+
+    async def index_root(request: Request) -> Response:
+        """Serve the frontend's index page at the site root."""
+        return index_response(request)
+
+    async def index_trip(request: Request, slug: str, tab: str | None = None) -> Response:
+        """Serve the frontend's index page for a trip deep link, tab included."""
+        return index_response(request)
+
+    for path, endpoint in (
+        ("/", index_root),
+        ("/trips/new", index_root),
+        ("/t/{slug}", index_trip),
+        ("/t/{slug}/{tab}", index_trip),
+    ):
+        app.add_api_route(path, endpoint, methods=["GET"], include_in_schema=False)
 
 
 def strip_default_validation_error(schema: dict) -> dict:
@@ -154,6 +196,7 @@ def strip_default_validation_error(schema: dict) -> dict:
 
 def create_app() -> FastAPI:
     """Build the FastAPI app: routers, error handlers, and static file serving."""
+    settings = Settings()
     app = FastAPI(
         title="Trip Accounter API",
         version="0.1.0",
@@ -191,13 +234,17 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RequestValidationError, handle_validation_error)
     app.add_exception_handler(Exception, handle_unexpected)
 
-    app.add_api_route("/", index_root, methods=["GET"], include_in_schema=False)
-    app.add_api_route("/trips/new", index_root, methods=["GET"], include_in_schema=False)
-    app.add_api_route("/t/{slug}", index_trip, methods=["GET"], include_in_schema=False)
-    app.add_api_route("/t/{slug}/{tab}", index_trip, methods=["GET"], include_in_schema=False)
+    # A build id makes every asset URL unique to this build, which is what lets the
+    # proxy cache them permanently without ever serving a stale one (see DEPLOY.md).
+    # Unset, the assets sit at `/` unversioned and uncacheable, which is what dev wants.
+    asset_prefix = f"/s/{settings.build_id}" if settings.build_id else ""
+
+    index_file = settings.static_dir / "index.html"
+    if index_file.exists():
+        add_index_routes(app, index_file, asset_prefix)
 
     if settings.static_dir.exists():
-        app.mount("/", StaticFiles(directory=settings.static_dir), name="static")
+        app.mount(asset_prefix or "/", StaticFiles(directory=settings.static_dir), name="static")
 
     return app
 

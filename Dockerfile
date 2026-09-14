@@ -31,8 +31,14 @@ WORKDIR /app
 COPY --from=builder --chown=app:app /app /app
 COPY --chown=app:app Makefile ./
 
+# The build id versions every static asset URL, so the proxy in front can cache them
+# permanently without ever serving a stale one (design/STATIC_CACHING.md). Unset, the
+# assets are served unversioned and uncacheable.
+ARG BUILD_ID=""
+
 ENV PATH="/app/.venv/bin:$PATH" \
-    UV_NO_SYNC=1
+    UV_NO_SYNC=1 \
+    TA_BUILD_ID=${BUILD_ID}
 
 USER app
 EXPOSE 8000
