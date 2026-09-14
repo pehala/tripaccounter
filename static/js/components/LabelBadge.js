@@ -1,5 +1,5 @@
 import { html } from '../h.js';
 
 export function LabelBadge({ name }) {
-  return html`<span class="badge rounded-pill text-bg-light border">${name}</span>`;
+  return html`<span class="badge rounded-pill bg-body-secondary text-body border">${name}</span>`;
 }
