@@ -156,7 +156,9 @@ The schema says a field exists and what type it is. This section says what it
 The trip is the aggregate: its people, currencies and countries are part of it and
 come embedded, in `sort_order`. They are also addressable on their own for writes
 and for clients that want one list. The trip list replaces those embedded lists with
-`people_count` and `item_count`.
+`people_count` and `item_count`, and orders by `end_date` descending — the trip that
+ended most recently first; a trip with no `end_date` sorts after every dated one,
+newest created first among themselves.
 
 `slug` is generated from `name` at creation and **never changes**, so a pasted link
 survives a rename. `PATCH` cannot move it. Deleting a trip cascades everything.

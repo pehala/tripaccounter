@@ -115,3 +115,16 @@ def test_deactivate_after_in_use_marks_row_inactive(in_use_row):
 
     expect(in_use_row.get_by_text("inactive")).to_be_visible()
     expect(in_use_row.get_by_role("button", name="Activate")).to_be_visible()
+
+
+def test_trip_dates_edit_updates_the_shown_range(setup_card):
+    """Editing the two date inputs and saving PATCHes both fields and shows the new range."""
+    section = setup_card("Trip")
+    section.get_by_text("12–21 Sep").click()
+    inputs = section.locator('input[type="date"]')
+    inputs.nth(0).fill("2026-09-10")
+    inputs.nth(1).fill("2026-09-25")
+
+    section.get_by_role("button", name="Save", exact=True).click()
+
+    expect(section.get_by_text("10–25 Sep")).to_be_visible()

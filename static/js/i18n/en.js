@@ -142,6 +142,8 @@ export default {
   'setup.name_label': 'Name',
   'setup.note_label': 'Note',
   'setup.note_placeholder': 'optional',
+  'setup.dates_label': 'Dates',
+  'setup.dates_placeholder': 'not set',
 
   'err.required': 'Give it a name.',
   'err.too_long': 'Keep it under {max} characters.',

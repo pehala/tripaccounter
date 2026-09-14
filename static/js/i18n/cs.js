@@ -146,6 +146,8 @@ export default {
   'setup.name_label': 'Název',
   'setup.note_label': 'Poznámka',
   'setup.note_placeholder': 'volitelné',
+  'setup.dates_label': 'Termín',
+  'setup.dates_placeholder': 'nenastaveno',
 
   'err.required': 'Zadejte název.',
   'err.too_long': 'Zkraťte na {max} znaků.',

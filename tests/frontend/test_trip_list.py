@@ -83,6 +83,13 @@ def test_one_card_per_trip_from_the_trip_list(page, mockserver):
     expect(cards.first).to_contain_text("4 people")
 
 
+def test_trip_card_shows_its_date_range(page, mockserver):
+    """A trip's start_date/end_date render as a same-month range on its card."""
+    page.goto(f"{mockserver}/")
+
+    expect(page.locator(".list-group-item-action").first).to_contain_text("12–21 Sep")
+
+
 def test_empty_trip_list_shows_the_empty_state(no_trips, page, mockserver):
     """A GET /trips with no trips renders the empty-state text, not a blank list."""
     page.goto(f"{mockserver}/")
