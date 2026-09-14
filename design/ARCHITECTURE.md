@@ -165,10 +165,11 @@ flowchart LR
 `|Σ net|` per currency is therefore within a few micro-units of zero rather than
 exactly zero, and `Σ suggestions` is exactly zero. Both are asserted, from both sides.
 
-**No currency is ever converted server-side.** Balances and statistics are per
-currency, full stop. The single conversion anywhere is the statistics page
-multiplying by rates the user typed into their own browser, which are never sent
-here and never stored.
+**No currency is ever converted server-side.** Balances and each currency's own
+statistics are per currency, full stop. The single conversion anywhere is the
+statistics page's Total section, a switch alongside the currencies that multiplies
+by rates the user typed into their own browser and only computes once every
+currency has one — those rates are never sent here and never stored.
 
 ## 5. The contract seam
 

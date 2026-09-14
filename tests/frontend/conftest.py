@@ -25,7 +25,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 TABS = {
     "Items": ("items", lambda page: page.get_by_placeholder("filter by name or label")),
     "Balances": ("balances", lambda page: page.get_by_text("Settle up").first),
-    "Statistics": ("stats", lambda page: page.get_by_text("By label").first),
+    "Statistics": ("stats", lambda page: page.locator(".stats-content").first),
     "Setup": ("setup", lambda page: page.get_by_text("People", exact=True)),
 }
 TAB_PARAMS = [pytest.param(name, id=path) for name, (path, _) in TABS.items()]

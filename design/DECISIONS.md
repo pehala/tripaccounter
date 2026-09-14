@@ -35,7 +35,7 @@ flowchart TD
 | **Auth** | None. The VPN is the perimeter. A trip is reachable at `/t/{slug}`. |
 | **Backend** | **Pure JSON REST under `/api/v1`.** No templates, no HTML fragments, no form posts. It knows nothing about the frontend; the frontend is one client among any. Static files are mounted at `/` as a deployment convenience only. |
 | **Frontend** | **Static, client-rendered.** Preact + htm as ES modules through an import map, Bootstrap 5 for the modal and tabs, pinned versions with SRI hashes. No build step, no Node, no npm at runtime. |
-| **Currency** | Multi-currency, **zero conversion server-side**. Balances and settle-up are per currency. The statistics page converts client-side with rates the user types, kept in `localStorage`. |
+| **Currency** | Multi-currency, **zero conversion server-side**. Balances, settle-up and each currency's own stats are strictly per currency. The stats page's Total section converts client-side with rates the user types, kept in `localStorage`, and only computes once every currency has one. |
 | **i18n** | **Frontend-only, from the first commit.** `en` (source) and `cs` as flat ES modules; `t()` over `Intl.PluralRules` / `NumberFormat` / `DateTimeFormat`, no library. Adding a language is one file plus one line. **The API has no language at all**: errors are `{code, params}` with no message, amounts cross the wire in one canonical grammar, and `app/` contains no user-facing string. |
 | **Money** | **Only typed values are stored, as integer hundredths, for every currency.** Computed shares are a SQL view in integer micro-units, never stored, never rounded per item. Balances and stats are `GROUP BY` over hundredths and that view. Input is a canonical decimal string; output is plain JSON numbers — typed to 2 places, computed to 6. **Rounded exactly once**, in settle-up, with a zero-sum correction. No `Currency.decimals`, no `*_display`, no `*_minor` on the wire. |
 | **Splits** | Equal by default; override to weighted shares or exact amounts. Computed server-side only; `preview-split` gives the form live numbers from the same expression that will be saved. |
@@ -82,8 +82,10 @@ so balances and statistics stay one query as a trip grows.
 A stored rate is a lie with a timestamp. Rates are the user's own guess about what
 they will actually pay, they differ per person and per card, and persisting one would
 make every historical balance depend on when it was computed. Per-currency balances
-are always true; the combined statistics row is explicitly the user's own arithmetic,
-in their own browser, never sent back.
+are always true; the Total section's figures are explicitly the user's own arithmetic,
+in their own browser, never sent back — and it shows nothing at all until every
+currency has a rate, rather than a partial sum that silently drops the ones missing
+one.
 
 ### Why no "current user"
 There are no accounts, and a trip is shared by URL. Any "you owe" framing would have

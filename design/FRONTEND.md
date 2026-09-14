@@ -37,7 +37,7 @@ static/
     ├── fmt.js            money(), signed(), parse(), date() — one cached
     │                     Intl.NumberFormat per locale
     ├── h.js              html = htm.bind(h)
-    ├── rates.js          the statistics rates, localStorage only, never sent
+    ├── rates.js          the Total's typed rates, localStorage only, never sent
     ├── i18n/
     │   ├── index.js      LANGS, current locale, t(key, params), setLocale()
     │   ├── en.js         source catalog, flat dotted keys
@@ -47,7 +47,7 @@ static/
     │   ├── Trip.js       header + nav-tabs, picks the tab view
     │   ├── Items.js      day groups, empty state, FAB
     │   ├── Balances.js   one BalanceCard per currency
-    │   ├── Stats.js      per-currency and combined views, rate inputs
+    │   ├── Stats.js      per-currency + Total, collapsible sections, jump-to sidebar
     │   └── Setup.js      people / currencies / countries / labels / settings / export
     └── components/
         ├── Shell.js        the one piece of chrome every route shares, app.js
@@ -100,14 +100,18 @@ Note the dashed arrow: **a write is followed by a re-read, never by a local muta
 
    A direct consequence: the feed's per-day, per-currency subtotal comes from
    `items.day_totals` — one `GROUP BY` alongside the item query, never a client-side
-   sum over the day's rows.
+   sum over the day's rows. The same discipline holds on the statistics page:
+   `stats.by_day` renders what the API gives, one row per day, no client-side
+   arithmetic.
 
-   The exception is the statistics page: it multiplies each group total by a rate the
-   user typed, **rounds each product to two places**, and sums those rounded figures
-   across currencies for the combined row. That sum is the only place the frontend adds
-   two amounts, and both operands are already the user's own guesswork. The rates live
-   in `localStorage`, are never posted back, and never come near a balance or a
-   settle-up figure.
+   The exception is the statistics page's Total: a switch alongside the currencies
+   that multiplies each group total by a rate the user typed, **rounds each product to
+   two places**, and sums those rounded figures across currencies. It is all-or-
+   nothing — the Total renders nothing but the rate form until every currency has a
+   positive rate, never a partial sum quietly missing one. That sum is the only place
+   the frontend adds two amounts, and every operand is already the user's own
+   guesswork. The rates live in `localStorage`, are never posted back, and never come
+   near a balance, a settle-up figure, or any currency's own statistics.
 
 2. **No split computation.** `item.split.shares` arrives resolved: one entry per person
    in roster order, `owed: null` for anyone left out (render a dash), `owed: 0` meaning
