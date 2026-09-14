@@ -27,6 +27,17 @@
   "htm":          "https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.module.js"
 }}
 </script>
+
+<!-- The three import-map modules sit at the far end of the import graph: the browser
+     only discovers them once every local module has parsed, and the first API call
+     waits on them. Preloading starts all three with the document, and carries the
+     integrity the import map itself has no way to state. -->
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/preact@10.29.8/dist/preact.module.js"
+      integrity="sha384-/+qYo5nYND9OqrXEuD1TAQve92IcrX0NRO0UL3OhOo4n0PKMsi5hsMdezdy76IvB" crossorigin="anonymous">
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/preact@10.29.8/hooks/dist/hooks.module.js"
+      integrity="sha384-NB1WUh14K2Oh7NhjB2RliXB085nezUjZ+FNbCEGNeb972g+I4CjKRx+u3vbZh227" crossorigin="anonymous">
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.module.js"
+      integrity="sha384-k7/PyxcXOQ/zfJq1v0TM/CcBLQ2m2NzGg2tfHehdgJGqcY7RBwIP4Ye+ssG+QK1I" crossorigin="anonymous">
 </head>
 <body class="bg-body-tertiary">
 
