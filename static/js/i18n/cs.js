@@ -8,7 +8,7 @@ export default {
   'nav.stats': 'Statistiky',
   'nav.setup': 'Nastavení',
 
-  'lang.menu': 'Language · Jazyk',
+  'settings.menu': 'Nastavení',
   'lang.en': 'English',
   'lang.cs': 'Čeština',
   'theme.dark': 'Tmavý režim',
@@ -19,6 +19,7 @@ export default {
   'header.people.other': '{n} lidí',
 
   'trips.title': 'Výlety',
+  'trips.all': 'Všechny výlety',
   'trips.empty': 'Zatím žádné výlety.',
   'trips.new': 'Nový výlet',
 

@@ -21,9 +21,11 @@ export function ThemeLangMenu() {
 
   return html`
     <div class="dropdown">
-      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" aria-expanded="false">⋯</button>
+      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-gear"></i> ${t('settings.menu')}
+      </button>
       <ul class="dropdown-menu dropdown-menu-end">
-        <li><h6 class="dropdown-header">${t('lang.menu')}</h6></li>
+        <li><h6 class="dropdown-header">${t('settings.menu')}</h6></li>
         ${Object.keys(LANGS).map((lang) => html`
           <li key=${lang}>
             <button class="dropdown-item ${lang === locale ? 'active' : ''}" type="button"
