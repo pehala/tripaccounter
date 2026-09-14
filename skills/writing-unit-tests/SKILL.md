@@ -407,10 +407,10 @@ guards against, the test is not worth adding.
 
 ```bash
 make test_backend                                  # the whole backend suite
-uv run pytest tests/backend/test_splits.py -q      # one file
-uv run pytest tests/backend/test_splits.py::test_equal_split_pads_the_roster -v
-uv run pytest tests/backend -q -x                  # stop at first failure
-uv run pytest tests/backend --cov=app --cov-report=term-missing
+uv run python -m pytest tests/backend/test_splits.py -q      # one file
+uv run python -m pytest tests/backend/test_splits.py::test_equal_split_pads_the_roster -v
+uv run python -m pytest tests/backend -q -x                  # stop at first failure
+uv run python -m pytest tests/backend --cov=app --cov-report=term-missing
 make lint                                          # ruff check + format check + uv lock --check
 ```
 
