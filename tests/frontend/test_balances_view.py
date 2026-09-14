@@ -1,8 +1,10 @@
-"""Tests for views/Balances.js and components/BalanceCard.js.
+"""Tests for views/Balances.js.
 
-One card per currency, each `net` formatted and signed correctly (credit `+`, debt
-`-`, zero bare), suggestion rows in the API's order, bar widths derived from the
-full-precision net while six-place `net` values render to two.
+Currency is the top-level organizing unit: each currency gets its own heading,
+and its two sections (net, settle-up) render in that order, collapsed by
+default. A credit renders with a leading +, a debt with -, zero bare; six
+places trim to two; suggestion rows follow the API's own order; bar widths are
+derived from the full-precision net, the widest at 50%.
 """
 
 import re
@@ -11,12 +13,24 @@ import pytest
 from playwright.sync_api import expect
 
 
+def expand(page, currency_id, group):
+    """Open one balance section's collapse body."""
+    page.locator(f'[data-bs-target="#sec-{currency_id}-{group}-body"]').click()
+    page.locator(f"#sec-{currency_id}-{group}-body.show").wait_for()
+
+
 @pytest.fixture
-def person_row(balances_page, card):
-    """Return `person_row(currency_code, name)`: that person's <li> in the Balance card."""
+def person_row(balances_page, fixture_data):
+    """Return `person_row(currency_code, name)`: that person's <li> in the net section."""
+    currency_id_by_code = {
+        b["currency_code"]: b["currency_id"] for b in fixture_data["balances"]["balances"]
+    }
 
     def find(currency_code, name):
-        return card(f"Balance {currency_code}").locator("li").filter(has_text=name)
+        expand(balances_page, currency_id_by_code[currency_code], "net")
+        return balances_page.locator(
+            f"#sec-{currency_id_by_code[currency_code]}-net-body li"
+        ).filter(has_text=name)
 
     return find
 
@@ -29,10 +43,18 @@ def person_row(balances_page, card):
         pytest.param("DKK", id="dkk"),
     ],
 )
-def test_one_balance_card_and_one_settle_up_card_per_currency(balances_page, card, currency_code):
-    """Every currency in the fixture gets its own balance card and settle-up card."""
-    expect(card(f"Balance {currency_code}")).to_have_count(1)
-    expect(card(f"Settle up {currency_code}")).to_have_count(1)
+def test_one_net_section_and_one_settle_up_section_per_currency(
+    balances_page, fixture_data, currency_code
+):
+    """Every currency in the fixture gets its own net section and settle-up section."""
+    balance = next(
+        b for b in fixture_data["balances"]["balances"] if b["currency_code"] == currency_code
+    )
+    section = balances_page.locator(f"#cur-{balance['currency_id']}")
+
+    titles = section.locator('[data-bs-toggle="collapse"]').all_inner_texts()
+    assert "Balance" in titles[0]
+    assert "Settle up" in titles[1]
 
 
 @pytest.mark.parametrize(
@@ -65,9 +87,20 @@ def test_net_value_is_signed_and_trimmed_to_two_places(person_row, currency_code
         pytest.param("DKK", [("Petr", "Ann"), ("Bob", "Ann"), ("Eva", "Ann")], id="dkk"),
     ],
 )
-def test_suggestion_rows_follow_the_api_order(balances_page, card, currency_code, transfers):
-    """Settle-up rows render payer then payee in the API's own order, with no extra rows."""
-    rows = card(f"Settle up {currency_code}").locator("ul.list-group-flush li")
+def test_suggestion_rows_follow_the_api_order(
+    balances_page, fixture_data, currency_code, transfers
+):
+    """Settle-up rows render payer then payee in the API's own order, with no extra rows.
+
+    Settle-up is open by default (unlike net), so no expand() click is needed.
+    """
+    balance = next(
+        b for b in fixture_data["balances"]["balances"] if b["currency_code"] == currency_code
+    )
+
+    rows = balances_page.locator(
+        f"#sec-{balance['currency_id']}-settle_up-body ul.list-group-flush li"
+    )
 
     expect(rows).to_have_text([re.compile(rf"^{payer}\s+{payee}") for payer, payee in transfers])
 
@@ -90,3 +123,27 @@ def test_bar_width_is_derived_from_the_full_precision_net(
     bar = person_row(currency_code, name).locator(".bal-bar i")
 
     expect(bar).to_have_attribute("style", expected_style)
+
+
+def test_net_is_collapsed_but_settle_up_is_open_by_default(balances_page, fixture_data):
+    """The net section needs a click; settle-up — the figure worth seeing first — doesn't."""
+    isk = next(b for b in fixture_data["balances"]["balances"] if b["currency_code"] == "ISK")
+
+    net_body = balances_page.locator(f"#sec-{isk['currency_id']}-net-body")
+    settle_up_body = balances_page.locator(f"#sec-{isk['currency_id']}-settle_up-body")
+    expect(net_body).to_be_hidden()
+    expect(settle_up_body).to_be_visible()
+
+    expand(balances_page, isk["currency_id"], "net")
+    expect(net_body).to_be_visible()
+
+
+def test_sidebar_link_jumps_to_currency_section(balances_page, fixture_data):
+    """Clicking a currency's sidebar link is a real anchor: it scrolls in and updates the hash."""
+    eur = next(b for b in fixture_data["balances"]["balances"] if b["currency_code"] == "EUR")
+    base_url = balances_page.url
+
+    balances_page.locator(".side-nav a", has_text="EUR").click()
+
+    expect(balances_page).to_have_url(f"{base_url}#cur-{eur['currency_id']}")
+    expect(balances_page.locator(f"#cur-{eur['currency_id']}")).to_be_in_viewport()

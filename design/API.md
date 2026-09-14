@@ -285,7 +285,10 @@ hundredths, summing to zero exactly. Who hands whom how much at the end of the t
 over, and the app is not a ledger of paybacks.
 
 One block per currency that has any activity; a currency nobody spent is absent.
-**Nothing is converted between currencies, here or anywhere else.**
+**Nothing is converted between currencies on this endpoint.** The one client-side
+exception, shared with the statistics page, is this page's own Total switch: it
+converts and sums `people[].net`, and nets `suggestions[]` by unordered person pair,
+only once every currency has a positive typed rate — see "Statistics" below.
 `|sum(people[].net)| < 0.00001` per currency — a client may assert it;
 `sum(suggestions)` balances exactly.
 
@@ -304,13 +307,17 @@ to more than `total`, and a client must say so on screen. Items with no label ap
 under `"label": null`. `by_day` groups on `occurred_at`; `day_count` spans the trip.
 
 **The Total is the single client-side exception, and it is all-or-nothing.** It sits
-in the statistics page as another switch alongside the currencies: the user types a
-rate per currency, and only once every currency (not just some) has a positive rate
-does the client multiply each group total by its rate, round to two places, and sum
-those rounded figures across currencies. Until then the Total shows nothing but the
-rate form — never a partial sum quietly missing a currency. Those rates live in
-`localStorage`, are never sent to this API, never stored, and never touch a balance,
-a settle-up figure, or any currency's own statistics.
+in the statistics page (and, the same way, the balances page) as another switch
+alongside the currencies: the user types a rate per currency, and only once every
+currency (not just some) has a positive rate does the client multiply each group
+total by its rate, round to two places, and sum those rounded figures across
+currencies — on the balances page this converts and sums `people[].net`, and nets
+`suggestions[]` by unordered person pair, rather than re-running the settle-up
+algorithm. Until then the Total shows nothing but the rate form — never a partial sum
+quietly missing a currency. Those rates live in `localStorage`, shared between the two
+pages (one rate set per trip), are never sent to this API, never stored, and never
+touch a currency's own balance, settle-up figure, or statistics — only each page's own
+Total.
 
 ### Export
 `?format=csv|json`, both `Content-Disposition: attachment`. CSV is **share-grained** —

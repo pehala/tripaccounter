@@ -51,7 +51,7 @@ def test_page_errors_never_fire_with_unknown_fields(page, open_trip, open_tab):
         pytest.param(
             "balances",
             "main",
-            lambda page: page.get_by_text("Settle up").first,
+            lambda page: page.locator(".balances-content").first,
             "12345",
             id="balance-card",
         ),

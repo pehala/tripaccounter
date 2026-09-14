@@ -33,7 +33,7 @@ def test_total_shows_only_the_rate_form_until_every_currency_has_a_rate(stats_pa
     expect(stats_page.locator("#cur-total")).to_contain_text(
         "Add a rate for every currency to see the total."
     )
-    assert stats_page.locator('[data-bs-target="#stat-total-by_label-body"]').count() == 0
+    assert stats_page.locator('[data-bs-target="#sec-total-by_label-body"]').count() == 0
 
 
 def test_total_stays_hidden_with_only_some_currencies_rated(stats_page):
@@ -48,7 +48,7 @@ def test_total_stays_hidden_with_only_some_currencies_rated(stats_page):
     expect(stats_page.locator("#cur-total")).to_contain_text(
         "Add a rate for every currency to see the total."
     )
-    assert stats_page.locator('[data-bs-target="#stat-total-by_label-body"]').count() == 0
+    assert stats_page.locator('[data-bs-target="#sec-total-by_label-body"]').count() == 0
 
 
 def test_total_appears_once_every_currency_has_a_rate(stats_page, fixture_data):
@@ -66,7 +66,7 @@ def test_total_appears_once_every_currency_has_a_rate(stats_page, fixture_data):
     expected_total = isk_total + convert(eur_total, 150) + convert(dkk_total, 20)
     heading = stats_page.locator("#cur-total h2")
     expect(heading).to_contain_text(f"{fmt_money(stats_page, expected_total)} total")
-    assert stats_page.locator('[data-bs-target="#stat-total-by_label-body"]').count() == 1
+    assert stats_page.locator('[data-bs-target="#sec-total-by_label-body"]').count() == 1
     expect(stats_page.locator("#cur-total")).not_to_contain_text(
         "Add a rate for every currency to see the total."
     )
@@ -110,7 +110,7 @@ def test_total_switch_is_in_the_sidebar_and_scrolls_to_it(stats_page):
     """The Total is reachable exactly like a currency: a real anchor link that scrolls to it."""
     base_url = stats_page.url
 
-    stats_page.locator(".stats-nav a", has_text="Total").click()
+    stats_page.locator(".side-nav a", has_text="Total").click()
 
     expect(stats_page).to_have_url(f"{base_url}#cur-total")
     expect(stats_page.locator("#cur-total")).to_be_in_viewport()
@@ -118,7 +118,7 @@ def test_total_switch_is_in_the_sidebar_and_scrolls_to_it(stats_page):
 
 def test_total_defaults_to_converting_into_the_primary_currency(stats_page):
     """With nothing chosen yet, the target picker starts on the trip's primary currency."""
-    expect(stats_page.locator("#stats-convert-to")).to_have_value(
+    expect(stats_page.locator("#rates-target")).to_have_value(
         "1"
     )  # ISK is currency id 1, the primary
 
@@ -130,7 +130,7 @@ def test_total_can_convert_into_any_currency_not_just_the_primary(stats_page, fi
     eur_total = next(s for s in stats if s["currency_code"] == "EUR")["total"]
     dkk_total = next(s for s in stats if s["currency_code"] == "DKK")["total"]
 
-    stats_page.locator("#stats-convert-to").select_option(label="EUR")
+    stats_page.locator("#rates-target").select_option(label="EUR")
 
     rate_input(stats_page, "ISK").fill("0.0065")
     rate_input(stats_page, "ISK").blur()
@@ -148,7 +148,7 @@ def test_switching_the_target_currency_clears_previously_typed_rates(stats_page)
     rate_input(stats_page, "EUR").fill("150")
     rate_input(stats_page, "EUR").blur()
 
-    stats_page.locator("#stats-convert-to").select_option(label="EUR")
+    stats_page.locator("#rates-target").select_option(label="EUR")
 
     # EUR is now the target itself; ISK's old value must not silently survive
     # as if it were an ISK-into-EUR rate.

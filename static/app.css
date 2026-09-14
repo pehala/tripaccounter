@@ -50,6 +50,6 @@ body { padding-bottom: 5rem; }
    open dropdown needs a higher stacking context or that header paints over it. */
 .shell-bar { position: relative; z-index: 1030; }
 
-.stats-nav { position: sticky; top: var(--header-h, 6.6rem); }
-.stats-nav-mobile { z-index: 5; }
-[id^="cur-"], [id^="stat-"] { scroll-margin-top: var(--header-h, 6.6rem); }
+.side-nav { position: sticky; top: var(--header-h, 6.6rem); }
+.side-nav-mobile { z-index: 5; }
+[id^="cur-"], [id^="sec-"] { scroll-margin-top: var(--header-h, 6.6rem); }
