@@ -39,7 +39,8 @@ flowchart TD
 | **i18n** | **Frontend-only, from the first commit.** `en` (source) and `cs` as flat ES modules; `t()` over `Intl.PluralRules` / `NumberFormat` / `DateTimeFormat`, no library. Adding a language is one file plus one line. **The API has no language at all**: errors are `{code, params}` with no message, amounts cross the wire in one canonical grammar, and `app/` contains no user-facing string. |
 | **Money** | **Only typed values are stored, as integer hundredths, for every currency.** Computed shares are a SQL view in integer micro-units, never stored, never rounded per item. Balances and stats are `GROUP BY` over hundredths and that view. Input is a canonical decimal string; output is plain JSON numbers — typed to 2 places, computed to 6. **Rounded exactly once**, in settle-up, with a zero-sum correction. No `Currency.decimals`, no `*_display`, no `*_minor` on the wire. |
 | **Splits** | Equal by default; override to weighted shares or exact amounts. Computed server-side only; `preview-split` gives the form live numbers from the same expression that will be saved. |
-| **Paybacks** | **Not recorded.** The app computes who owes whom; the humans settle once at the end. No settlement table, no "Mark paid". |
+| **Paybacks** | **A settle-up suggestion is never recorded as paid** — no "Mark paid". A wallet transfer is different: it is a real, typed movement of money, and one between two people's wallets is exactly the amendment this row used to reserve for later (§2, "Why paybacks are not recorded"). |
+| **Wallets** | Every person gets one untracked, default wallet (`Card`) on creation, server-assigned. A wallet is either untracked (unlimited, no balance) or tracked (`received − sent − spent` per currency). Transfers between wallets have no stored exchange rate — both typed sides — and an exchange is same-owner only. |
 | **Viewer** | **No "current user" anywhere.** An item states who paid and what each person owes. Nothing is rendered relative to a viewer. |
 | **Countries** | A strict per-trip list, **required on every item**. Managed in Setup like people and currencies; the item form only picks. Independent of currency. |
 | **Labels** | Free-typed, many per item, trip-scoped, auto-created on first use. **Space-separated in the input**, so one label is one token — `street-food`, never `street food`. Always an array on the wire. |
@@ -94,9 +95,30 @@ simpler and correct for every viewer.
 
 ### Why paybacks are not recorded
 A settlement table turns a holiday tracker into a ledger with its own reconciliation
-problems, for a workflow that happens once. If it ever matters, a
-`SETTLEMENT(from, to, currency, amount)` entity slots in additively — `net` gains
-`+ sent − received` and nothing else moves.
+problems, for a workflow that happens once. **Amended by wallets:** the
+`SETTLEMENT(from, to, currency, amount)` entity this section used to describe as a
+future, additive slot is exactly what a cross-owner `WALLET_TRANSFER` is — `net`
+gains `+ sent − received` from it, precisely as anticipated (`ERD.md`). What stays
+true is narrower than the original claim: a *settle-up suggestion* is still never
+recorded as paid, and there is still no "Mark paid" button. A wallet transfer isn't a
+payback record in that sense — it's Ann physically handing Bob cash for the
+guesthouse, something that happened regardless of whether the app tracks it, and the
+app tracking it is what keeps `net` honest afterwards.
+
+### Why wallets are per-person pots, not one shared kitty
+A trip's money doesn't move as a single pool — cash lives in one person's pocket,
+a card in another's, and knowing which pot paid for what is what lets an overcharge
+show up as a wallet running negative instead of a mystery in the balances. The
+alternative — a `kind` column on `line_item`, or joined-table inheritance for
+transfers — was rejected because it makes every existing `SUM(amount_minor)` in the
+codebase (six stats queries, `day_totals`, `total_spent`, the CSV export, the
+`share_owed` view) silently wrong until it starts filtering by kind, and both shapes
+force a country and a fake split onto something that is not an expense. A separate
+`wallet_transfer` table changes the meaning of nothing that already exists — see
+`WALLETS.md` §1 for the full comparison, including why a wallet's currency is left
+unset (a wallet holds any currency, like everything else in this app) and why the
+migration was frozen to explicit `op.create_table` calls rather than
+`metadata.create_all` while adding it.
 
 ### Why no authentication
 The VPN is the perimeter and the trust boundary is a group of people who are already

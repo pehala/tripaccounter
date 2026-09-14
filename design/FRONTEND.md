@@ -51,10 +51,11 @@ static/
     ├── views/
     │   ├── TripList.js  TripNew.js
     │   ├── Trip.js       header + nav-tabs, picks the tab view
-    │   ├── Items.js      day groups, empty state, FAB
+    │   ├── Items.js      day groups (items + transfers merged), empty state, FAB
     │   ├── Balances.js   per-currency + Total, collapsible sections, jump-to sidebar
+    │   ├── Wallets.js    one card per person, a balance row per tracked wallet's currency
     │   ├── Stats.js      per-currency + Total, collapsible sections, jump-to sidebar
-    │   └── Setup.js      people / currencies / countries / labels / settings / export
+    │   └── Setup.js      people / wallets / currencies / countries / labels / settings / export
     └── components/
         ├── Shell.js        the one piece of chrome every route shares, app.js
         │                   renders it once around whichever view is current
@@ -66,8 +67,9 @@ static/
         │                   any page with a currency-first layout
         ├── RatesForm.js    the "convert to" picker + one rate input per currency,
         │                   shared by every page with a Total
-        ├── ItemRow.js  DayGroup.js
-        ├── ItemModal.js  add + edit, one component, two modes
+        ├── ItemRow.js  TransferRow.js  DayGroup.js
+        ├── ItemModal.js  Expense/Transfer switch + two modes, one component
+        ├── TransferFields.js  wallet selects, the from/to amount+currency pairs
         ├── SplitEditor.js  mode switch, weights/amounts, calls preview-split
         ├── LabelInput.js   space/comma-separated chips
         ├── Avatar.js  PersonChip.js  LabelBadge.js  Flash.js
@@ -75,7 +77,9 @@ static/
 ```
 
 State keys are exactly the API's resource names: `trip` (with embedded `people`,
-`currencies`, `countries`), `labels`, `items`, `balances`, `stats`.
+`currencies`, `countries`, `wallets`), `labels`, `items` (with `transfers`
+alongside), `balances`, `wallets` (the balances report, its own lazily-loaded key),
+`stats`.
 
 ## 3. Data flow
 
@@ -198,14 +202,15 @@ it opens; landing straight on a tab via a direct link or a hard refresh pays for
 | Trip list | 1 | `GET /trips` |
 | Open a trip (Items tab) | 3, parallel | `GET /trips/{slug}`, `/items`, `/labels` |
 | Balances tab, first open | 1 | `GET /balances` — `trip` is already in the store |
+| Wallets tab, first open | 1 | `GET /wallets` — `trip` is already in the store |
 | Stats tab, first open | 1 | `GET /stats` — `trip` is already in the store |
 | Setup tab, first open | 0 or 1 | `GET /labels`, unless Items already loaded them |
-| Balances/Stats/Setup, cold (direct link) | 2 | `GET /trips/{slug}` plus that tab's own endpoint |
+| Balances/Wallets/Stats/Setup, cold (direct link) | 2 | `GET /trips/{slug}` plus that tab's own endpoint |
 | Revisiting a loaded tab | 0 | already in the store |
-| Open the edit modal | 0 | the item is already in `store.items` |
+| Open the edit modal | 0 | the item or transfer is already in `store.items`/`store.transfers` |
 | Type in the modal | 0 | labels filtered from `store.labels` client-side |
-| Change amount or split | 1 | `preview-split` on `change`, not on input |
-| Save an item | 2 | the write, then `GET /items` (plus `/labels` if a new label was typed) |
+| Change amount or split | 1 | `preview-split` on `change`, not on input — expense mode only, never for a transfer |
+| Save an item or a transfer | 2 | the write, then `GET /items` (plus `/labels` if a new label was typed); a transfer or item write also invalidates `store.wallets`/`store.balances` so those refetch on next open |
 | Setup edit | 2 | the write, then `GET /trips/{slug}` (or `/labels`) |
 
 Anything above this is a bug, and `test_call_budget.py` says so. A cold `GET

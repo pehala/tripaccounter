@@ -16,7 +16,7 @@ layers, how money moves, and where the two halves meet.
 | [`design/FRONTEND.md`](design/FRONTEND.md) | `static/` — the seven rules, `tests/frontend/` |
 | [`DEPLOY.md`](DEPLOY.md) | the runbook: quadlets, host nginx, TLS, upgrades, backups |
 | [`design/MOCKAPI.md`](design/MOCKAPI.md) | the mock API behind the Playwright suite — fixture grammar, what the engine does with it |
-| [`design/WALLETS.md`](design/WALLETS.md) | wallets and transfers — the design and, until it ships, the implementation plan |
+| [`design/WALLETS.md`](design/WALLETS.md) | wallets and transfers — the shipped design record; the rules themselves live in `ERD.md`/`API.md`/`DECISIONS.md` |
 | [`tests/frontend/fixtures/trip.json`](tests/frontend/fixtures/trip.json) | the canned trip the Playwright suite renders |
 | [`tests/backend/fixtures/sheet.csv`](tests/backend/fixtures/sheet.csv) | the example sheet `tools/import_sheet/` is tested against, and the format by example |
 
