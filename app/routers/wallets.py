@@ -5,14 +5,10 @@ from fastapi import APIRouter, Response
 from app.deps import SessionDep, TripDep
 from app.models.roster import Person
 from app.models.wallets import Wallet
-from app.schemas import (
-    WalletCreate,
-    WalletEnvelope,
-    WalletListEnvelope,
-    WalletOut,
-    WalletUpdate,
-    error_responses,
-)
+from app.schemas.envelopes import WalletEnvelope, WalletListEnvelope
+from app.schemas.error_shapes import error_responses
+from app.schemas.requests import WalletCreate, WalletUpdate
+from app.schemas.responses import WalletOut
 from app.services import roster
 from app.services.errors.api import NotFoundError, ValidationError, run_field
 from app.services.errors.fields import NotInTripError

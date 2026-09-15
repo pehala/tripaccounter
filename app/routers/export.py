@@ -7,7 +7,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.routing import APIRouter
 
 from app.deps import SessionDep, TripDep
-from app.schemas import error_responses
+from app.schemas.error_shapes import error_responses
 from app.services import export
 from app.services.errors.api import BadRequestError
 

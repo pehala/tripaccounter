@@ -50,9 +50,9 @@ class LineItem(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     trip_id: int = Field(foreign_key="trip.id", index=True)
-    # Always tz-aware (schemas.py normalizes a naive input to UTC before it
-    # ever reaches here) - timezone=True keeps that explicit in the column
-    # type itself, and is honored for real on Postgres.
+    # Always tz-aware (schemas/fields.py normalizes a naive input to UTC
+    # before it ever reaches here) - timezone=True keeps that explicit in the
+    # column type itself, and is honored for real on Postgres.
     occurred_at: datetime = Field(sa_column=Column(DateTime(timezone=True), index=True))
     name: str = Field(max_length=200)
     note: str | None = None

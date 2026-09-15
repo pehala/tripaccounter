@@ -4,14 +4,10 @@ from fastapi import APIRouter, Response
 
 from app.deps import SessionDep, TripDep
 from app.models.roster import TripCurrency
-from app.schemas import (
-    CurrencyCreate,
-    CurrencyEnvelope,
-    CurrencyListEnvelope,
-    CurrencyOut,
-    CurrencyUpdate,
-    error_responses,
-)
+from app.schemas.envelopes import CurrencyEnvelope, CurrencyListEnvelope
+from app.schemas.error_shapes import error_responses
+from app.schemas.requests import CurrencyCreate, CurrencyUpdate
+from app.schemas.responses import CurrencyOut
 from app.services import roster
 from app.services.errors.api import NotFoundError, run_field
 

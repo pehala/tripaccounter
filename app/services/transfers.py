@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.models.roster import TripCurrency
 from app.models.trip import Trip
 from app.models.wallets import Wallet, WalletTransfer
-from app.schemas import TransferWrite
+from app.schemas.requests import TransferWrite
 from app.services.errors.base import FieldError
 from app.services.errors.fields import (
     CrossOwnerExchangeError,

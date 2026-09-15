@@ -176,7 +176,7 @@ def strip_default_validation_error(schema: dict) -> dict:
     FastAPI attaches an `HTTPValidationError` 422 to every route carrying a path
     parameter or a body. This API answers 422 with its own
     `{error: {code, params, fields}}` envelope, declared per route through
-    `schemas.error_responses`, so the generated 422 is replaced by that envelope
+    `schemas.error_shapes.error_responses`, so the generated 422 is replaced by that envelope
     where a route can raise one and dropped where it cannot. Doing it here keeps
     every decorator stating exactly what its own handler returns.
     """

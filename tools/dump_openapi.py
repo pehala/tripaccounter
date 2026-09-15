@@ -1,6 +1,6 @@
 """Write `app.openapi()` to `openapi.json` at the repo root.
 
-The routers and `app/schemas.py` are the source; this is their snapshot, kept in
+The routers and `app/schemas/` are the source; this is their snapshot, kept in
 the tree so a shape change shows up as a reviewable diff in the commit that makes
 it. `make openapi` regenerates it and `make openapi-check` is the CI gate.
 

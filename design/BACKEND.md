@@ -26,8 +26,13 @@ app/
 │   ├── labels.py       Label, ItemLabel
 │   ├── wallets.py      Wallet, WalletTransfer
 │   └── items.py        LineItem, ItemShare
-├── schemas.py          pydantic v2: request parsing + wire serialization + the
-│                       response envelopes. The OpenAPI schema is generated from here.
+├── schemas/            pydantic v2, one module per half of the contract:
+│   ├── fields.py       parse/validate helpers, the field aliases, Strict
+│   ├── requests.py     the write models
+│   ├── responses.py    the `*Out` wire shapes + their `from_*()` builders
+│   ├── envelopes.py    the per-route response envelopes
+│   └── error_shapes.py the error envelope + error_responses().
+│                       The OpenAPI schema is generated from here.
 ├── seed.py             the demo trip `make seed` writes to the dev database
 ├── services/
 │   ├── money.py        to_hundredths(Decimal), to_wire(int, scale) -> JSON number,
@@ -64,11 +69,11 @@ No `pages.py`, no Jinja, no `python-multipart`. `GET /` and `GET /t/{slug}` retu
 ```mermaid
 flowchart TD
     req(["request"]) --> sch
-    sch["<b>schemas.py</b><br/>canonical string → Decimal<br/>reject unknown fields"]
+    sch["<b>schemas/requests.py</b><br/>canonical string → Decimal<br/>reject unknown fields"]
     rt["<b>routers/</b><br/>reference checks, FieldError → status,<br/>persistence orchestration"]
     sv["<b>services/</b><br/>every rule, every number"]
     md["<b>models/ / db_views.py</b>"]
-    out["<b>schemas.py</b><br/>*Out.from_*() + to_wire()<br/>envelope"]
+    out["<b>schemas/responses.py</b><br/>*Out.from_*() + to_wire()<br/>envelope"]
     res(["response"])
 
     sch --> rt --> sv --> md
@@ -78,7 +83,7 @@ flowchart TD
 ```
 
 The rule of thumb: **if it decides a number, it is in `services/`. If it decides a
-status code, it is in `routers/`. If it decides a shape, it is in `schemas.py`.**
+status code, it is in `routers/`. If it decides a shape, it is in `schemas/`.**
 
 A router never does arithmetic. A service never raises an `HTTPException` — it raises
 a `FieldError`, and `run_field(field, fn, ...)` addresses it to the right request
@@ -91,12 +96,12 @@ Money is integers, and there is exactly one rounding step.
 
 | Stage | Representation | Where |
 |---|---|---|
-| typed in | canonical decimal string, ≤ 2 fraction digits | `services/parsing.py` via `schemas.py` |
+| typed in | canonical decimal string, ≤ 2 fraction digits | `services/parsing.py` via `schemas/fields.py` |
 | stored | `bigint` hundredths (`amount_minor`, `owed_minor`), weights ×10⁴ | `models/` |
 | computed share | `bigint` micro-units, floored, **a view** | `db_views.share_owed` |
 | aggregated | SQL `GROUP BY` over both | `services/balances.py`, `services/stats.py` |
 | **rounded** | **hundredths, zero-sum corrected** | **`services/settle.py` — the only one** |
-| wire | plain JSON number, 2 places typed / 6 computed | `money.to_wire` in `schemas.py` |
+| wire | plain JSON number, 2 places typed / 6 computed | `money.to_wire` in `schemas/responses.py` |
 
 Consequences that are easy to trip over:
 
@@ -135,8 +140,8 @@ drift.
 
 ## 5. The generated OpenAPI
 
-Every route declares a `response_model` (an envelope from `schemas.py`) and the exact
-error statuses it can answer with, via `schemas.error_responses(...)`. Two things fall
+Every route declares a `response_model` (an envelope from `schemas/envelopes.py`) and the exact
+error statuses it can answer with, via `schemas.error_shapes.error_responses(...)`. Two things fall
 out of that:
 
 - `/docs` is the shape reference, and `make openapi` writes the same schema to

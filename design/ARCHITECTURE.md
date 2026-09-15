@@ -65,7 +65,7 @@ sequenceDiagram
     participant R as routers/
     participant S as services/
     participant DB as SQLite
-    participant W as schemas.py
+    participant W as schemas/
 
     C->>R: POST /items {"amount": "18400.50", ...}
     Note over R: pydantic parses the canonical<br/>decimal string → Decimal
@@ -84,12 +84,12 @@ sequenceDiagram
 Three things this diagram is really saying:
 
 - **Parsing happens at the top, formatting never happens at all.** A decimal string
-  becomes a `Decimal` in `schemas.py`, an `int` immediately after, and stays an `int`
+  becomes a `Decimal` in `schemas/`, an `int` immediately after, and stays an `int`
   through every sum and every column. `to_wire()` divides once, in the serializer, and
   nothing downstream of it ever feeds back in.
 - **The routers are thin.** They validate references, translate a `FieldError` into
   the right HTTP status, and hand off. Arithmetic lives in `services/`, shapes live in
-  `schemas.py`.
+  `schemas/`.
 - **No presentation crosses the boundary.** The response carries `18400.5`, not
   `"18 400,50 kr"`. Digit grouping, the decimal separator, the `+` on a credit and
   the phrase "equally, 4 ways" are all browser-side, because only the browser knows
@@ -101,7 +101,7 @@ Three things this diagram is really saying:
 flowchart TD
     main["main.py<br/><i>app factory, error handlers,<br/>OpenAPI post-pass, static mount</i>"]
     routers["routers/<br/><i>HTTP shape, reference checks,<br/>FieldError → status</i>"]
-    schemas["schemas.py<br/><i>request parsing + wire serialization.<br/>The generated OpenAPI comes from here</i>"]
+    schemas["schemas/<br/><i>request parsing + wire serialization.<br/>The generated OpenAPI comes from here</i>"]
     services["services/<br/><i>all arithmetic and all rules</i>"]
     models["models.py + db_views.py<br/><i>SQLAlchemy 2.0, and share_owed</i>"]
     errors["services/errors/<br/><i>the code catalog. No text, anywhere</i>"]
@@ -187,7 +187,7 @@ The two halves meet at one place, and each fact about it has one home:
 
 ```mermaid
 flowchart TD
-    schemas["app/schemas.py + routers/<br/><i>the shapes</i>"]
+    schemas["app/schemas/ + routers/<br/><i>the shapes</i>"]
     docs["/docs<br/><i>what a client reads</i>"]
     spec["openapi.json<br/><i>committed snapshot</i>"]
     apimd["design/API.md<br/><i>what the numbers mean</i>"]
@@ -206,7 +206,7 @@ flowchart TD
 
 | Fact | Lives in | Kept honest by |
 |---|---|---|
-| fields, endpoints, statuses | `app/schemas.py` + the routers | FastAPI validates every response against the declared envelope |
+| fields, endpoints, statuses | `app/schemas/` + the routers | FastAPI validates every response against the declared envelope |
 | the browsable reference | `/docs`, and `openapi.json` as its snapshot | `make openapi-check` — CI fails on a stale copy, so a shape change lands as a reviewable diff |
 | what a number means, which rule yields which code | [`API.md`](API.md) | `tests/backend/test_validation.py` walks its §4 table row by row; `tools/check_i18n.py` matches its codes to the frontend catalogs |
 | what a response looks like to a browser | `tests/frontend/fixtures/` | copied from what the backend actually produced |

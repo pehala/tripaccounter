@@ -1,7 +1,7 @@
 # Trip Accounter — API Contract (v1)
 
 > **Shapes are generated, rules are written.** Every field, endpoint, status and
-> example lives in the OpenAPI schema FastAPI derives from `app/schemas.py` and the
+> example lives in the OpenAPI schema FastAPI derives from `app/schemas/` and the
 > routers — browse it at **`/docs`** on a running server, or read the committed
 > snapshot [`openapi.json`](../openapi.json) (`make openapi` regenerates it; CI
 > fails when it is stale). This file holds only what a schema cannot say: what the

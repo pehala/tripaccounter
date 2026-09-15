@@ -14,7 +14,7 @@ from app.db_views import share_owed_view
 from app.models.items import LineItem
 from app.models.roster import Person, TripCurrency
 from app.models.wallets import Wallet, WalletTransfer
-from app.schemas import BalanceBlockOut, BalancePersonOut, SuggestionOut
+from app.schemas.responses import BalanceBlockOut, BalancePersonOut, SuggestionOut
 from app.services import settle
 from app.services.money import AMOUNT_SCALE, MICRO_PER_MINOR, MICRO_SCALE, to_wire
 

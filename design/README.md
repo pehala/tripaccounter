@@ -20,7 +20,7 @@ schedules — those described how the thing got built and were deleted when it w
 ## Shapes are generated; rules are written
 
 There is no hand-maintained copy of the API's shapes anywhere in here. Fields,
-endpoints, statuses and schemas come from `app/schemas.py` and the routers:
+endpoints, statuses and schemas come from `app/schemas/` and the routers:
 
 ```bash
 make start_dev_server     # then open /docs

@@ -13,7 +13,7 @@ from app.models.items import LineItem
 from app.models.labels import ItemLabel, Label
 from app.models.roster import TripCurrency
 from app.models.trip import Trip
-from app.schemas import (
+from app.schemas.responses import (
     StatsBlockOut,
     StatsCountryOut,
     StatsDayOut,

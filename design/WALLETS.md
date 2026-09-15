@@ -203,7 +203,7 @@ stays within floor loss of zero. `suggestions` are unchanged; they consume `net_
 
 ## 3. API additions
 
-Shapes come from `app/schemas.py` and `openapi.json`; this is the meaning.
+Shapes come from `app/schemas/` and `openapi.json`; this is the meaning.
 
 **Roster.** `trip.wallets` is a flat list in owner `sort_order` then wallet
 `sort_order`: `{id, person_id, name, tracked, is_default, sort_order}`. CRUD at

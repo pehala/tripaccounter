@@ -7,15 +7,10 @@ from app.deps import SessionDep, TripDep
 from app.models.items import LineItem
 from app.models.roster import Person
 from app.models.trip import Trip
-from app.schemas import (
-    TripCreate,
-    TripEnvelope,
-    TripListEnvelope,
-    TripOut,
-    TripSummaryOut,
-    TripUpdate,
-    error_responses,
-)
+from app.schemas.envelopes import TripEnvelope, TripListEnvelope
+from app.schemas.error_shapes import error_responses
+from app.schemas.requests import TripCreate, TripUpdate
+from app.schemas.responses import TripOut, TripSummaryOut
 from app.services import roster
 from app.services.errors.api import ValidationError, run_field
 from app.services.errors.fields import EmptyError
