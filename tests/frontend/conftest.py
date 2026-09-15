@@ -1,7 +1,8 @@
 """Fixtures for the Playwright suite.
 
 One fixture-seeded mock server (tests/frontend/mockapi.py) per test, navigation and
-modal fixtures on top of it, route stubs for writes and errors. No DB, no `app.*`.
+modal fixtures on top of it, route stubs for writes and errors, and a session-scoped
+trip page per tab for the tests that only read it. No DB, no `app.*`.
 """
 
 import json
@@ -241,6 +242,60 @@ def stats_page(open_trip):
 def setup_page(open_trip):
     """Return the page with the trip loaded on the Setup tab."""
     return open_trip("setup")
+
+
+# --- shared read-only pages ---------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def shared_trip(browser):
+    """Return `shared_trip(tab=None) -> page`: one trip.json page per tab, built once.
+
+    A test on one of these pages may read it and may leave it in a state any other
+    test on the same page reaches too — expanding a collapse is such a change, typing
+    into a filter, navigating or writing the URL hash is not. A test that needs the
+    resting state asks for `items_page`, `balances_page` or `stats_page` instead and
+    gets a page of its own.
+    """
+    data = load_fixture("trip.json")
+    slug = data["trip"]["trip"]["slug"]
+    context = browser.new_context(timezone_id="UTC")
+    context.add_init_script("window.localStorage.setItem('lang', 'en')")
+    context.add_init_script(NO_TRANSITIONS)
+    pages = {}
+
+    with MockServer(data) as server:
+
+        def go(tab=None):
+            if tab not in pages:
+                page = context.new_page()
+                url = f"{server.url}/t/{slug}"
+                page.goto(url if tab is None else f"{url}/{tab}")
+                expect(TABS[TAB_BY_PATH[tab or "items"]][1](page)).to_be_visible()
+                pages[tab] = page
+            return pages[tab]
+
+        yield go
+
+    context.close()
+
+
+@pytest.fixture(scope="session")
+def shared_items_page(shared_trip):
+    """Return the session's read-only Items tab."""
+    return shared_trip()
+
+
+@pytest.fixture(scope="session")
+def shared_balances_page(shared_trip):
+    """Return the session's read-only Balances tab."""
+    return shared_trip("balances")
+
+
+@pytest.fixture(scope="session")
+def shared_stats_page(shared_trip):
+    """Return the session's read-only Statistics tab."""
+    return shared_trip("stats")
 
 
 @pytest.fixture

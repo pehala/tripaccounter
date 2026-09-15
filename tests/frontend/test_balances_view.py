@@ -14,21 +14,23 @@ from playwright.sync_api import expect
 
 
 def expand(page, currency_id, group):
-    """Open one balance section's collapse body."""
-    page.locator(f'[data-bs-target="#sec-{currency_id}-{group}-body"]').click()
+    """Open one balance section's collapse body, leaving an already-open one open."""
+    body = page.locator(f"#sec-{currency_id}-{group}-body")
+    if not body.is_visible():
+        page.locator(f'[data-bs-target="#sec-{currency_id}-{group}-body"]').click()
     page.locator(f"#sec-{currency_id}-{group}-body.show").wait_for()
 
 
 @pytest.fixture
-def person_row(balances_page, fixture_data):
+def person_row(shared_balances_page, fixture_data):
     """Return `person_row(currency_code, name)`: that person's <li> in the net section."""
     currency_id_by_code = {
         b["currency_code"]: b["currency_id"] for b in fixture_data["balances"]["balances"]
     }
 
     def find(currency_code, name):
-        expand(balances_page, currency_id_by_code[currency_code], "net")
-        return balances_page.locator(
+        expand(shared_balances_page, currency_id_by_code[currency_code], "net")
+        return shared_balances_page.locator(
             f"#sec-{currency_id_by_code[currency_code]}-net-body li"
         ).filter(has_text=name)
 
@@ -44,13 +46,13 @@ def person_row(balances_page, fixture_data):
     ],
 )
 def test_one_net_section_and_one_settle_up_section_per_currency(
-    balances_page, fixture_data, currency_code
+    shared_balances_page, fixture_data, currency_code
 ):
     """Every currency in the fixture gets its own net section and settle-up section."""
     balance = next(
         b for b in fixture_data["balances"]["balances"] if b["currency_code"] == currency_code
     )
-    section = balances_page.locator(f"#cur-{balance['currency_id']}")
+    section = shared_balances_page.locator(f"#cur-{balance['currency_id']}")
 
     titles = section.locator('[data-bs-toggle="collapse"]').all_inner_texts()
     assert "Balance" in titles[0]
@@ -88,7 +90,7 @@ def test_net_value_is_signed_and_trimmed_to_two_places(person_row, currency_code
     ],
 )
 def test_suggestion_rows_follow_the_api_order(
-    balances_page, fixture_data, currency_code, transfers
+    shared_balances_page, fixture_data, currency_code, transfers
 ):
     """Settle-up rows render payer then payee in the API's own order, with no extra rows.
 
@@ -98,7 +100,7 @@ def test_suggestion_rows_follow_the_api_order(
         b for b in fixture_data["balances"]["balances"] if b["currency_code"] == currency_code
     )
 
-    rows = balances_page.locator(
+    rows = shared_balances_page.locator(
         f"#sec-{balance['currency_id']}-settle_up-body ul.list-group-flush li"
     )
 

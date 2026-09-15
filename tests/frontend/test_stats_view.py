@@ -17,8 +17,10 @@ OVERLAP_CAVEAT = (
 
 
 def expand(page, currency_id, group):
-    """Open one stat section's collapse body."""
-    page.locator(f'[data-bs-target="#sec-{currency_id}-{group}-body"]').click()
+    """Open one stat section's collapse body, leaving an already-open one open."""
+    body = page.locator(f"#sec-{currency_id}-{group}-body")
+    if not body.is_visible():
+        page.locator(f'[data-bs-target="#sec-{currency_id}-{group}-body"]').click()
     page.locator(f"#sec-{currency_id}-{group}-body.show").wait_for()
 
 
@@ -33,16 +35,16 @@ def unlabelled_stats_page(stub, fixture_data, open_trip):
 
 
 def test_by_label_by_country_by_person_by_day_render_in_order_for_one_currency(
-    stats_page, fixture_data
+    shared_stats_page, fixture_data
 ):
     """A currency's four stat sections appear in the exact order the API returns them."""
     isk = next(s for s in fixture_data["stats"]["stats"] if s["currency_code"] == "ISK")
     assert isk["total"] > 0  # sanity: the fixture actually has data to render
 
-    heading = stats_page.locator("h2", has_text=f"total {isk['currency_code']}")
+    heading = shared_stats_page.locator("h2", has_text=f"total {isk['currency_code']}")
     expect(heading).to_be_visible()
 
-    section = stats_page.locator(f"#cur-{isk['currency_id']}")
+    section = shared_stats_page.locator(f"#cur-{isk['currency_id']}")
     titles = section.locator('[data-bs-toggle="collapse"]').all_inner_texts()
     assert "By label" in titles[0]
     assert "By country" in titles[1]
@@ -50,34 +52,36 @@ def test_by_label_by_country_by_person_by_day_render_in_order_for_one_currency(
     assert "By day" in titles[3]
 
 
-def test_country_flags_shown_in_by_country_rows(stats_page, fixture_data):
+def test_country_flags_shown_in_by_country_rows(shared_stats_page, fixture_data):
     """A by_country row shows the country's flag next to its name."""
     isk = next(s for s in fixture_data["stats"]["stats"] if s["currency_code"] == "ISK")
     dkk = next(s for s in fixture_data["stats"]["stats"] if s["currency_code"] == "DKK")
 
-    expand(stats_page, isk["currency_id"], "by_country")
-    expand(stats_page, dkk["currency_id"], "by_country")
+    expand(shared_stats_page, isk["currency_id"], "by_country")
+    expand(shared_stats_page, dkk["currency_id"], "by_country")
 
-    expect(stats_page.get_by_text("🇮🇸 Iceland").first).to_be_visible()
-    expect(stats_page.get_by_text("🇩🇰 Denmark").first).to_be_visible()
+    expect(shared_stats_page.get_by_text("🇮🇸 Iceland").first).to_be_visible()
+    expect(shared_stats_page.get_by_text("🇩🇰 Denmark").first).to_be_visible()
 
 
-def test_overlap_caveat_is_inside_the_by_label_section(stats_page, fixture_data):
+def test_overlap_caveat_is_inside_the_by_label_section(shared_stats_page, fixture_data):
     """The by_label overlap note lives in the same section as By label, not just somewhere."""
     isk = next(s for s in fixture_data["stats"]["stats"] if s["currency_code"] == "ISK")
-    expand(stats_page, isk["currency_id"], "by_label")
+    expand(shared_stats_page, isk["currency_id"], "by_label")
 
-    by_label_section = stats_page.locator(f"#sec-{isk['currency_id']}-by_label")
+    by_label_section = shared_stats_page.locator(f"#sec-{isk['currency_id']}-by_label")
     expect(by_label_section).to_contain_text(OVERLAP_CAVEAT)
 
 
-def test_by_person_is_labelled_as_owed_not_paid(stats_page):
+def test_by_person_is_labelled_as_owed_not_paid(shared_stats_page):
     """The Per person section carries API.md's required caveat: owed, not paid.
 
     The caveat is the section's collapsed summary, so it's visible without
     expanding anything.
     """
-    expect(stats_page.get_by_text("what each owes, not what they paid").first).to_be_visible()
+    expect(
+        shared_stats_page.get_by_text("what each owes, not what they paid").first
+    ).to_be_visible()
 
 
 def test_null_label_group_renders_as_unlabelled(unlabelled_stats_page, fixture_data):

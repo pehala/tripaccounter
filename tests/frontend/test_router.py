@@ -8,19 +8,19 @@ an empty shell.
 from playwright.sync_api import expect
 
 
-def test_cold_load_with_tab_path_lands_directly_on_that_tab(balances_page):
+def test_cold_load_with_tab_path_lands_directly_on_that_tab(shared_balances_page):
     """A first paint at /balances renders the Balances tab active and never mounts the Items FAB."""
-    expect(balances_page.locator(".nav-link.active")).to_have_text("Balances")
-    expect(balances_page.locator(".balances-content").first).to_be_visible()
-    assert balances_page.locator(".fab").count() == 0
+    expect(shared_balances_page.locator(".nav-link.active")).to_have_text("Balances")
+    expect(shared_balances_page.locator(".balances-content").first).to_be_visible()
+    assert shared_balances_page.locator(".fab").count() == 0
 
 
-def test_active_tab_link_marks_itself_current(balances_page):
+def test_active_tab_link_marks_itself_current(shared_balances_page):
     """The tab nav is links, not ARIA tabs, so the one we are on says aria-current=page."""
-    expect(balances_page.get_by_role("link", name="Balances")).to_have_attribute(
+    expect(shared_balances_page.get_by_role("link", name="Balances")).to_have_attribute(
         "aria-current", "page"
     )
-    expect(balances_page.get_by_role("link", name="Items")).not_to_have_attribute(
+    expect(shared_balances_page.get_by_role("link", name="Items")).not_to_have_attribute(
         "aria-current", "page"
     )
 

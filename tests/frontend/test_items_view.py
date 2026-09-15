@@ -65,14 +65,14 @@ def zero_share_page(stub, open_trip):
     return open_trip()
 
 
-def test_one_row_per_item_in_fixture_order(items_page):
+def test_one_row_per_item_in_fixture_order(shared_items_page):
     """Items render in the fixture's own order, one row each, across their day groups."""
-    expect(items_page.locator(f"{ROW} span.d-block.fw-semibold")).to_have_text(ITEM_NAMES)
+    expect(shared_items_page.locator(f"{ROW} span.d-block.fw-semibold")).to_have_text(ITEM_NAMES)
 
 
-def test_owed_chips_skip_people_with_no_share(items_page):
+def test_owed_chips_skip_people_with_no_share(shared_items_page):
     """A row shows one owed chip per participating person: three of the four on Blue Lagoon."""
-    row = items_page.locator(ROW, has_text="Blue Lagoon tickets")
+    row = shared_items_page.locator(ROW, has_text="Blue Lagoon tickets")
 
     expect(row.locator(".owed span")).to_have_count(3)
 
@@ -86,9 +86,11 @@ def test_owed_chips_skip_people_with_no_share(items_page):
         pytest.param("Dinner at Messinn", 1, "A4,600 ISK", id="whole-grouped"),
     ],
 )
-def test_owed_chip_shows_initial_share_and_currency(items_page, item_name, position, chip_text):
+def test_owed_chip_shows_initial_share_and_currency(
+    shared_items_page, item_name, position, chip_text
+):
     """A chip shows the person's initial, their formatted share and the item's currency."""
-    row = items_page.locator(ROW, has_text=item_name)
+    row = shared_items_page.locator(ROW, has_text=item_name)
 
     expect(row.locator(".owed span").nth(position)).to_have_text(chip_text)
 
@@ -107,14 +109,14 @@ def test_owed_zero_renders_as_a_zero_and_null_share_gets_no_chip(zero_share_page
         pytest.param("Layover lunch", "🇩🇰 Denmark", id="denmark"),
     ],
 )
-def test_item_row_shows_country_flag_with_name(items_page, item_name, text):
+def test_item_row_shows_country_flag_with_name(shared_items_page, item_name, text):
     """A row shows its country's flag next to the country name, not the name alone."""
-    expect(items_page.locator(ROW, has_text=item_name)).to_contain_text(text)
+    expect(shared_items_page.locator(ROW, has_text=item_name)).to_contain_text(text)
 
 
-def test_labels_render_as_badges(items_page):
+def test_labels_render_as_badges(shared_items_page):
     """An item's labels each render as their own badge element, in item order."""
-    row = items_page.locator(ROW, has_text="Dinner at Messinn")
+    row = shared_items_page.locator(ROW, has_text="Dinner at Messinn")
 
     expect(row.locator(".badge")).to_have_text(["food", "restaurant"])
 
@@ -127,9 +129,9 @@ def test_empty_trip_shows_empty_state_and_fab(items_page):
     expect(items_page.locator(ROW)).to_have_count(0)
 
 
-def test_day_separators_show_one_total_chip_per_currency_rounded_up(items_page):
+def test_day_separators_show_one_total_chip_per_currency_rounded_up(shared_items_page):
     """Each day separator renders `items.day_totals` as one chip per currency, whole units."""
-    expect(items_page.locator(".day-sep .num span")).to_have_text(DAY_TOTAL_CHIPS)
+    expect(shared_items_page.locator(".day-sep .num span")).to_have_text(DAY_TOTAL_CHIPS)
 
 
 def test_day_totals_hidden_while_filtering(items_page):
