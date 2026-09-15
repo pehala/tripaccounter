@@ -3,8 +3,9 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import Label, LineItem
-from app.services.errors import DuplicateError
+from app.models.items import LineItem
+from app.models.labels import Label
+from app.services.errors.fields import DuplicateError
 
 PALETTE = [
     "#6c757d",

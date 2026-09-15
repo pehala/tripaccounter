@@ -29,3 +29,14 @@ export const api = {
   patch: (path, body) => request('PATCH', path, body),
   del: (path) => request('DELETE', path),
 };
+
+// Runs a write, returns the error object on failure (or null on success) so a
+// caller can decide field-level vs. flash handling without a try/catch of its own.
+export async function attempt(promise) {
+  try {
+    await promise;
+    return null;
+  } catch (err) {
+    return err;
+  }
+}

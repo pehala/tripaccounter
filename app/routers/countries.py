@@ -3,17 +3,13 @@
 from fastapi import APIRouter, Response
 
 from app.deps import SessionDep, TripDep
-from app.models import TripCountry
-from app.schemas import (
-    CountryCreate,
-    CountryEnvelope,
-    CountryListEnvelope,
-    CountryOut,
-    CountryUpdate,
-    error_responses,
-)
+from app.models.roster import TripCountry
+from app.schemas.envelopes import CountryEnvelope, CountryListEnvelope
+from app.schemas.error_shapes import error_responses
+from app.schemas.requests import CountryCreate, CountryUpdate
+from app.schemas.responses import CountryOut
 from app.services import roster
-from app.services.errors import NotFoundError, run_field
+from app.services.errors.api import NotFoundError, run_field
 from app.services.roster import country_item_counts
 
 router = APIRouter(tags=["countries"])

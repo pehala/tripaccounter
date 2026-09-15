@@ -1,6 +1,6 @@
 """Canonical decimal/coordinate grammar and business rules, in one place.
 
-Used two ways: `schemas.py` wraps these in pydantic `BeforeValidator`s (raising
+Used two ways: `schemas/fields.py` wraps these in pydantic `BeforeValidator`s (raising
 `PydanticCustomError`, for fields pydantic validates directly), and
 `splits.py` wraps them in plain calls (raising `FieldError`, for `shares` rows
 - a raw `list[dict]` whose shape depends on the sibling `split_mode` field,

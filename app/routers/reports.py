@@ -3,7 +3,9 @@
 from fastapi import APIRouter
 
 from app.deps import SessionDep, TripDep
-from app.schemas import BalancesEnvelope, StatsOut, error_responses
+from app.schemas.envelopes import BalancesEnvelope
+from app.schemas.error_shapes import error_responses
+from app.schemas.responses import StatsOut
 from app.services.balances import compute_balances
 from app.services.stats import compute_stats
 

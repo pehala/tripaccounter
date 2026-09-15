@@ -159,7 +159,7 @@ make fmt             # ruff format + import fixes
 the same targets.
 
 **The API is browsable at `/docs` on a running server**, and that is the shape
-reference — every field, endpoint and status is generated from `app/schemas.py` and
+reference — every field, endpoint and status is generated from `app/schemas/` and
 the routers. `make openapi` writes the same schema to `openapi.json` at the repo
 root; change a shape and regenerate in the same commit, or `make openapi-check`
 fails in CI.
