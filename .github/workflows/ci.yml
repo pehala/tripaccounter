@@ -71,7 +71,7 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ hashFiles('uv.lock') }}
       - run: uv run python -m playwright install --with-deps chromium
-      - run: make test_frontend
+      - run: make test_frontend TRACE=1
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
         with: { name: playwright-traces, path: test-results/ }

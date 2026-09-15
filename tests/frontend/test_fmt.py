@@ -38,8 +38,10 @@ def test_signed_puts_plus_only_on_credits(js, value, expected):
     assert js("fmt.js", "signed", value, "en") == expected
 
 
-def test_formatter_cache_reuses_one_instance_per_locale(page, js):
+def test_formatter_cache_reuses_one_instance_per_locale(page, mockserver):
     """money() constructs one Intl.NumberFormat per distinct locale, not per call."""
+    page.goto(f"{mockserver}/")
+
     construction_count = page.evaluate(
         """async () => {
             let calls = 0;
