@@ -13,7 +13,7 @@ from app.schemas import (
     error_responses,
 )
 from app.services import roster
-from app.services.errors import NotFoundError, run_field
+from app.services.errors.api import NotFoundError, run_field
 from app.services.roster import country_item_counts
 
 router = APIRouter(tags=["countries"])

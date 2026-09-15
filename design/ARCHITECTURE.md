@@ -104,7 +104,7 @@ flowchart TD
     schemas["schemas.py<br/><i>request parsing + wire serialization.<br/>The generated OpenAPI comes from here</i>"]
     services["services/<br/><i>all arithmetic and all rules</i>"]
     models["models.py + db_views.py<br/><i>SQLAlchemy 2.0, and share_owed</i>"]
-    errors["services/errors.py<br/><i>the code catalog. No text, anywhere</i>"]
+    errors["services/errors/<br/><i>the code catalog. No text, anywhere</i>"]
 
     main --> routers
     routers --> schemas

@@ -112,7 +112,7 @@ Consequences that are easy to trip over:
 
 ## 4. Errors carry no language
 
-`services/errors.py` is the whole catalog, and it contains **no sentence, no template,
+`services/errors/` is the whole catalog, and it contains **no sentence, no template,
 no fallback, no default word, no locale** — nor does anything else in `app/`. The
 backend never sees `Accept-Language` and has nothing to translate.
 

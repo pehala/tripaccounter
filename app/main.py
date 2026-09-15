@@ -25,16 +25,10 @@ from app.routers import (
     trips,
     wallets,
 )
-from app.services.errors import (
-    FIELD_ERROR_PARAMS,
-    NATIVE_ERROR_CODES,
-    ApiError,
-    BadRequestError,
-    FieldError,
-    InternalError,
-    RequiredError,
-    ValidationError,
-)
+from app.services.errors import FIELD_ERROR_PARAMS
+from app.services.errors.api import BadRequestError, InternalError, ValidationError
+from app.services.errors.base import NATIVE_ERROR_CODES, ApiError, FieldError
+from app.services.errors.fields import RequiredError
 
 logger = logging.getLogger("app")
 

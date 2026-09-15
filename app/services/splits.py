@@ -7,10 +7,10 @@ exactly one definition of a share.
 
 from decimal import Decimal
 
-from app.services.errors import (
+from app.services.errors.base import FieldError
+from app.services.errors.fields import (
     DuplicatePersonError,
     EmptyError,
-    FieldError,
     NotInTripError,
     SumMismatchError,
 )

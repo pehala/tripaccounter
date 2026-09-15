@@ -9,7 +9,7 @@ from app.models.items import ItemShare, LineItem
 from app.models.roster import Person, TripCountry, TripCurrency
 from app.models.trip import Trip
 from app.models.wallets import Wallet, WalletTransfer
-from app.services.errors import (
+from app.services.errors.fields import (
     DuplicateError,
     InUseError,
     InvalidCodeError,

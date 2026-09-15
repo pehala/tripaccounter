@@ -251,7 +251,7 @@ share-grained and stay out of the CSV; the JSON export gains a `transfers` block
 | `DELETE` default wallet | refused | `is_default` | | "Make another wallet the default first." |
 
 Four new codes: `wallet_owner_mismatch`, `same_wallet`, `cross_owner_exchange`,
-`is_default`. Each needs the row above, a class in `services/errors.py`, an
+`is_default`. Each needs the row above, a class in `services/errors/fields.py`, an
 `err.<code>` key in every catalog, and a backend test that triggers it — all in one
 commit, or `make lint` fails.
 

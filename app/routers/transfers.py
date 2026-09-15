@@ -15,7 +15,7 @@ from app.schemas import (
     error_responses,
 )
 from app.services import transfers as transfer_service
-from app.services.errors import NotFoundError, ValidationError
+from app.services.errors.api import NotFoundError, ValidationError
 
 router = APIRouter(tags=["transfers"])
 

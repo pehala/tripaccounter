@@ -17,7 +17,8 @@ from app.schemas import (
     error_responses,
 )
 from app.services import roster
-from app.services.errors import EmptyError, ValidationError, run_field
+from app.services.errors.api import ValidationError, run_field
+from app.services.errors.fields import EmptyError
 from app.services.labels import get_or_create as get_or_create_label
 from app.services.roster import country_item_counts
 from app.services.slugs import unique_slug

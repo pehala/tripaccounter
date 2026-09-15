@@ -9,7 +9,7 @@ from fastapi.routing import APIRouter
 from app.deps import SessionDep, TripDep
 from app.schemas import error_responses
 from app.services import export
-from app.services.errors import BadRequestError
+from app.services.errors.api import BadRequestError
 
 router = APIRouter(tags=["export"])
 

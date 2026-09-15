@@ -849,7 +849,7 @@ class TransferListEnvelope(BaseModel):
 # ---- Errors -------------------------------------------------------------------
 # The envelope every 4xx/5xx carries: a stable `code` the client switches on and
 # the `params` its own catalog renders into a sentence, per field where the
-# failure has one. The codes themselves live in `app/services/errors.py`; what
+# failure has one. The codes themselves live in `app/services/errors/`; what
 # each one means is design/API.md §4.
 
 

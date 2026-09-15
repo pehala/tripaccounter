@@ -409,7 +409,7 @@ rule, its code and its intended meaning sit in one row.
 | `from_currency_id`, `to_currency_id` | in trip; differ only when both wallets have one owner | `not_in_trip` / `cross_owner_exchange` | | "Exchange only between your own wallets." |
 | `DELETE` default wallet | refused | `is_default` | | "Make another wallet the default first." |
 
-A new rule adds a row here, the code to `services/errors.py`, and an `err.<code>`
+A new rule adds a row here, the code to `services/errors/`, and an `err.<code>`
 key to every frontend catalog **in the same commit** — `test_errors.py` and
 `test_i18n.py` fail otherwise.
 

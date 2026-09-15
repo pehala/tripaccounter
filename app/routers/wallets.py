@@ -14,7 +14,8 @@ from app.schemas import (
     error_responses,
 )
 from app.services import roster
-from app.services.errors import NotFoundError, NotInTripError, ValidationError, run_field
+from app.services.errors.api import NotFoundError, ValidationError, run_field
+from app.services.errors.fields import NotInTripError
 from app.services.wallets import wallet_balances
 
 router = APIRouter(tags=["wallets"])

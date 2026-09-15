@@ -25,15 +25,14 @@ from app.schemas import (
     error_responses,
 )
 from app.services import geo, roster, splits
-from app.services.errors import (
-    FieldError,
+from app.services.errors.api import NotFoundError, ValidationError
+from app.services.errors.base import FieldError
+from app.services.errors.fields import (
     InactiveError,
     InvalidAmountError,
-    NotFoundError,
     NotInTripError,
     RequiredError,
     TooLongError,
-    ValidationError,
     WalletOwnerMismatchError,
 )
 from app.services.labels import release_item_labels, set_item_labels
