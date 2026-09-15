@@ -144,7 +144,7 @@ erDiagram
 `wallet.person_id = line_item.payer_id`.
 
 Constraints, following the composite-FK pattern every cross-trip reference already
-uses (`app/models.py:168-186`):
+uses (`app/models/wallets.py`):
 
 ```
 wallet(person_id, name) UNIQUE          wallet(id, trip_id) UNIQUE
@@ -273,7 +273,7 @@ ride `GET /items`; the Wallets tab is one call on first open and none after.
 | `components/TransferRow.js` (new) | Same shell as `ItemRow` plus class `transfer-row`: owner avatar + wallet name → owner avatar + wallet name; time · note; on the right the from amount muted, and for an exchange `20 EUR → 15 CHF` (both sides shown, no rate computed — rule 1). |
 | `components/ItemModal.js` | **Stays one component** (two Bootstrap modals swapping under `.modal.show` flicker and break the modal locators). Header gains an Expense / Transfer switch in new mode; kind is frozen when editing. Expense: after the payer chips a `<select name="wallet_id">` over the payer's wallets, defaulting to `is_default`; choosing another payer resets the select to that payer's default; body gains `wallet_id`. Transfer: renders `TransferFields`, saves to `/transfers`, reloads `items`, never calls `preview-split`. |
 | `components/TransferFields.js` (new) | `from_wallet_id` select, from amount + currency input-group; `to_wallet_id` select, to amount + currency input-group. Wallet selects have an `<optgroup>` per active person; `to` starts empty so `reportValidity()` forces a choice. The to side mirrors the from side (amount and currency) until the user edits it, and is visually secondary until it differs. A cross-owner pick with different currencies is not prevented client-side; the server's `cross_owner_exchange` renders under `to_currency_id`. |
-| `views/Setup.js` | A **flat `WalletsSection`** after People — nesting wallets inside `PersonRow` breaks `test_setup.py`'s strict locators. Row: owner avatar + name (click to rename), default/tracked text, a `btn-link` Track/Untrack (a button, never an `<input>` in the resting row), Make default, trash hidden on the default wallet, inline `in_use` alert as `PersonRow` does. Add form: owner select, name, tracked switch. |
+| `views/setup/WalletsSection.js` | A **flat section** after People — nesting wallets inside `PersonRow` breaks `test_setup.py`'s strict locators. Row: owner avatar + name (click to rename), default/tracked text, a `btn-link` Track/Untrack (a button, never an `<input>` in the resting row), Make default, trash hidden on the default wallet, inline `in_use` alert as `PersonRow` does. Add form: owner select, name, tracked switch. |
 | `i18n/en.js`, `cs.js` | `nav.wallets`; `setup.wallets`, `setup.wallets_hint`, `setup.wallet_name_placeholder`, `setup.wallet_tracked`, `setup.wallet_untracked`, `setup.make_default`, `action.track`, `action.untrack`; `item.kind.expense`, `item.kind.transfer`, `item.wallet_label`; `transfer.new_title`, `transfer.edit_title`, `transfer.from_label`, `transfer.to_label`, `transfer.note_placeholder`, `transfer.delete_confirm`, `transfer.receives_label`;
 `wallets.untracked`, `wallets.flow`, `wallets.overcharge`, `wallets.no_activity`, `wallets.empty`; `err.wallet_owner_mismatch`, `err.same_wallet`, `err.cross_owner_exchange`, `err.is_default`. **`balances.note` is reworded** — it currently promises that nothing is recorded. |
 

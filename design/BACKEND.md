@@ -55,7 +55,10 @@ app/
 │   ├── slugs.py        slugify + collision suffix
 │   ├── geo.py          parse lat/lon out of a maps URL when not given
 │   ├── export.py       CSV (one row per share) and JSON (whole trip + transfers)
-│   └── errors.py       the {code, params} catalog. No text. Depends on nothing.
+│   └── errors/         the {code, params} catalog. No text. Depends on nothing.
+│       ├── base.py     FieldError, ConflictFieldError, ApiError
+│       ├── fields.py   the field codes, grouped by category
+│       └── api.py      the status-carrying codes + wrap_field_error/run_field
 └── routers/
     ├── trips.py  items.py  people.py  currencies.py  countries.py  labels.py
     ├── wallets.py  transfers.py

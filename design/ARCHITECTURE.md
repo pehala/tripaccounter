@@ -103,7 +103,7 @@ flowchart TD
     routers["routers/<br/><i>HTTP shape, reference checks,<br/>FieldError → status</i>"]
     schemas["schemas/<br/><i>request parsing + wire serialization.<br/>The generated OpenAPI comes from here</i>"]
     services["services/<br/><i>all arithmetic and all rules</i>"]
-    models["models.py + db_views.py<br/><i>SQLAlchemy 2.0, and share_owed</i>"]
+    models["models/ + db_views.py<br/><i>SQLAlchemy 2.0, and share_owed</i>"]
     errors["services/errors/<br/><i>the code catalog. No text, anywhere</i>"]
 
     main --> routers
@@ -119,7 +119,7 @@ flowchart TD
     style services fill:#e9f7ee,stroke:#3f9e5f
 ```
 
-`errors.py` is drawn apart because everything reaches for it and it depends on
+`services/errors/` is drawn apart because everything reaches for it and it depends on
 nothing. It holds the `{code, params}` catalog and **not one word of English** — see
 [`BACKEND.md`](BACKEND.md) §4.
 
