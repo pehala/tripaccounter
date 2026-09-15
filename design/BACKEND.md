@@ -38,6 +38,8 @@ app/
 │   ├── money.py        to_hundredths(Decimal), to_wire(int, scale) -> JSON number,
 │   │                   scale_weight(Decimal) -> int. No parsing, no formatting.
 │   ├── parsing.py      the canonical grammars: amount, weight, coordinate
+│   ├── items.py        item write rules: refs, wallet and coordinate resolution,
+│   │                   split-mode defaulting, the share rows a write persists
 │   ├── splits.py       build/validate share rows, exact-sum check, pad to roster
 │   │                   order; resolve_shares_wire is the view expression in Python
 │   ├── settle.py       round nets to hundredths with the zero-sum correction, then

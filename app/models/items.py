@@ -25,7 +25,7 @@ class LineItem(SQLModel, table=True):
     __tablename__ = "line_item"
     __table_args__ = (
         # Cross-trip refs (a currency/payer/country from another trip) are
-        # rejected at the DB, not just by the router's _validate_refs.
+        # rejected at the DB, not just by services/items.py's validate_write.
         ForeignKeyConstraint(
             ["currency_id", "trip_id"],
             ["trip_currency.id", "trip_currency.trip_id"],
