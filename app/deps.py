@@ -7,7 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_session
-from app.models import Person, Trip
+from app.models.roster import Person
+from app.models.trip import Trip
 from app.services.errors import NotFoundError
 
 SessionDep = Annotated[Session, Depends(get_session)]

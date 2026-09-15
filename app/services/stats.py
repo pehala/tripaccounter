@@ -9,7 +9,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db_views import share_owed_view
-from app.models import ItemLabel, Label, LineItem, Trip, TripCurrency
+from app.models.items import LineItem
+from app.models.labels import ItemLabel, Label
+from app.models.roster import TripCurrency
+from app.models.trip import Trip
 from app.schemas import (
     StatsBlockOut,
     StatsCountryOut,

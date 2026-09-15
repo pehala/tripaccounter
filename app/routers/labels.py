@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Response
 
 from app.deps import SessionDep, TripDep
-from app.models import Label
+from app.models.labels import Label
 from app.schemas import (
     LabelCreate,
     LabelEnvelope,

@@ -4,7 +4,9 @@ from fastapi import APIRouter, Response
 from sqlalchemy import func, select
 
 from app.deps import SessionDep, TripDep
-from app.models import LineItem, Person, Trip
+from app.models.items import LineItem
+from app.models.roster import Person
+from app.models.trip import Trip
 from app.schemas import (
     TripCreate,
     TripEnvelope,

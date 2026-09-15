@@ -20,7 +20,12 @@ app/
 ├── db_views.py         the share_owed view, mapped read-only
 ├── deps.py             SessionDep, TripDep — slug → Trip or 404
 ├── clock.py            the injected clock behind occurred_at/created_at defaults
-├── models.py           SQLAlchemy 2.0 models — see ERD.md
+├── models/             SQLAlchemy 2.0 models — see ERD.md
+│   ├── trip.py         Trip
+│   ├── roster.py       Person, TripCurrency, TripCountry, active_roster_ids
+│   ├── labels.py       Label, ItemLabel
+│   ├── wallets.py      Wallet, WalletTransfer
+│   └── items.py        LineItem, ItemShare
 ├── schemas.py          pydantic v2: request parsing + wire serialization + the
 │                       response envelopes. The OpenAPI schema is generated from here.
 ├── seed.py             the demo trip `make seed` writes to the dev database
@@ -62,7 +67,7 @@ flowchart TD
     sch["<b>schemas.py</b><br/>canonical string → Decimal<br/>reject unknown fields"]
     rt["<b>routers/</b><br/>reference checks, FieldError → status,<br/>persistence orchestration"]
     sv["<b>services/</b><br/>every rule, every number"]
-    md["<b>models.py / db_views.py</b>"]
+    md["<b>models/ / db_views.py</b>"]
     out["<b>schemas.py</b><br/>*Out.from_*() + to_wire()<br/>envelope"]
     res(["response"])
 
@@ -87,7 +92,7 @@ Money is integers, and there is exactly one rounding step.
 | Stage | Representation | Where |
 |---|---|---|
 | typed in | canonical decimal string, ≤ 2 fraction digits | `services/parsing.py` via `schemas.py` |
-| stored | `bigint` hundredths (`amount_minor`, `owed_minor`), weights ×10⁴ | `models.py` |
+| stored | `bigint` hundredths (`amount_minor`, `owed_minor`), weights ×10⁴ | `models/` |
 | computed share | `bigint` micro-units, floored, **a view** | `db_views.share_owed` |
 | aggregated | SQL `GROUP BY` over both | `services/balances.py`, `services/stats.py` |
 | **rounded** | **hundredths, zero-sum corrected** | **`services/settle.py` — the only one** |

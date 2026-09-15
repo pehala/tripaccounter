@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Response
 
 from app.deps import SessionDep, TripDep
-from app.models import Person
+from app.models.roster import Person
 from app.schemas import (
     PersonCreate,
     PersonEnvelope,

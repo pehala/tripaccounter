@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Response
 
 from app.deps import SessionDep, TripDep
-from app.models import TripCurrency
+from app.models.roster import TripCurrency
 from app.schemas import (
     CurrencyCreate,
     CurrencyEnvelope,

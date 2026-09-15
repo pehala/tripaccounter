@@ -7,16 +7,9 @@ from sqlalchemy import func, select
 
 from app.clock import ClockDep
 from app.deps import SessionDep, TripDep
-from app.models import (
-    ItemShare,
-    LineItem,
-    Person,
-    TripCountry,
-    TripCurrency,
-    Wallet,
-    WalletTransfer,
-    active_roster_ids,
-)
+from app.models.items import ItemShare, LineItem
+from app.models.roster import Person, TripCountry, TripCurrency, active_roster_ids
+from app.models.wallets import Wallet, WalletTransfer
 from app.schemas import (
     ITEM_LOAD_OPTIONS,
     TRANSFER_LOAD_OPTIONS,

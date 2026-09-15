@@ -3,7 +3,8 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import Label, LineItem
+from app.models.items import LineItem
+from app.models.labels import Label
 from app.services.errors import DuplicateError
 
 PALETTE = [

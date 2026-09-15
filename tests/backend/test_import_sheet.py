@@ -26,7 +26,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from alembic import command
-from app.models import Trip
+from app.models.trip import Trip
 from tools.import_sheet import (
     Layout,
     apply,

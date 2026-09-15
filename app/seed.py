@@ -6,17 +6,11 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.models import (
-    ItemShare,
-    Label,
-    LineItem,
-    Person,
-    Trip,
-    TripCountry,
-    TripCurrency,
-    Wallet,
-    WalletTransfer,
-)
+from app.models.items import ItemShare, LineItem
+from app.models.labels import Label
+from app.models.roster import Person, TripCountry, TripCurrency
+from app.models.trip import Trip
+from app.models.wallets import Wallet, WalletTransfer
 
 
 def seed_demo(session: Session) -> Trip:

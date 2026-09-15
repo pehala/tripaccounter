@@ -12,7 +12,9 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
-from app.models import Trip, TripCurrency, Wallet, WalletTransfer
+from app.models.roster import TripCurrency
+from app.models.trip import Trip
+from app.models.wallets import Wallet, WalletTransfer
 from app.schemas import TransferWrite
 from app.services.errors import (
     CrossOwnerExchangeError,

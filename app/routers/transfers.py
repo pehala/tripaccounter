@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from app.clock import ClockDep
 from app.deps import SessionDep, TripDep
-from app.models import WalletTransfer
+from app.models.wallets import WalletTransfer
 from app.schemas import (
     TRANSFER_LOAD_OPTIONS,
     TransferEnvelope,

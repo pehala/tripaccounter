@@ -23,16 +23,11 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 from sqlalchemy.orm import joinedload, selectinload
 
-from app.models import (
-    Label,
-    LineItem,
-    Person,
-    Trip,
-    TripCountry,
-    TripCurrency,
-    Wallet,
-    WalletTransfer,
-)
+from app.models.items import LineItem
+from app.models.labels import Label
+from app.models.roster import Person, TripCountry, TripCurrency
+from app.models.trip import Trip
+from app.models.wallets import Wallet, WalletTransfer
 from app.services.countries import flag_from_code
 from app.services.money import AMOUNT_SCALE, to_wire
 from app.services.parsing import ParseError, parse_amount, parse_coordinate, parse_weight

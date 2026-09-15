@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Response
 
 from app.deps import SessionDep, TripDep
-from app.models import TripCountry
+from app.models.roster import TripCountry
 from app.schemas import (
     CountryCreate,
     CountryEnvelope,
