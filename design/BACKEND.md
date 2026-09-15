@@ -199,7 +199,7 @@ lives, which is rarely where the code that answers it lives.
 | `test_http.py` | malformed JSON, unknown fields, `204` bodies, the `500` correlation `ref` |
 | `test_static.py` | `/` and `/t/{slug}` serve `index.html`; nothing under `/api/v1` returns HTML; the versioned asset mount under `TA_BUILD_ID` and the unversioned one without it |
 | `test_money.py` | **the only file that imports a service** — parsing, `to_wire`, the share expression, settle-up rounding |
-| `test_import_sheet.py` | `tools/import_sheet/` — cell grammars, date shapes and split inference called directly; `fixtures/sheet.csv` imported through `session` and read back over `client` |
+| `import_sheet/` | `tools/import_sheet/` — `test_cells.py` cell grammars and date shapes, `test_splits.py` split inference, `test_layout.py` column layout and reported problems, all called directly; `test_example_sheet.py` imports `fixtures/sheet.csv` through `session`, reads it back over `client`, and drives the CLI |
 
 Full conventions, fixtures, pitfalls and review rules:
 [`skills/writing-unit-tests`](../skills/writing-unit-tests/SKILL.md) — mandatory for
