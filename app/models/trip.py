@@ -1,9 +1,16 @@
 """The Trip table: the root every other row hangs off."""
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, DateTime, UniqueConstraint, func
 from sqlmodel import Field, Relationship, SQLModel
+
+if TYPE_CHECKING:
+    from app.models.items import LineItem
+    from app.models.labels import Label
+    from app.models.roster import Person, TripCountry, TripCurrency
+    from app.models.wallets import WalletTransfer
 
 
 class Trip(SQLModel, table=True):
@@ -26,30 +33,30 @@ class Trip(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     )
 
-    people: list["Person"] = Relationship(  # noqa: F821
+    people: list["Person"] = Relationship(
         back_populates="trip",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "Person.sort_order"},
     )
-    currencies: list["TripCurrency"] = Relationship(  # noqa: F821
+    currencies: list["TripCurrency"] = Relationship(
         back_populates="trip",
         sa_relationship_kwargs={
             "cascade": "all, delete-orphan",
             "order_by": "TripCurrency.sort_order",
         },
     )
-    countries: list["TripCountry"] = Relationship(  # noqa: F821
+    countries: list["TripCountry"] = Relationship(
         back_populates="trip",
         sa_relationship_kwargs={
             "cascade": "all, delete-orphan",
             "order_by": "TripCountry.sort_order",
         },
     )
-    labels: list["Label"] = Relationship(  # noqa: F821
+    labels: list["Label"] = Relationship(
         back_populates="trip", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    items: list["LineItem"] = Relationship(  # noqa: F821
+    items: list["LineItem"] = Relationship(
         back_populates="trip", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    transfers: list["WalletTransfer"] = Relationship(  # noqa: F821
+    transfers: list["WalletTransfer"] = Relationship(
         back_populates="trip", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )

@@ -1,11 +1,15 @@
 """People, currencies and countries: the per-trip roster tables."""
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, DateTime, UniqueConstraint, func
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.models.trip import Trip
+
+if TYPE_CHECKING:
+    from app.models.wallets import Wallet
 
 
 def active_roster_ids(people: list["Person"]) -> list[int]:
@@ -36,7 +40,7 @@ class Person(SQLModel, table=True):
     )
 
     trip: Trip = Relationship(back_populates="people")
-    wallets: list["Wallet"] = Relationship(  # noqa: F821
+    wallets: list["Wallet"] = Relationship(
         back_populates="person",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "Wallet.sort_order"},
     )
