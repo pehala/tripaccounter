@@ -3,6 +3,23 @@
 import csv
 import io
 
+import pytest
+
+
+@pytest.fixture()
+def two_person_item(client, trip, people, item_body):
+    """Create a two-person, share-grained item that CSV/JSON parity tests compare against."""
+    return client.post(
+        f"/api/v1/trips/{trip['slug']}/items",
+        json=item_body(
+            name="Layover lunch",
+            amount="120.00",
+            note="Split at the gate",
+            labels=["food", "airport"],
+            shares=[{"person_id": people[0]["id"]}, {"person_id": people[1]["id"]}],
+        ),
+    ).json()["item"]
+
 
 def test_csv_export_one_row_per_share(client, trip, people, item_body):
     """CSV is share-grained: an item split four ways is four rows, not one."""
@@ -31,16 +48,9 @@ def test_csv_export_one_row_per_share(client, trip, people, item_body):
     assert [row["name"] for row in rows] == ["Dinner at Messinn"] * 4 + ["Layover lunch"] * 2
 
 
-def test_csv_export_header_and_first_row_are_the_contract(client, trip, people, item_body):
+def test_csv_export_header_and_first_row_are_the_contract(client, trip, people, two_person_item):
     """The header row is pinned literally, because a client parses it."""
-    client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
-        json=item_body(
-            name="Layover lunch",
-            amount="480.00",
-            shares=[{"person_id": people[0]["id"]}, {"person_id": people[1]["id"]}],
-        ),
-    )
+    created = two_person_item
 
     response = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "csv"})
     reader = csv.DictReader(io.StringIO(response.text))
@@ -48,32 +58,62 @@ def test_csv_export_header_and_first_row_are_the_contract(client, trip, people, 
     assert reader.fieldnames == [
         "item_id",
         "name",
+        "note",
         "occurred_at",
         "currency_code",
         "amount",
         "payer_id",
         "wallet_id",
         "country_id",
-        "person_id",
+        "labels",
+        "map_url",
+        "lat",
+        "lon",
+        "created_at",
+        "updated_at",
+        "person_name",
         "weight",
         "owed",
     ]
-    first = next(reader)
-    assert first["name"] == "Layover lunch"
-    assert first["currency_code"] == "ISK"
-    assert first["amount"] == "480"
-    assert first["payer_id"] == str(people[0]["id"])
-    assert first["wallet_id"] == str(trip["wallets"][0]["id"])
-    assert first["person_id"] == str(people[0]["id"])
-    assert first["weight"] == "1"
-    assert first["owed"] == "240"
+    assert next(reader) == {
+        "item_id": str(created["id"]),
+        "name": "Layover lunch",
+        "note": "Split at the gate",
+        "occurred_at": created["occurred_at"],
+        "currency_code": "ISK",
+        "amount": "120",
+        "payer_id": str(people[0]["id"]),
+        "wallet_id": str(trip["wallets"][0]["id"]),
+        "country_id": str(created["country_id"]),
+        "labels": "airport;food",
+        "map_url": "",
+        "lat": "",
+        "lon": "",
+        "created_at": created["created_at"],
+        "updated_at": created["updated_at"],
+        "person_name": people[0]["name"],
+        "weight": "1",
+        "owed": "60",
+    }
 
 
-def test_json_export_contains_trip_and_items(client, trip, item_body):
-    """JSON export carries the same trip and items blocks the API returns."""
-    created = client.post(
-        f"/api/v1/trips/{trip['slug']}/items", json=item_body(name="Dinner at Messinn")
-    ).json()["item"]
+def test_csv_export_blank_optional_fields_are_empty_not_the_string_none(client, trip, item_body):
+    """An item with no note/map_url/lat/lon exports empty fields, not the word 'None'."""
+    client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(name="Dinner"))
+
+    response = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "csv"})
+    row = next(csv.DictReader(io.StringIO(response.text)))
+
+    assert row["note"] == ""
+    assert row["map_url"] == ""
+    assert row["lat"] == ""
+    assert row["lon"] == ""
+    assert row["labels"] == ""
+
+
+def test_json_export_is_share_grained_like_the_csv(client, trip, people, two_person_item):
+    """JSON export has the same grain as the CSV: one row per share, not one per item."""
+    created = two_person_item
 
     response = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "json"})
 
@@ -82,9 +122,48 @@ def test_json_export_contains_trip_and_items(client, trip, item_body):
 
     body = response.json()
     assert body["trip"]["slug"] == trip["slug"]
-    assert len(body["items"]) == 1
-    assert body["items"][0] == created
+    assert len(body["items"]) == 2
+    assert body["items"][0] == {
+        "item_id": created["id"],
+        "name": "Layover lunch",
+        "note": "Split at the gate",
+        "occurred_at": created["occurred_at"],
+        "currency_code": "ISK",
+        "amount": 120,
+        "payer_id": people[0]["id"],
+        "wallet_id": created["wallet_id"],
+        "country_id": created["country_id"],
+        "labels": ["airport", "food"],
+        "map_url": None,
+        "lat": None,
+        "lon": None,
+        "created_at": created["created_at"],
+        "updated_at": created["updated_at"],
+        "person_name": people[0]["name"],
+        "weight": "1",
+        "owed": 60,
+    }
+    assert [item["item_id"] for item in body["items"]] == [created["id"], created["id"]]
     assert body["transfers"] == []
+
+
+def test_csv_and_json_export_carry_the_same_rows(client, trip, two_person_item):
+    """CSV and JSON export are identical except for the format."""
+    csv_text = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "csv"}).text
+    json_rows = client.get(
+        f"/api/v1/trips/{trip['slug']}/export", params={"format": "json"}
+    ).json()["items"]
+    csv_rows = list(csv.DictReader(io.StringIO(csv_text)))
+
+    assert len(csv_rows) == len(json_rows) == 2
+    for csv_row, json_row in zip(csv_rows, json_rows, strict=True):
+        assert csv_row["item_id"] == str(json_row["item_id"])
+        assert csv_row["name"] == json_row["name"]
+        assert csv_row["note"] == json_row["note"]
+        assert csv_row["labels"] == ";".join(json_row["labels"])
+        assert csv_row["person_name"] == json_row["person_name"]
+        assert csv_row["weight"] == json_row["weight"]
+        assert csv_row["owed"] == str(json_row["owed"])
 
 
 def test_export_of_empty_trip_is_not_500(client, trip):

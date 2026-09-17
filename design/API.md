@@ -365,13 +365,26 @@ touch a currency's own balance, settle-up figure, or statistics — only each pa
 Total.
 
 ### Export
-`?format=csv|json`, both `Content-Disposition: attachment`. CSV is **share-grained** —
-one row per share, so a four-person item is four rows — and its header row is part of
-the contract, because something parses it: `item_id, name, occurred_at,
-currency_code, amount, payer_id, wallet_id, country_id, person_id, weight, owed`.
-Transfers are not share-grained and stay out of the CSV entirely. JSON carries the
-same `trip`, `items` and `transfers` blocks the API returns, field for field. An
-empty trip exports a header and nothing else, not a `500`.
+`?format=csv|json`, both `Content-Disposition: attachment`, and **both identical
+except for the format** — this is a file for a human or another app to read, not a
+shape meant to rebuild the database. Both are **share-grained**: one row per
+resolved share, so a four-person item is four rows, not one. `items` carries that
+flat row, not `ItemOut` nested under a `split` — every field but the trailing
+`person_name, weight, owed` triple is an `ItemOut` field verbatim, so a field added
+there can't go stale here without a deliberate header change. `currency_id` and a
+share's `person_id` are dropped in favor of the roster names a reader would
+otherwise have to look up: no `currency_id` (`currency_code` already says it), and
+`person_name` instead of `person_id`.
+
+The CSV header row is part of the contract, because something parses it: `item_id,
+name, note, occurred_at, currency_code, amount, payer_id, wallet_id, country_id,
+labels, map_url, lat, lon, created_at, updated_at, person_name, weight, owed`. CSV
+has no `null` or list type: `labels` joins with `;`, and an absent
+`note`/`map_url`/`lat`/`lon` is an empty field, not the string `"None"`. JSON keeps
+those as their native types — `labels` a list, an absent field `null`. Transfers are
+not share-grained and stay out of the CSV entirely; JSON's `transfers` block is the
+same `TransferOut` shape the live API returns. An empty trip exports a header and
+nothing else, not a `500`.
 
 ---
 
