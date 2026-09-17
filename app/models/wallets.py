@@ -7,13 +7,13 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     DateTime,
-    ForeignKeyConstraint,
     Index,
     UniqueConstraint,
     func,
 )
 from sqlmodel import Field, Relationship, SQLModel
 
+from app.models.constraints import trip_scoped_fk
 from app.models.roster import Person, TripCurrency
 from app.models.trip import Trip
 
@@ -27,11 +27,7 @@ class Wallet(SQLModel, table=True):
         # Lets LineItem.wallet_id and WalletTransfer's wallet columns carry a
         # composite FK against (id, trip_id).
         UniqueConstraint("id", "trip_id", name="uq_wallet_id_trip"),
-        ForeignKeyConstraint(
-            ["person_id", "trip_id"],
-            ["person.id", "person.trip_id"],
-            name="fk_wallet_person_trip",
-        ),
+        trip_scoped_fk("person_id", "person", "fk_wallet_person_trip"),
     )
 
     id: int | None = Field(default=None, primary_key=True)
@@ -56,26 +52,10 @@ class WalletTransfer(SQLModel, table=True):
 
     __tablename__ = "wallet_transfer"
     __table_args__ = (
-        ForeignKeyConstraint(
-            ["from_currency_id", "trip_id"],
-            ["trip_currency.id", "trip_currency.trip_id"],
-            name="fk_transfer_from_currency_trip",
-        ),
-        ForeignKeyConstraint(
-            ["to_currency_id", "trip_id"],
-            ["trip_currency.id", "trip_currency.trip_id"],
-            name="fk_transfer_to_currency_trip",
-        ),
-        ForeignKeyConstraint(
-            ["from_wallet_id", "trip_id"],
-            ["wallet.id", "wallet.trip_id"],
-            name="fk_transfer_from_wallet_trip",
-        ),
-        ForeignKeyConstraint(
-            ["to_wallet_id", "trip_id"],
-            ["wallet.id", "wallet.trip_id"],
-            name="fk_transfer_to_wallet_trip",
-        ),
+        trip_scoped_fk("from_currency_id", "trip_currency", "fk_transfer_from_currency_trip"),
+        trip_scoped_fk("to_currency_id", "trip_currency", "fk_transfer_to_currency_trip"),
+        trip_scoped_fk("from_wallet_id", "wallet", "fk_transfer_from_wallet_trip"),
+        trip_scoped_fk("to_wallet_id", "wallet", "fk_transfer_to_wallet_trip"),
         CheckConstraint(
             "from_wallet_id <> to_wallet_id OR from_currency_id <> to_currency_id",
             name="ck_transfer_not_same",
