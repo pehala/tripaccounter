@@ -1,7 +1,7 @@
 """Parse and validate raw request values into the canonical types the models carry.
 
 These helpers back the `Annotated` field aliases below: pydantic runs them as
-`BeforeValidator`/`AfterValidator`s, and a `ParseError` from
+`BeforeValidator`/`AfterValidator`s, and a `FieldError` from
 `app/services/parsing.py` becomes the `PydanticCustomError` the error envelope
 renders (design/API.md §4).
 """
@@ -21,7 +21,8 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 
 from app.services import parsing
-from app.services.parsing import ParseError
+from app.services.errors.base import FieldError
+from app.services.errors.fields import InvalidCoordinatesError, TooLongError
 
 
 def iso_z(dt: datetime) -> str:
@@ -29,8 +30,8 @@ def iso_z(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def as_pydantic_error(err: ParseError) -> PydanticCustomError:
-    """Carry a ParseError's code and params into a PydanticCustomError."""
+def as_pydantic_error(err: FieldError) -> PydanticCustomError:
+    """Carry a catalog error's code and params into a PydanticCustomError."""
     return PydanticCustomError(err.code, err.code, err.params)
 
 
@@ -41,19 +42,19 @@ def label_whitespace_error(value: object) -> PydanticCustomError:
 
 def too_long_error() -> PydanticCustomError:
     """Build the `too_long` error for a label past the 40-character limit."""
-    return PydanticCustomError("too_long", "too_long", {"max": 40})
+    return as_pydantic_error(TooLongError(max=40))
 
 
 def invalid_coordinates_error() -> PydanticCustomError:
     """Build the `invalid_coordinates` error for a half-supplied lat/lon pair."""
-    return PydanticCustomError("invalid_coordinates", "invalid_coordinates")
+    return as_pydantic_error(InvalidCoordinatesError())
 
 
 def parse_amount(v: object) -> Decimal:
     """Validate a money amount, raising the pydantic form of a parse failure."""
     try:
         return parsing.parse_amount(v)
-    except ParseError as err:
+    except FieldError as err:
         raise as_pydantic_error(err) from err
 
 
@@ -61,7 +62,7 @@ def parse_weight(v: object) -> Decimal:
     """Validate a split weight, raising the pydantic form of a parse failure."""
     try:
         return parsing.parse_weight(v)
-    except ParseError as err:
+    except FieldError as err:
         raise as_pydantic_error(err) from err
 
 
@@ -71,7 +72,7 @@ def parse_lat(v: object) -> str | None:
         return None
     try:
         parsing.parse_coordinate(v, low=Decimal(-90), high=Decimal(90))
-    except ParseError as err:
+    except FieldError as err:
         raise as_pydantic_error(err) from err
     return v
 
@@ -82,7 +83,7 @@ def parse_lon(v: object) -> str | None:
         return None
     try:
         parsing.parse_coordinate(v, low=Decimal(-180), high=Decimal(180))
-    except ParseError as err:
+    except FieldError as err:
         raise as_pydantic_error(err) from err
     return v
 

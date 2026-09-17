@@ -7,7 +7,6 @@ exactly one definition of a share.
 
 from decimal import Decimal
 
-from app.services.errors.base import FieldError
 from app.services.errors.fields import (
     DuplicatePersonError,
     EmptyError,
@@ -22,23 +21,7 @@ from app.services.money import (
     to_hundredths,
     to_wire,
 )
-from app.services.parsing import ParseError
-from app.services.parsing import parse_amount as _parse_amount
-from app.services.parsing import parse_weight as _parse_weight
-
-
-def _validate_weight(raw: object) -> Decimal:
-    try:
-        return _parse_weight(raw)
-    except ParseError as err:
-        raise FieldError.by_code(err.code, err.params) from err
-
-
-def _validate_exact_amount(raw: object) -> Decimal:
-    try:
-        return _parse_amount(raw, allow_zero=True)
-    except ParseError as err:
-        raise FieldError.by_code(err.code, err.params) from err
+from app.services.parsing import parse_amount, parse_weight
 
 
 def build_shares(
@@ -81,7 +64,7 @@ def build_shares(
                 }
             )
         elif mode == "shares":
-            weight = _validate_weight(raw.get("weight"))
+            weight = parse_weight(raw.get("weight"))
             rows.append(
                 {
                     "person_id": person_id,
@@ -91,7 +74,7 @@ def build_shares(
                 }
             )
         elif mode == "exact":
-            share_amount = _validate_exact_amount(raw.get("amount"))
+            share_amount = parse_amount(raw.get("amount"), allow_zero=True)
             rows.append(
                 {
                     "person_id": person_id,
