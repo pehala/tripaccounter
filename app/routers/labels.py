@@ -9,16 +9,10 @@ from app.schemas.error_shapes import error_responses
 from app.schemas.requests import LabelCreate, LabelUpdate
 from app.schemas.responses import LabelOut
 from app.services import labels as labels_service
-from app.services.errors.api import NotFoundError, run_field
+from app.services.errors.api import run_field
+from app.services.scope import require_in_trip
 
 router = APIRouter(tags=["labels"])
-
-
-def _get_label(trip, label_id: int, session: SessionDep) -> Label:
-    label = session.get(Label, label_id)
-    if label is None or label.trip_id != trip.id:
-        raise NotFoundError("label")
-    return label
 
 
 @router.get(
@@ -49,7 +43,7 @@ def create_label(body: LabelCreate, trip: TripDep, session: SessionDep):
 )
 def update_label(label_id: int, body: LabelUpdate, trip: TripDep, session: SessionDep):
     """Rename a label."""
-    label = _get_label(trip, label_id, session)
+    label = require_in_trip(session, Label, label_id, trip.id, "label")
     label = run_field("name", labels_service.update_label, session, label, body.name)
     return {"label": LabelOut.model_validate(label)}
 
@@ -57,7 +51,7 @@ def update_label(label_id: int, body: LabelUpdate, trip: TripDep, session: Sessi
 @router.delete("/trips/{slug}/labels/{label_id}", status_code=204, responses=error_responses(404))
 def delete_label(label_id: int, trip: TripDep, session: SessionDep):
     """Delete a label from a trip."""
-    label = _get_label(trip, label_id, session)
+    label = require_in_trip(session, Label, label_id, trip.id, "label")
     session.delete(label)
     session.flush()
     return Response(status_code=204)

@@ -9,16 +9,10 @@ from app.schemas.error_shapes import error_responses
 from app.schemas.requests import CurrencyCreate, CurrencyUpdate
 from app.schemas.responses import CurrencyOut
 from app.services import roster
-from app.services.errors.api import NotFoundError, run_field
+from app.services.errors.api import run_field
+from app.services.scope import require_in_trip
 
 router = APIRouter(tags=["currencies"])
-
-
-def _get_currency(trip, currency_id: int, session: SessionDep) -> TripCurrency:
-    currency = session.get(TripCurrency, currency_id)
-    if currency is None or currency.trip_id != trip.id:
-        raise NotFoundError("currency")
-    return currency
 
 
 @router.get(
@@ -55,7 +49,7 @@ def create_currency(body: CurrencyCreate, trip: TripDep, session: SessionDep):
 )
 def update_currency(currency_id: int, body: CurrencyUpdate, trip: TripDep, session: SessionDep):
     """Update a trip currency's fields."""
-    currency = _get_currency(trip, currency_id, session)
+    currency = require_in_trip(session, TripCurrency, currency_id, trip.id, "currency")
     currency = run_field(
         "code",
         roster.update_currency,
@@ -73,6 +67,6 @@ def update_currency(currency_id: int, body: CurrencyUpdate, trip: TripDep, sessi
 )
 def delete_currency(currency_id: int, trip: TripDep, session: SessionDep):
     """Delete a currency from a trip."""
-    currency = _get_currency(trip, currency_id, session)
+    currency = require_in_trip(session, TripCurrency, currency_id, trip.id, "currency")
     run_field("id", roster.delete_currency, session, currency)
     return Response(status_code=204)
