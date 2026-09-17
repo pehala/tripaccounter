@@ -38,6 +38,11 @@ CSV_HEADER = [
     "owed",
 ]
 
+# The share triple is built per row; everything before it is read off `ItemOut` by
+# name, so `CSV_HEADER` is the one place a column is named. A header entry with no
+# matching `ItemOut` field fails the export tests rather than exporting a blank.
+ITEM_COLUMNS = CSV_HEADER[:-3]
+
 
 def _items(session: Session, trip_id: int) -> list[LineItem]:
     return session.execute(queries.items_for_trip(trip_id, newest_first=False)).scalars().all()
@@ -50,23 +55,8 @@ def _export_rows(session: Session, trip: Trip) -> list[dict]:
     rows = []
     for item in _items(session, trip.id):
         payload = ItemOut.from_item(item, roster_ids).model_dump()
-        base = {
-            "item_id": payload["id"],
-            "name": payload["name"],
-            "note": payload["note"],
-            "occurred_at": payload["occurred_at"],
-            "currency_code": payload["currency_code"],
-            "amount": payload["amount"],
-            "payer_id": payload["payer_id"],
-            "wallet_id": payload["wallet_id"],
-            "country_id": payload["country_id"],
-            "labels": payload["labels"],
-            "map_url": payload["map_url"],
-            "lat": payload["lat"],
-            "lon": payload["lon"],
-            "created_at": payload["created_at"],
-            "updated_at": payload["updated_at"],
-        }
+        payload["item_id"] = payload["id"]
+        base = {column: payload[column] for column in ITEM_COLUMNS}
         # A roster-padded share (a null weight for someone this item doesn't touch)
         # is dropped: export is share-grained, not roster-grained.
         for share in payload["split"]["shares"]:
