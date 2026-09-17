@@ -1,7 +1,6 @@
 """Wallet transfer routes: create, list, update, delete."""
 
 from fastapi import APIRouter, Response
-from sqlalchemy import select
 
 from app.clock import ClockDep
 from app.deps import SessionDep, TripDep
@@ -10,6 +9,7 @@ from app.schemas.envelopes import TransferEnvelope, TransferListEnvelope
 from app.schemas.error_shapes import error_responses
 from app.schemas.requests import TransferWrite
 from app.schemas.responses import TRANSFER_LOAD_OPTIONS, TransferOut
+from app.services import queries
 from app.services import transfers as transfer_service
 from app.services.errors.api import ValidationError
 from app.services.scope import require_in_trip
@@ -22,16 +22,7 @@ router = APIRouter(tags=["transfers"])
 )
 def list_transfers(trip: TripDep, session: SessionDep):
     """List a trip's wallet transfers, newest first."""
-    rows = (
-        session.execute(
-            select(WalletTransfer)
-            .where(WalletTransfer.trip_id == trip.id)
-            .options(*TRANSFER_LOAD_OPTIONS)
-            .order_by(WalletTransfer.occurred_at.desc(), WalletTransfer.id.desc())
-        )
-        .scalars()
-        .all()
-    )
+    rows = session.execute(queries.transfers_for_trip(trip.id)).scalars().all()
     return {"transfers": [TransferOut.from_transfer(row) for row in rows]}
 
 

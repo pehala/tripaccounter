@@ -7,19 +7,17 @@ from app.clock import ClockDep
 from app.deps import SessionDep, TripDep
 from app.models.items import LineItem
 from app.models.roster import TripCurrency, active_roster_ids
-from app.models.wallets import WalletTransfer
 from app.schemas.envelopes import DayCurrencyTotalOut, DayTotalOut, ItemEnvelope, ItemListEnvelope
 from app.schemas.error_shapes import error_responses
 from app.schemas.requests import ItemWrite, PreviewSplitRequest
 from app.schemas.responses import (
     ITEM_LOAD_OPTIONS,
-    TRANSFER_LOAD_OPTIONS,
     ItemOut,
     PreviewSplitOut,
     TransferOut,
 )
 from app.services import items as item_service
-from app.services import splits
+from app.services import queries, splits
 from app.services.errors.api import ValidationError, run_field
 from app.services.errors.fields import NotInTripError
 from app.services.labels import release_item_labels, set_item_labels
@@ -61,16 +59,7 @@ def preview_split(body: PreviewSplitRequest, trip: TripDep, session: SessionDep)
 @router.get("/trips/{slug}/items", response_model=ItemListEnvelope, responses=error_responses(404))
 def list_items(trip: TripDep, session: SessionDep):
     """List items for a trip."""
-    items = (
-        session.execute(
-            select(LineItem)
-            .where(LineItem.trip_id == trip.id)
-            .options(*ITEM_LOAD_OPTIONS)
-            .order_by(LineItem.occurred_at.desc(), LineItem.id.desc())
-        )
-        .scalars()
-        .all()
-    )
+    items = session.execute(queries.items_for_trip(trip.id)).scalars().all()
     roster_ids = active_roster_ids(trip.people)
 
     day_rows = session.execute(
@@ -96,16 +85,7 @@ def list_items(trip: TripDep, session: SessionDep):
             )
         )
 
-    transfer_rows = (
-        session.execute(
-            select(WalletTransfer)
-            .where(WalletTransfer.trip_id == trip.id)
-            .options(*TRANSFER_LOAD_OPTIONS)
-            .order_by(WalletTransfer.occurred_at.desc(), WalletTransfer.id.desc())
-        )
-        .scalars()
-        .all()
-    )
+    transfer_rows = session.execute(queries.transfers_for_trip(trip.id)).scalars().all()
 
     return {
         "items": [ItemOut.from_item(item, roster_ids) for item in items],

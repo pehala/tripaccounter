@@ -8,9 +8,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.items import LineItem
-from app.models.roster import Person, TripCurrency
+from app.models.roster import Person
 from app.models.wallets import WalletTransfer
 from app.schemas.responses import WalletBalanceOut, WalletReportOut
+from app.services import queries
 from app.services.money import AMOUNT_SCALE, to_wire
 
 
@@ -38,9 +39,7 @@ def wallet_balances(session: Session, trip_id: int) -> list[WalletReportOut]:
         .scalars()
         .all()
     )
-    currencies = (
-        session.execute(select(TripCurrency).where(TripCurrency.trip_id == trip_id)).scalars().all()
-    )
+    currencies = session.execute(queries.currencies_for_trip(trip_id)).scalars().all()
     currency_order = {c.id: c.sort_order for c in currencies}
     currency_codes = {c.id: c.code for c in currencies}
 
