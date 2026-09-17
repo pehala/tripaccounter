@@ -6,14 +6,13 @@ integers to plain JSON numbers via `money.to_wire` (design/BACKEND.md).
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.items import LineItem
-from app.models.labels import Label
-from app.models.roster import Person, TripCountry, TripCurrency
+from app.models.roster import Person, TripCountry
 from app.models.trip import Trip
-from app.models.wallets import Wallet, WalletTransfer
+from app.models.wallets import WalletTransfer
 from app.schemas.fields import iso_z
 from app.services.countries import flag_from_code
 from app.services.money import AMOUNT_SCALE, to_wire
@@ -50,24 +49,14 @@ class PersonOut(BaseModel):
 class WalletOut(BaseModel):
     """Wire representation of a wallet, roster form: no balances."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     person_id: int
     name: str
     tracked: bool
     is_default: bool
     sort_order: int
-
-    @classmethod
-    def from_wallet(cls, wallet: Wallet) -> "WalletOut":
-        """Build a WalletOut from a Wallet model instance."""
-        return cls(
-            id=wallet.id,
-            person_id=wallet.person_id,
-            name=wallet.name,
-            tracked=wallet.tracked,
-            is_default=wallet.is_default,
-            sort_order=wallet.sort_order,
-        )
 
 
 class WalletBalanceOut(BaseModel):
@@ -90,22 +79,13 @@ class WalletReportOut(WalletOut):
 class CurrencyOut(BaseModel):
     """Wire representation of a trip currency."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     code: str
     symbol: str | None
     is_primary: bool
     sort_order: int
-
-    @classmethod
-    def from_currency(cls, currency: TripCurrency) -> "CurrencyOut":
-        """Build a CurrencyOut from a TripCurrency model instance."""
-        return cls(
-            id=currency.id,
-            code=currency.code,
-            symbol=currency.symbol,
-            is_primary=currency.is_primary,
-            sort_order=currency.sort_order,
-        )
 
 
 class CountryOut(BaseModel):
@@ -136,15 +116,12 @@ class CountryOut(BaseModel):
 class LabelOut(BaseModel):
     """Wire representation of a label."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     color: str
     use_count: int
-
-    @classmethod
-    def from_label(cls, label: Label) -> "LabelOut":
-        """Build a LabelOut from a Label model instance."""
-        return cls(id=label.id, name=label.name, color=label.color, use_count=label.use_count)
 
 
 class TripOut(BaseModel):
@@ -177,12 +154,12 @@ class TripOut(BaseModel):
             note=trip.note,
             archived=trip.archived,
             people=[PersonOut.from_person(p) for p in people],
-            currencies=[CurrencyOut.from_currency(c) for c in trip.currencies],
+            currencies=[CurrencyOut.model_validate(c) for c in trip.currencies],
             countries=[
                 CountryOut.from_country(c, country_item_counts.get(c.id, 0)) for c in trip.countries
             ],
             wallets=[
-                WalletOut.from_wallet(w)
+                WalletOut.model_validate(w)
                 for p in people
                 for w in sorted(p.wallets, key=lambda w: w.sort_order)
             ],
