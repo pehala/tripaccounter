@@ -25,6 +25,45 @@ DEFAULT_WALLET_NAME = "Card"
 WALLET_NAME_MAX = 60
 
 
+# ---- The shared guards -------------------------------------------------------
+# `scope` is the clause naming the rows a rule applies to - `Person.trip_id == 5`,
+# `Wallet.person_id == 3` - and `column` carries its own model, so every call
+# fits one line. A wider signature would make `ruff format` explode each call
+# site to one argument per line.
+
+
+def ensure_unique(session: Session, column, value, scope, exclude_id: int | None = None) -> None:
+    """Raise `DuplicateError` if another row under `scope` already holds `value` in `column`."""
+    model = column.class_
+    clauses = [scope, column == value]
+    if exclude_id is not None:
+        clauses.append(model.id != exclude_id)
+    if session.execute(select(model.id).where(*clauses)).first():
+        raise DuplicateError(name=value)
+
+
+def next_sort_order(session: Session, model, scope) -> int:
+    """Return the row count under `scope`, the sort_order a newly added row takes."""
+    return session.execute(select(func.count()).select_from(model).where(scope)).scalar_one()
+
+
+def clear_flag(session: Session, column, scope) -> None:
+    """Clear a boolean flag on every row under `scope`, before one row claims it."""
+    table = column.class_.__table__
+    session.execute(table.update().where(scope).values({column.key: False}))
+
+
+def reference_count(session: Session, statement) -> int:
+    """Return the count a `select(func.count())` statement yields."""
+    return session.execute(statement).scalar_one()
+
+
+def assert_free(count: int, name: str) -> None:
+    """Raise `InUseError` when a row about to be deleted is still referenced."""
+    if count:
+        raise InUseError(count=count, name=name)
+
+
 def _validate_wallet_name(name: str) -> None:
     if len(name.strip()) < 1:
         raise RequiredError()
@@ -39,15 +78,9 @@ def create_person(
     session: Session, trip: Trip, name: str, default_weight, color: str | None
 ) -> Person:
     """Create a person on the trip's roster, raising on a duplicate name."""
-    exists = session.execute(
-        select(Person.id).where(Person.trip_id == trip.id, Person.name == name)
-    ).first()
-    if exists:
-        raise DuplicateError(name=name)
-
-    count = session.execute(
-        select(func.count()).select_from(Person).where(Person.trip_id == trip.id)
-    ).scalar_one()
+    scope = Person.trip_id == trip.id
+    ensure_unique(session, Person.name, name, scope)
+    count = next_sort_order(session, Person, scope)
     person = Person(
         trip_id=trip.id,
         name=name,
@@ -67,13 +100,7 @@ def update_person(  # noqa: PLR0913, PLR0917
 ) -> Person:
     """Apply the given field updates to a person, raising on a duplicate name."""
     if name is not None and name != person.name:
-        exists = session.execute(
-            select(Person.id).where(
-                Person.trip_id == person.trip_id, Person.name == name, Person.id != person.id
-            )
-        ).first()
-        if exists:
-            raise DuplicateError(name=name)
+        ensure_unique(session, Person.name, name, Person.trip_id == person.trip_id, person.id)
         person.name = name
     if default_weight is not None:
         person.default_weight_scaled = int(default_weight * 10000)
@@ -87,17 +114,9 @@ def update_person(  # noqa: PLR0913, PLR0917
 
 def delete_person(session: Session, person: Person) -> None:
     """Delete a person, raising if they still pay/share any item or hold a wallet in a transfer."""
-    referenced = session.execute(
-        select(func.count()).select_from(LineItem).where(LineItem.payer_id == person.id)
-    ).scalar_one()
-    if referenced:
-        raise InUseError(count=referenced, name=person.name)
-    share_count = session.execute(
-        select(func.count()).select_from(ItemShare).where(ItemShare.person_id == person.id)
-    ).scalar_one()
-    if share_count:
-        raise InUseError(count=share_count, name=person.name)
-    transfer_count = session.execute(
+    paid = select(func.count()).select_from(LineItem).where(LineItem.payer_id == person.id)
+    shared = select(func.count()).select_from(ItemShare).where(ItemShare.person_id == person.id)
+    moved = (
         select(func.count())
         .select_from(WalletTransfer)
         .join(
@@ -108,14 +127,11 @@ def delete_person(session: Session, person: Person) -> None:
             ),
         )
         .where(Wallet.person_id == person.id)
-    ).scalar_one()
-    if transfer_count:
-        raise InUseError(count=transfer_count, name=person.name)
+    )
+    for statement in (paid, shared, moved):
+        assert_free(reference_count(session, statement), person.name)
     session.delete(person)
     session.flush()
-
-
-# ---- Currency ------------------------------------------------------------------
 
 
 def create_currency(
@@ -125,21 +141,11 @@ def create_currency(
     if not CODE_RE.match(code):
         raise InvalidCodeError()
     code = code.upper()
-    exists = session.execute(
-        select(TripCurrency.id).where(TripCurrency.trip_id == trip.id, TripCurrency.code == code)
-    ).first()
-    if exists:
-        raise DuplicateError(name=code)
-
-    count = session.execute(
-        select(func.count()).select_from(TripCurrency).where(TripCurrency.trip_id == trip.id)
-    ).scalar_one()
+    scope = TripCurrency.trip_id == trip.id
+    ensure_unique(session, TripCurrency.code, code, scope)
+    count = next_sort_order(session, TripCurrency, scope)
     if is_primary:
-        session.execute(
-            TripCurrency.__table__.update()
-            .where(TripCurrency.trip_id == trip.id)
-            .values(is_primary=False)
-        )
+        clear_flag(session, TripCurrency.is_primary, scope)
     currency = TripCurrency(
         trip_id=trip.id,
         code=code,
@@ -159,11 +165,7 @@ def update_currency(
     if symbol is not None:
         currency.symbol = symbol
     if is_primary:
-        session.execute(
-            TripCurrency.__table__.update()
-            .where(TripCurrency.trip_id == currency.trip_id)
-            .values(is_primary=False)
-        )
+        clear_flag(session, TripCurrency.is_primary, TripCurrency.trip_id == currency.trip_id)
         currency.is_primary = True
     if sort_order is not None:
         currency.sort_order = sort_order
@@ -173,12 +175,8 @@ def update_currency(
 
 def delete_currency(session: Session, currency: TripCurrency) -> None:
     """Delete a currency, raising if any item or transfer still uses it."""
-    referenced = session.execute(
-        select(func.count()).select_from(LineItem).where(LineItem.currency_id == currency.id)
-    ).scalar_one()
-    if referenced:
-        raise InUseError(count=referenced, name=currency.code)
-    transfer_count = session.execute(
+    spent = select(func.count()).select_from(LineItem).where(LineItem.currency_id == currency.id)
+    moved = (
         select(func.count())
         .select_from(WalletTransfer)
         .where(
@@ -187,9 +185,9 @@ def delete_currency(session: Session, currency: TripCurrency) -> None:
                 WalletTransfer.to_currency_id == currency.id,
             )
         )
-    ).scalar_one()
-    if transfer_count:
-        raise InUseError(count=transfer_count, name=currency.code)
+    )
+    for statement in (spent, moved):
+        assert_free(reference_count(session, statement), currency.code)
     session.delete(currency)
     session.flush()
 
@@ -201,21 +199,11 @@ def create_country(
     session: Session, trip: Trip, name: str, code: str | None, is_default: bool | None
 ) -> TripCountry:
     """Create a country on the trip, raising on a duplicate name."""
-    exists = session.execute(
-        select(TripCountry.id).where(TripCountry.trip_id == trip.id, TripCountry.name == name)
-    ).first()
-    if exists:
-        raise DuplicateError(name=name)
-
-    count = session.execute(
-        select(func.count()).select_from(TripCountry).where(TripCountry.trip_id == trip.id)
-    ).scalar_one()
+    scope = TripCountry.trip_id == trip.id
+    ensure_unique(session, TripCountry.name, name, scope)
+    count = next_sort_order(session, TripCountry, scope)
     if is_default:
-        session.execute(
-            TripCountry.__table__.update()
-            .where(TripCountry.trip_id == trip.id)
-            .values(is_default=False)
-        )
+        clear_flag(session, TripCountry.is_default, scope)
     country = TripCountry(
         trip_id=trip.id,
         name=name,
@@ -232,25 +220,14 @@ def update_country(  # noqa: PLR0913, PLR0917
     session: Session, country: TripCountry, name, code, is_default, sort_order
 ) -> TripCountry:
     """Apply the given field updates to a country, raising on a duplicate name."""
+    scope = TripCountry.trip_id == country.trip_id
     if name is not None and name != country.name:
-        exists = session.execute(
-            select(TripCountry.id).where(
-                TripCountry.trip_id == country.trip_id,
-                TripCountry.name == name,
-                TripCountry.id != country.id,
-            )
-        ).first()
-        if exists:
-            raise DuplicateError(name=name)
+        ensure_unique(session, TripCountry.name, name, scope, country.id)
         country.name = name
     if code is not None:
         country.code = code.upper() if code else None
     if is_default:
-        session.execute(
-            TripCountry.__table__.update()
-            .where(TripCountry.trip_id == country.trip_id)
-            .values(is_default=False)
-        )
+        clear_flag(session, TripCountry.is_default, scope)
         country.is_default = True
     if sort_order is not None:
         country.sort_order = sort_order
@@ -260,11 +237,8 @@ def update_country(  # noqa: PLR0913, PLR0917
 
 def delete_country(session: Session, country: TripCountry) -> None:
     """Delete a country, raising if any item still uses it."""
-    referenced = session.execute(
-        select(func.count()).select_from(LineItem).where(LineItem.country_id == country.id)
-    ).scalar_one()
-    if referenced:
-        raise InUseError(count=referenced, name=country.name)
+    visited = select(func.count()).select_from(LineItem).where(LineItem.country_id == country.id)
+    assert_free(reference_count(session, visited), country.name)
     session.delete(country)
     session.flush()
 
@@ -313,22 +287,15 @@ def create_wallet(
 ) -> Wallet:
     """Create a wallet for a person, raising on a missing/too-long/duplicate name."""
     _validate_wallet_name(name)
-    exists = session.execute(
-        select(Wallet.id).where(Wallet.person_id == person.id, Wallet.name == name)
-    ).first()
-    if exists:
-        raise DuplicateError(name=name)
-
-    count = session.execute(
-        select(func.count()).select_from(Wallet).where(Wallet.person_id == person.id)
-    ).scalar_one()
+    scope = Wallet.person_id == person.id
+    ensure_unique(session, Wallet.name, name, scope)
     wallet = Wallet(
         trip_id=trip.id,
         person_id=person.id,
         name=name,
         tracked=bool(tracked),
         is_default=False,
-        sort_order=count,
+        sort_order=next_sort_order(session, Wallet, scope),
     )
     session.add(wallet)
     session.flush()
@@ -339,24 +306,15 @@ def update_wallet(  # noqa: PLR0913, PLR0917
     session: Session, wallet: Wallet, name, tracked, is_default, sort_order
 ) -> Wallet:
     """Apply the given field updates to a wallet, raising on an invalid/duplicate name."""
+    scope = Wallet.person_id == wallet.person_id
     if name is not None and name != wallet.name:
         _validate_wallet_name(name)
-        exists = session.execute(
-            select(Wallet.id).where(
-                Wallet.person_id == wallet.person_id, Wallet.name == name, Wallet.id != wallet.id
-            )
-        ).first()
-        if exists:
-            raise DuplicateError(name=name)
+        ensure_unique(session, Wallet.name, name, scope, wallet.id)
         wallet.name = name
     if tracked is not None:
         wallet.tracked = tracked
     if is_default:
-        session.execute(
-            Wallet.__table__.update()
-            .where(Wallet.person_id == wallet.person_id)
-            .values(is_default=False)
-        )
+        clear_flag(session, Wallet.is_default, scope)
         wallet.is_default = True
     if sort_order is not None:
         wallet.sort_order = sort_order
@@ -368,10 +326,8 @@ def delete_wallet(session: Session, wallet: Wallet) -> None:
     """Delete a wallet, raising if it is a person's default or still referenced."""
     if wallet.is_default:
         raise IsDefaultError()
-    item_count = session.execute(
-        select(func.count()).select_from(LineItem).where(LineItem.wallet_id == wallet.id)
-    ).scalar_one()
-    transfer_count = session.execute(
+    spent = select(func.count()).select_from(LineItem).where(LineItem.wallet_id == wallet.id)
+    moved = (
         select(func.count())
         .select_from(WalletTransfer)
         .where(
@@ -380,9 +336,8 @@ def delete_wallet(session: Session, wallet: Wallet) -> None:
                 WalletTransfer.to_wallet_id == wallet.id,
             )
         )
-    ).scalar_one()
-    total = item_count + transfer_count
-    if total:
-        raise InUseError(count=total, name=wallet.name)
+    )
+    total = reference_count(session, spent) + reference_count(session, moved)
+    assert_free(total, wallet.name)
     session.delete(wallet)
     session.flush()

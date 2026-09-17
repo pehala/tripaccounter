@@ -24,6 +24,7 @@ from app.services.errors.fields import (
     SameWalletError,
 )
 from app.services.money import AMOUNT_SCALE, to_hundredths
+from app.services.scope import in_trip, ref_error
 
 
 @dataclass
@@ -87,28 +88,24 @@ def validate(
     """Validate a resolved write's refs and cross-field rules; return its field errors."""
     fields: dict[str, FieldError] = {}
 
-    from_wallet = _in_trip(session, Wallet, resolved.from_wallet_id, trip.id)
-    if resolved.from_wallet_id is None:
-        fields["from_wallet_id"] = RequiredError()
-    elif from_wallet is None:
-        fields["from_wallet_id"] = NotInTripError()
+    # Both wallets are required on every write; a currency only on create, since
+    # `resolve_write` carries the stored one forward on a patch.
+    for field, model, row_id, required in (
+        ("from_wallet_id", Wallet, resolved.from_wallet_id, True),
+        ("to_wallet_id", Wallet, resolved.to_wallet_id, True),
+        ("from_currency_id", TripCurrency, resolved.from_currency_id, creating),
+    ):
+        error = ref_error(session, model, row_id, trip.id, required=required)
+        if error:
+            fields[field] = error
 
-    to_wallet = _in_trip(session, Wallet, resolved.to_wallet_id, trip.id)
-    if resolved.to_wallet_id is None:
-        fields["to_wallet_id"] = RequiredError()
-    elif to_wallet is None:
-        fields["to_wallet_id"] = NotInTripError()
-
-    if resolved.from_currency_id is None:
-        if creating:
-            fields["from_currency_id"] = RequiredError()
-    elif _in_trip(session, TripCurrency, resolved.from_currency_id, trip.id) is None:
-        fields["from_currency_id"] = NotInTripError()
+    from_wallet = in_trip(session, Wallet, resolved.from_wallet_id, trip.id)
+    to_wallet = in_trip(session, Wallet, resolved.to_wallet_id, trip.id)
 
     to_currency_missing = (
         resolved.to_currency_id is not None
         and "from_currency_id" not in fields
-        and _in_trip(session, TripCurrency, resolved.to_currency_id, trip.id) is None
+        and in_trip(session, TripCurrency, resolved.to_currency_id, trip.id) is None
     )
     if to_currency_missing:
         fields["to_currency_id"] = NotInTripError()
@@ -133,16 +130,6 @@ def validate(
         fields["to_currency_id"] = CrossOwnerExchangeError()
 
     return fields
-
-
-def _in_trip(session: Session, model: type, row_id: int | None, trip_id: int):
-    """Return the row of `model` with `row_id`, or None if missing or from another trip."""
-    if row_id is None:
-        return None
-    row = session.get(model, row_id)
-    if row is None or row.trip_id != trip_id:
-        return None
-    return row
 
 
 def apply_write(transfer: WalletTransfer, resolved: ResolvedTransfer, occurred_at, note) -> None:

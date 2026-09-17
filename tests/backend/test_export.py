@@ -166,6 +166,28 @@ def test_csv_and_json_export_carry_the_same_rows(client, trip, two_person_item):
         assert csv_row["owed"] == str(json_row["owed"])
 
 
+def test_export_rows_are_oldest_first(client, trip, people, item_body):
+    """Export reads as a chronological sheet, whatever the items endpoint answers in."""
+    for name, occurred_at in (
+        ("Layover lunch", "2026-09-14T12:00:00"),
+        ("Dinner at Messinn", "2026-09-12T19:00:00"),
+        ("Blue Lagoon", "2026-09-13T10:00:00"),
+    ):
+        client.post(
+            f"/api/v1/trips/{trip['slug']}/items",
+            json=item_body(
+                name=name,
+                occurred_at=occurred_at,
+                shares=[{"person_id": people[0]["id"]}],
+            ),
+        )
+
+    response = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "csv"})
+
+    rows = list(csv.DictReader(io.StringIO(response.text)))
+    assert [row["name"] for row in rows] == ["Dinner at Messinn", "Blue Lagoon", "Layover lunch"]
+
+
 def test_export_of_empty_trip_is_not_500(client, trip):
     """A trip with no items exports a header and nothing else."""
     response = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "csv"})

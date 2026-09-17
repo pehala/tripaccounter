@@ -1,7 +1,6 @@
 """Wallet transfer routes: create, list, update, delete."""
 
 from fastapi import APIRouter, Response
-from sqlalchemy import select
 
 from app.clock import ClockDep
 from app.deps import SessionDep, TripDep
@@ -10,17 +9,12 @@ from app.schemas.envelopes import TransferEnvelope, TransferListEnvelope
 from app.schemas.error_shapes import error_responses
 from app.schemas.requests import TransferWrite
 from app.schemas.responses import TRANSFER_LOAD_OPTIONS, TransferOut
+from app.services import queries
 from app.services import transfers as transfer_service
-from app.services.errors.api import NotFoundError, ValidationError
+from app.services.errors.api import ValidationError
+from app.services.scope import require_in_trip
 
 router = APIRouter(tags=["transfers"])
-
-
-def _get_transfer(trip, transfer_id: int, session: SessionDep) -> WalletTransfer:
-    transfer = session.get(WalletTransfer, transfer_id, options=TRANSFER_LOAD_OPTIONS)
-    if transfer is None or transfer.trip_id != trip.id:
-        raise NotFoundError("transfer")
-    return transfer
 
 
 @router.get(
@@ -28,16 +22,7 @@ def _get_transfer(trip, transfer_id: int, session: SessionDep) -> WalletTransfer
 )
 def list_transfers(trip: TripDep, session: SessionDep):
     """List a trip's wallet transfers, newest first."""
-    rows = (
-        session.execute(
-            select(WalletTransfer)
-            .where(WalletTransfer.trip_id == trip.id)
-            .options(*TRANSFER_LOAD_OPTIONS)
-            .order_by(WalletTransfer.occurred_at.desc(), WalletTransfer.id.desc())
-        )
-        .scalars()
-        .all()
-    )
+    rows = session.execute(queries.transfers_for_trip(trip.id)).scalars().all()
     return {"transfers": [TransferOut.from_transfer(row) for row in rows]}
 
 
@@ -69,7 +54,9 @@ def create_transfer(body: TransferWrite, trip: TripDep, session: SessionDep, clo
 )
 def get_transfer(transfer_id: int, trip: TripDep, session: SessionDep):
     """Get a single transfer by id."""
-    transfer = _get_transfer(trip, transfer_id, session)
+    transfer = require_in_trip(
+        session, WalletTransfer, transfer_id, trip.id, "transfer", options=TRANSFER_LOAD_OPTIONS
+    )
     return {"transfer": TransferOut.from_transfer(transfer)}
 
 
@@ -80,7 +67,9 @@ def get_transfer(transfer_id: int, trip: TripDep, session: SessionDep):
 )
 def update_transfer(transfer_id: int, body: TransferWrite, trip: TripDep, session: SessionDep):
     """Update a transfer's fields."""
-    transfer = _get_transfer(trip, transfer_id, session)
+    transfer = require_in_trip(
+        session, WalletTransfer, transfer_id, trip.id, "transfer", options=TRANSFER_LOAD_OPTIONS
+    )
     resolved = transfer_service.resolve_write(body, transfer)
     fields = transfer_service.validate(session, trip, resolved, creating=False)
     if fields:
@@ -97,7 +86,9 @@ def update_transfer(transfer_id: int, body: TransferWrite, trip: TripDep, sessio
 )
 def delete_transfer(transfer_id: int, trip: TripDep, session: SessionDep):
     """Delete a transfer from a trip."""
-    transfer = _get_transfer(trip, transfer_id, session)
+    transfer = require_in_trip(
+        session, WalletTransfer, transfer_id, trip.id, "transfer", options=TRANSFER_LOAD_OPTIONS
+    )
     session.delete(transfer)
     session.flush()
     return Response(status_code=204)

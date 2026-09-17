@@ -7,7 +7,6 @@ exactly one definition of a share.
 
 from decimal import Decimal
 
-from app.services.errors.base import FieldError
 from app.services.errors.fields import (
     DuplicatePersonError,
     EmptyError,
@@ -22,23 +21,7 @@ from app.services.money import (
     to_hundredths,
     to_wire,
 )
-from app.services.parsing import ParseError
-from app.services.parsing import parse_amount as _parse_amount
-from app.services.parsing import parse_weight as _parse_weight
-
-
-def _validate_weight(raw: object) -> Decimal:
-    try:
-        return _parse_weight(raw)
-    except ParseError as err:
-        raise FieldError.by_code(err.code, err.params) from err
-
-
-def _validate_exact_amount(raw: object) -> Decimal:
-    try:
-        return _parse_amount(raw, allow_zero=True)
-    except ParseError as err:
-        raise FieldError.by_code(err.code, err.params) from err
+from app.services.parsing import parse_amount, parse_weight
 
 
 def build_shares(
@@ -81,7 +64,7 @@ def build_shares(
                 }
             )
         elif mode == "shares":
-            weight = _validate_weight(raw.get("weight"))
+            weight = parse_weight(raw.get("weight"))
             rows.append(
                 {
                     "person_id": person_id,
@@ -91,7 +74,7 @@ def build_shares(
                 }
             )
         elif mode == "exact":
-            share_amount = _validate_exact_amount(raw.get("amount"))
+            share_amount = parse_amount(raw.get("amount"), allow_zero=True)
             rows.append(
                 {
                     "person_id": person_id,
@@ -110,6 +93,23 @@ def build_shares(
             raise SumMismatchError(diff=abs(expected - total), currency_code=currency_code)
 
     return rows
+
+
+def rows_from_shares(shares) -> list[dict]:
+    """Return persisted `ItemShare` rows in the row form the rest of this module speaks.
+
+    `{person_id, weight_scaled, owed_minor, exact}` - what `build_shares`
+    produces and `resolve_shares_wire` consumes.
+    """
+    return [
+        {
+            "person_id": share.person_id,
+            "weight_scaled": share.weight_scaled,
+            "owed_minor": share.owed_minor,
+            "exact": share.split_mode_exact,
+        }
+        for share in shares
+    ]
 
 
 def format_weight(weight_scaled: int) -> str:

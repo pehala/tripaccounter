@@ -14,22 +14,12 @@ from app.services.errors.base import FieldError
 from app.services.errors.fields import (
     InactiveError,
     InvalidAmountError,
-    NotInTripError,
     RequiredError,
     TooLongError,
     WalletOwnerMismatchError,
 )
 from app.services.money import AMOUNT_SCALE, to_hundredths, to_wire
-
-
-def in_trip(session: Session, model: type, row_id: int | None, trip_id: int):
-    """Return the row of `model` with `row_id`, or None if missing or from another trip."""
-    if row_id is None:
-        return None
-    row = session.get(model, row_id)
-    if row is None or row.trip_id != trip_id:
-        return None
-    return row
+from app.services.scope import in_trip, ref_error
 
 
 def validate_name(name: str | None, *, required: bool) -> FieldError | None:
@@ -55,24 +45,19 @@ def validate_write(
     if creating and body.amount is None:
         fields["amount"] = InvalidAmountError()
 
-    for field, model in (
-        ("currency_id", TripCurrency),
-        ("payer_id", Person),
-        ("country_id", TripCountry),
+    for field, model, required in (
+        ("currency_id", TripCurrency, creating),
+        ("payer_id", Person, creating),
+        ("country_id", TripCountry, creating),
+        ("wallet_id", Wallet, False),
     ):
-        row_id = getattr(body, field)
-        if row_id is None:
-            if creating:
-                fields[field] = RequiredError()
-        elif in_trip(session, model, row_id, trip.id) is None:
-            fields[field] = NotInTripError()
+        error = ref_error(session, model, getattr(body, field), trip.id, required=required)
+        if error:
+            fields[field] = error
 
     payer = in_trip(session, Person, body.payer_id, trip.id)
     if payer is not None and not payer.active:
         fields["payer_id"] = InactiveError()
-
-    if body.wallet_id is not None and in_trip(session, Wallet, body.wallet_id, trip.id) is None:
-        fields["wallet_id"] = NotInTripError()
 
     return fields
 

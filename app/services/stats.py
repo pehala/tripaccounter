@@ -8,10 +8,8 @@ from datetime import date
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.db_views import share_owed_view
 from app.models.items import LineItem
 from app.models.labels import ItemLabel, Label
-from app.models.roster import TripCurrency
 from app.models.trip import Trip
 from app.schemas.responses import (
     StatsBlockOut,
@@ -21,6 +19,7 @@ from app.schemas.responses import (
     StatsOut,
     StatsPersonOut,
 )
+from app.services import queries
 from app.services.money import AMOUNT_SCALE, MICRO_SCALE, to_wire
 
 
@@ -32,23 +31,11 @@ def _day_count(trip: Trip) -> int | None:
 
 def compute_stats(session: Session, trip: Trip) -> StatsOut:
     """Return each currency's by-label, by-country, by-person and by-day spend breakdowns."""
-    currencies = (
-        session.execute(
-            select(TripCurrency)
-            .where(TripCurrency.trip_id == trip.id)
-            .order_by(TripCurrency.sort_order)
-        )
-        .scalars()
-        .all()
-    )
+    currencies = session.execute(queries.currencies_for_trip(trip.id)).scalars().all()
 
     blocks = []
     for currency in currencies:
-        total_minor = session.execute(
-            select(func.coalesce(func.sum(LineItem.amount_minor), 0)).where(
-                LineItem.trip_id == trip.id, LineItem.currency_id == currency.id
-            )
-        ).scalar_one()
+        total_minor = session.execute(queries.spend_total(trip.id, currency.id)).scalar_one()
         if not total_minor:
             continue
 
@@ -101,13 +88,7 @@ def compute_stats(session: Session, trip: Trip) -> StatsOut:
         by_person = [
             StatsPersonOut(person_id=person_id, amount=to_wire(amount, MICRO_SCALE))
             for person_id, amount in session.execute(
-                select(share_owed_view.c.person_id, func.sum(share_owed_view.c.owed_micro))
-                .where(
-                    share_owed_view.c.trip_id == trip.id,
-                    share_owed_view.c.currency_id == currency.id,
-                )
-                .group_by(share_owed_view.c.person_id)
-                .order_by(share_owed_view.c.person_id)
+                queries.owed_by_person(trip.id, currency.id)
             ).all()
         ]
 
