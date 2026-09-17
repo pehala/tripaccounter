@@ -7,8 +7,10 @@ never sums a column (same shape as `app/services/balances.py`).
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import LineItem, Person, TripCurrency, WalletTransfer
-from app.schemas import WalletBalanceOut, WalletReportOut
+from app.models.items import LineItem
+from app.models.roster import Person, TripCurrency
+from app.models.wallets import WalletTransfer
+from app.schemas.responses import WalletBalanceOut, WalletReportOut
 from app.services.money import AMOUNT_SCALE, to_wire
 
 

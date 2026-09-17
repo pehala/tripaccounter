@@ -5,17 +5,11 @@ import re
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import (
-    ItemShare,
-    LineItem,
-    Person,
-    Trip,
-    TripCountry,
-    TripCurrency,
-    Wallet,
-    WalletTransfer,
-)
-from app.services.errors import (
+from app.models.items import ItemShare, LineItem
+from app.models.roster import Person, TripCountry, TripCurrency
+from app.models.trip import Trip
+from app.models.wallets import Wallet, WalletTransfer
+from app.services.errors.fields import (
     DuplicateError,
     InUseError,
     InvalidCodeError,

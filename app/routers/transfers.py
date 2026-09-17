@@ -5,17 +5,13 @@ from sqlalchemy import select
 
 from app.clock import ClockDep
 from app.deps import SessionDep, TripDep
-from app.models import WalletTransfer
-from app.schemas import (
-    TRANSFER_LOAD_OPTIONS,
-    TransferEnvelope,
-    TransferListEnvelope,
-    TransferOut,
-    TransferWrite,
-    error_responses,
-)
+from app.models.wallets import WalletTransfer
+from app.schemas.envelopes import TransferEnvelope, TransferListEnvelope
+from app.schemas.error_shapes import error_responses
+from app.schemas.requests import TransferWrite
+from app.schemas.responses import TRANSFER_LOAD_OPTIONS, TransferOut
 from app.services import transfers as transfer_service
-from app.services.errors import NotFoundError, ValidationError
+from app.services.errors.api import NotFoundError, ValidationError
 
 router = APIRouter(tags=["transfers"])
 

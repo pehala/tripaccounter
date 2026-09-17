@@ -21,7 +21,7 @@ layers, how money moves, and where the two halves meet.
 | [`tests/backend/fixtures/sheet.csv`](tests/backend/fixtures/sheet.csv) | the example sheet `tools/import_sheet/` is tested against, and the format by example |
 
 **API shapes are generated, never hand-written.** Fields, endpoints and statuses come
-from `app/schemas.py` and the routers; `/docs` renders them and `make openapi` writes
+from `app/schemas/` and the routers; `/docs` renders them and `make openapi` writes
 the committed `openapi.json`. `design/API.md` holds only the rules a schema cannot
 state. Changing a shape means regenerating the spec in the same commit —
 `make openapi-check` is a CI job.

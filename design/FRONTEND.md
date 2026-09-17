@@ -31,7 +31,8 @@ static/
 └── js/
     ├── app.js            mount + router: / and /t/:slug/items|balances|stats|setup
     ├── api.js            fetch wrapper: base path, JSON,
-    │                     error envelope → {status, code, params, fields}
+    │                     error envelope → {status, code, params, fields};
+    │                     attempt() runs a write and hands back that error
     ├── store.js          per-trip state: trip, labels, items, balances, stats;
     │                     load(), reload(kind)
     ├── fmt.js            money(), signed(), parse(), date() — one cached
@@ -55,7 +56,12 @@ static/
     │   ├── Balances.js   per-currency + Total, collapsible sections, jump-to sidebar
     │   ├── Wallets.js    one card per person, a balance row per tracked wallet's currency
     │   ├── Stats.js      per-currency + Total, collapsible sections, jump-to sidebar
-    │   └── Setup.js      people / wallets / currencies / countries / labels / settings / export
+    │   ├── Setup.js      composes the six setup sections
+    │   └── setup/
+    │       ├── PeopleSection.js  WalletsSection.js
+    │       ├── CurrenciesSection.js  CountriesSection.js
+    │       ├── LabelsSection.js
+    │       └── TripSection.js  name / note / dates / link / export / archive
     └── components/
         ├── Shell.js        the one piece of chrome every route shares, app.js
         │                   renders it once around whichever view is current
@@ -73,6 +79,9 @@ static/
         ├── SplitEditor.js  mode switch, weights/amounts, calls preview-split
         ├── LabelInput.js   space/comma-separated chips
         ├── Avatar.js  PersonChip.js  LabelBadge.js  Flash.js
+        ├── AddToggle.js  FieldError.js  the add button and the field-level
+        │                 error message, shared by every setup section
+        ├── errText.js      error envelope → the translated message
         └── splitSummary.js  mode + weights → "equally, 4 ways" — UI wording, UI code
 ```
 

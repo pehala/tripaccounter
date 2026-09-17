@@ -20,14 +20,26 @@ app/
 ├── db_views.py         the share_owed view, mapped read-only
 ├── deps.py             SessionDep, TripDep — slug → Trip or 404
 ├── clock.py            the injected clock behind occurred_at/created_at defaults
-├── models.py           SQLAlchemy 2.0 models — see ERD.md
-├── schemas.py          pydantic v2: request parsing + wire serialization + the
-│                       response envelopes. The OpenAPI schema is generated from here.
+├── models/             SQLAlchemy 2.0 models — see ERD.md
+│   ├── trip.py         Trip
+│   ├── roster.py       Person, TripCurrency, TripCountry, active_roster_ids
+│   ├── labels.py       Label, ItemLabel
+│   ├── wallets.py      Wallet, WalletTransfer
+│   └── items.py        LineItem, ItemShare
+├── schemas/            pydantic v2, one module per half of the contract:
+│   ├── fields.py       parse/validate helpers, the field aliases, Strict
+│   ├── requests.py     the write models
+│   ├── responses.py    the `*Out` wire shapes + their `from_*()` builders
+│   ├── envelopes.py    the per-route response envelopes
+│   └── error_shapes.py the error envelope + error_responses().
+│                       The OpenAPI schema is generated from here.
 ├── seed.py             the demo trip `make seed` writes to the dev database
 ├── services/
 │   ├── money.py        to_hundredths(Decimal), to_wire(int, scale) -> JSON number,
 │   │                   scale_weight(Decimal) -> int. No parsing, no formatting.
 │   ├── parsing.py      the canonical grammars: amount, weight, coordinate
+│   ├── items.py        item write rules: refs, wallet and coordinate resolution,
+│   │                   split-mode defaulting, the share rows a write persists
 │   ├── splits.py       build/validate share rows, exact-sum check, pad to roster
 │   │                   order; resolve_shares_wire is the view expression in Python
 │   ├── settle.py       round nets to hundredths with the zero-sum correction, then
@@ -43,7 +55,10 @@ app/
 │   ├── slugs.py        slugify + collision suffix
 │   ├── geo.py          parse lat/lon out of a maps URL when not given
 │   ├── export.py       CSV (one row per share) and JSON (whole trip + transfers)
-│   └── errors.py       the {code, params} catalog. No text. Depends on nothing.
+│   └── errors/         the {code, params} catalog. No text. Depends on nothing.
+│       ├── base.py     FieldError, ConflictFieldError, ApiError
+│       ├── fields.py   the field codes, grouped by category
+│       └── api.py      the status-carrying codes + wrap_field_error/run_field
 └── routers/
     ├── trips.py  items.py  people.py  currencies.py  countries.py  labels.py
     ├── wallets.py  transfers.py
@@ -59,11 +74,11 @@ No `pages.py`, no Jinja, no `python-multipart`. `GET /` and `GET /t/{slug}` retu
 ```mermaid
 flowchart TD
     req(["request"]) --> sch
-    sch["<b>schemas.py</b><br/>canonical string → Decimal<br/>reject unknown fields"]
+    sch["<b>schemas/requests.py</b><br/>canonical string → Decimal<br/>reject unknown fields"]
     rt["<b>routers/</b><br/>reference checks, FieldError → status,<br/>persistence orchestration"]
     sv["<b>services/</b><br/>every rule, every number"]
-    md["<b>models.py / db_views.py</b>"]
-    out["<b>schemas.py</b><br/>*Out.from_*() + to_wire()<br/>envelope"]
+    md["<b>models/ / db_views.py</b>"]
+    out["<b>schemas/responses.py</b><br/>*Out.from_*() + to_wire()<br/>envelope"]
     res(["response"])
 
     sch --> rt --> sv --> md
@@ -73,7 +88,7 @@ flowchart TD
 ```
 
 The rule of thumb: **if it decides a number, it is in `services/`. If it decides a
-status code, it is in `routers/`. If it decides a shape, it is in `schemas.py`.**
+status code, it is in `routers/`. If it decides a shape, it is in `schemas/`.**
 
 A router never does arithmetic. A service never raises an `HTTPException` — it raises
 a `FieldError`, and `run_field(field, fn, ...)` addresses it to the right request
@@ -86,12 +101,12 @@ Money is integers, and there is exactly one rounding step.
 
 | Stage | Representation | Where |
 |---|---|---|
-| typed in | canonical decimal string, ≤ 2 fraction digits | `services/parsing.py` via `schemas.py` |
-| stored | `bigint` hundredths (`amount_minor`, `owed_minor`), weights ×10⁴ | `models.py` |
+| typed in | canonical decimal string, ≤ 2 fraction digits | `services/parsing.py` via `schemas/fields.py` |
+| stored | `bigint` hundredths (`amount_minor`, `owed_minor`), weights ×10⁴ | `models/` |
 | computed share | `bigint` micro-units, floored, **a view** | `db_views.share_owed` |
 | aggregated | SQL `GROUP BY` over both | `services/balances.py`, `services/stats.py` |
 | **rounded** | **hundredths, zero-sum corrected** | **`services/settle.py` — the only one** |
-| wire | plain JSON number, 2 places typed / 6 computed | `money.to_wire` in `schemas.py` |
+| wire | plain JSON number, 2 places typed / 6 computed | `money.to_wire` in `schemas/responses.py` |
 
 Consequences that are easy to trip over:
 
@@ -107,7 +122,7 @@ Consequences that are easy to trip over:
 
 ## 4. Errors carry no language
 
-`services/errors.py` is the whole catalog, and it contains **no sentence, no template,
+`services/errors/` is the whole catalog, and it contains **no sentence, no template,
 no fallback, no default word, no locale** — nor does anything else in `app/`. The
 backend never sees `Accept-Language` and has nothing to translate.
 
@@ -130,8 +145,8 @@ drift.
 
 ## 5. The generated OpenAPI
 
-Every route declares a `response_model` (an envelope from `schemas.py`) and the exact
-error statuses it can answer with, via `schemas.error_responses(...)`. Two things fall
+Every route declares a `response_model` (an envelope from `schemas/envelopes.py`) and the exact
+error statuses it can answer with, via `schemas.error_shapes.error_responses(...)`. Two things fall
 out of that:
 
 - `/docs` is the shape reference, and `make openapi` writes the same schema to
@@ -194,7 +209,7 @@ lives, which is rarely where the code that answers it lives.
 | `test_http.py` | malformed JSON, unknown fields, `204` bodies, the `500` correlation `ref` |
 | `test_static.py` | `/` and `/t/{slug}` serve `index.html`; nothing under `/api/v1` returns HTML; the versioned asset mount under `TA_BUILD_ID` and the unversioned one without it |
 | `test_money.py` | **the only file that imports a service** — parsing, `to_wire`, the share expression, settle-up rounding |
-| `test_import_sheet.py` | `tools/import_sheet/` — cell grammars, date shapes and split inference called directly; `fixtures/sheet.csv` imported through `session` and read back over `client` |
+| `import_sheet/` | `tools/import_sheet/` — `test_cells.py` cell grammars and date shapes, `test_splits.py` split inference, `test_layout.py` column layout and reported problems, all called directly; `test_example_sheet.py` imports `fixtures/sheet.csv` through `session`, reads it back over `client`, and drives the CLI |
 
 Full conventions, fixtures, pitfalls and review rules:
 [`skills/writing-unit-tests`](../skills/writing-unit-tests/SKILL.md) — mandatory for

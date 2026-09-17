@@ -7,9 +7,11 @@ from sqlalchemy import DefaultClause, engine_from_config, pool
 from sqlmodel import SQLModel
 from sqlmodel.sql.sqltypes import AutoString
 
-import app.models  # noqa: F401  registers all tables on SQLModel.metadata
 from alembic import context
 from app.config import Settings
+
+# Importing every model module registers all tables on SQLModel.metadata.
+from app.models import items, labels, roster, trip, wallets  # noqa: F401
 
 config = context.config
 # config_file_name defaults to "alembic.ini" whether or not that file exists -

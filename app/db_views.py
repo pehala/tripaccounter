@@ -13,7 +13,7 @@ from sqlalchemy import BigInteger, Column, DateTime, Integer, MetaData, Table, c
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.ddl import DDLElement
 
-from app.models import ItemShare, LineItem
+from app.models.items import ItemShare, LineItem
 
 
 class CreateView(DDLElement):

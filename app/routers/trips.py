@@ -4,18 +4,16 @@ from fastapi import APIRouter, Response
 from sqlalchemy import func, select
 
 from app.deps import SessionDep, TripDep
-from app.models import LineItem, Person, Trip
-from app.schemas import (
-    TripCreate,
-    TripEnvelope,
-    TripListEnvelope,
-    TripOut,
-    TripSummaryOut,
-    TripUpdate,
-    error_responses,
-)
+from app.models.items import LineItem
+from app.models.roster import Person
+from app.models.trip import Trip
+from app.schemas.envelopes import TripEnvelope, TripListEnvelope
+from app.schemas.error_shapes import error_responses
+from app.schemas.requests import TripCreate, TripUpdate
+from app.schemas.responses import TripOut, TripSummaryOut
 from app.services import roster
-from app.services.errors import EmptyError, ValidationError, run_field
+from app.services.errors.api import ValidationError, run_field
+from app.services.errors.fields import EmptyError
 from app.services.labels import get_or_create as get_or_create_label
 from app.services.roster import country_item_counts
 from app.services.slugs import unique_slug

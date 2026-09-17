@@ -3,17 +3,13 @@
 from fastapi import APIRouter, Response
 
 from app.deps import SessionDep, TripDep
-from app.models import Person
-from app.schemas import (
-    PersonCreate,
-    PersonEnvelope,
-    PersonListEnvelope,
-    PersonOut,
-    PersonUpdate,
-    error_responses,
-)
+from app.models.roster import Person
+from app.schemas.envelopes import PersonEnvelope, PersonListEnvelope
+from app.schemas.error_shapes import error_responses
+from app.schemas.requests import PersonCreate, PersonUpdate
+from app.schemas.responses import PersonOut
 from app.services import roster
-from app.services.errors import NotFoundError, run_field
+from app.services.errors.api import NotFoundError, run_field
 
 router = APIRouter(tags=["people"])
 

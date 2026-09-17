@@ -7,7 +7,7 @@ import unicodedata
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Trip
+from app.models.trip import Trip
 
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
 

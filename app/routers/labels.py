@@ -3,17 +3,13 @@
 from fastapi import APIRouter, Response
 
 from app.deps import SessionDep, TripDep
-from app.models import Label
-from app.schemas import (
-    LabelCreate,
-    LabelEnvelope,
-    LabelListEnvelope,
-    LabelOut,
-    LabelUpdate,
-    error_responses,
-)
+from app.models.labels import Label
+from app.schemas.envelopes import LabelEnvelope, LabelListEnvelope
+from app.schemas.error_shapes import error_responses
+from app.schemas.requests import LabelCreate, LabelUpdate
+from app.schemas.responses import LabelOut
 from app.services import labels as labels_service
-from app.services.errors import NotFoundError, run_field
+from app.services.errors.api import NotFoundError, run_field
 
 router = APIRouter(tags=["labels"])
 
