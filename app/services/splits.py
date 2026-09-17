@@ -95,6 +95,23 @@ def build_shares(
     return rows
 
 
+def rows_from_shares(shares) -> list[dict]:
+    """Return persisted `ItemShare` rows in the row form the rest of this module speaks.
+
+    `{person_id, weight_scaled, owed_minor, exact}` - what `build_shares`
+    produces and `resolve_shares_wire` consumes.
+    """
+    return [
+        {
+            "person_id": share.person_id,
+            "weight_scaled": share.weight_scaled,
+            "owed_minor": share.owed_minor,
+            "exact": share.split_mode_exact,
+        }
+        for share in shares
+    ]
+
+
 def format_weight(weight_scaled: int) -> str:
     """Return the scaled weight as a plain decimal string, trimmed of trailing zeros."""
     value = (Decimal(weight_scaled) / WEIGHT_SCALE).normalize()
