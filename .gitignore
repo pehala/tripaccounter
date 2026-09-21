@@ -9,3 +9,6 @@ test-results/
 .env.*
 deploy/*.env
 node_modules/
+.coverage
+coverage.json
+coverage.md

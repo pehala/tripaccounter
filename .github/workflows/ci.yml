@@ -58,6 +58,40 @@ jobs:
       - run: make migrate-check
       - run: make test_backend
 
+  coverage-report:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { path: head }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { ref: "${{ github.event.pull_request.base.sha }}", path: base }
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with: { enable-cache: true }
+      - name: measure the pull request
+        run: uv sync --frozen && make coverage
+        working-directory: head
+      # The base commit predates pytest-cov in the lockfile, so inject it rather than
+      # resolving against a lockfile this branch is the one to change.
+      - name: measure the base commit
+        run: >-
+          uv run --with pytest-cov python -m pytest tests/backend tests/tools -q
+          --cov=app --cov=tools --cov-branch --cov-report=json:coverage.json
+        working-directory: base
+      - run: uv run python -m tools.coverage_delta ../base/coverage.json coverage.json > ../coverage.md
+        working-directory: head
+      - run: cat coverage.md >> "$GITHUB_STEP_SUMMARY"
+      - if: github.event.pull_request.head.repo.fork == false
+        run: gh pr comment ${{ github.event.pull_request.number }} --body-file coverage.md --edit-last --create-if-none
+        # Both checkouts live in subdirectories, so the workspace root has no git
+        # remote for gh to read the repository from.
+        env:
+          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          GH_REPO: "${{ github.repository }}"
+
   frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 15

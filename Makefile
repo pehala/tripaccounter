@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 .PHONY: help install install_dev lock start_server start_dev_server seed test \
-        test_backend test_frontend test_tools lint fmt lock-check migrate migrate-check \
-        migration openapi openapi-check clean
+        test_backend test_frontend test_tools coverage lint fmt lock-check migrate \
+        migrate-check migration openapi openapi-check clean
 
 # Traces are recorded for every test and cost about half the suite's CPU, so they
 # are opt-in: `make test_frontend TRACE=1`.
@@ -48,6 +48,9 @@ test_frontend:   ## playwright suite against fixtures. No DB, no app.
 test_tools:      ## the test tooling itself: the mock API engine
 	$(RUN) pytest tests/tools -q
 
+coverage:        ## tests/backend + tests/tools with coverage: missing lines, coverage.json for CI
+	$(RUN) pytest tests/backend tests/tools -q --cov --cov-report=term-missing --cov-report=json:coverage.json
+
 lint:            ## ruff check + format check + lockfile check + i18n catalog check
 	$(RUN) ruff check $(FILES)
 	$(RUN) ruff format --check $(FILES)
@@ -84,4 +87,4 @@ openapi-check:   ## fail if the committed openapi.json is stale or untracked
 	  exit 1; }
 
 clean:
-	rm -rf .venv .pytest_cache .ruff_cache **/__pycache__ dev.db
+	rm -rf .venv .pytest_cache .ruff_cache **/__pycache__ dev.db .coverage coverage.json coverage.md

@@ -1,1 +1,1 @@
-"""Tests for the test tooling itself: the mock API engine under tests/frontend/mockapi.py."""
+"""Tests for the tooling: the mock API engine, and the coverage report CI comments."""

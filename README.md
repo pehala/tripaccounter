@@ -153,10 +153,21 @@ the sheet and run again.
 make test            # everything: tests/backend, tests/frontend, tests/tools
 make lint            # ruff check + format check + uv lock --check + i18n catalogs
 make fmt             # ruff format + import fixes
+make coverage        # tests/backend under coverage
 ```
 
 `make lint test_backend` is the pre-merge gate; lefthook runs it on push and CI runs
 the same targets.
+
+`make coverage` runs `tests/backend` and `tests/tools` with branch coverage over
+`app/` and `tools/`,
+prints the missing lines, and writes a machine-readable `coverage.json`. On a pull
+request CI measures the base commit the same way and `tools/coverage_delta.py` turns
+the two reports into one comment — the total as `base → branch`, then a row per file
+that moved more than 0.1 pp. The comment is rewritten on each push. It reports, it
+never fails: there is no threshold and coverage is not part of the gate. `app/seed.py`
+and the two checkers in `tools/` sit at 0% because `make lint` and `make openapi` run
+them instead of a test.
 
 **The API is browsable at `/docs` on a running server**, and that is the shape
 reference — every field, endpoint and status is generated from `app/schemas/` and
