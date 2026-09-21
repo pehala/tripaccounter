@@ -340,52 +340,25 @@ class BalanceBlockOut(BaseModel):
     suggestions: list[SuggestionOut]
 
 
-class StatsLabelOut(BaseModel):
-    """Wire representation of spending totals for one label."""
+class StatsRowOut(BaseModel):
+    """Wire representation of one grouped total: its dimension values, the sum, the item count."""
 
-    label: str | None
+    keys: dict[str, str | int | None]
     amount: Number
     item_count: int
 
 
-class StatsCountryOut(BaseModel):
-    """Wire representation of spending totals for one country."""
+class StatsGroupOut(BaseModel):
+    """Wire representation of one grouping: the dimensions it grouped on and its rows."""
 
-    country_id: int
-    amount: Number
-    item_count: int
-
-
-class StatsPersonOut(BaseModel):
-    """Wire representation of spending totals for one person."""
-
-    person_id: int
-    amount: Number
-
-
-class StatsDayOut(BaseModel):
-    """Wire representation of spending totals for one day."""
-
-    date: str
-    amount: Number
-
-
-class StatsBlockOut(BaseModel):
-    """Wire representation of statistics for one currency."""
-
-    currency_code: str
-    currency_id: int
-    total: Number
-    by_label: list[StatsLabelOut]
-    by_country: list[StatsCountryOut]
-    by_person: list[StatsPersonOut]
-    by_day: list[StatsDayOut]
+    by: list[str]
+    rows: list[StatsRowOut]
 
 
 class StatsOut(BaseModel):
-    """Wire representation of trip statistics across all currencies."""
+    """Wire representation of trip statistics: one entry per requested grouping."""
 
-    stats: list[StatsBlockOut]
+    groups: list[StatsGroupOut]
     day_count: int | None
 
 

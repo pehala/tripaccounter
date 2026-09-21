@@ -1352,166 +1352,33 @@
         "title": "SplitOut",
         "type": "object"
       },
-      "StatsBlockOut": {
-        "description": "Wire representation of statistics for one currency.",
+      "StatsGroupOut": {
+        "description": "Wire representation of one grouping: the dimensions it grouped on and its rows.",
         "properties": {
-          "by_country": {
+          "by": {
             "items": {
-              "$ref": "#/components/schemas/StatsCountryOut"
+              "type": "string"
             },
-            "title": "By Country",
+            "title": "By",
             "type": "array"
           },
-          "by_day": {
+          "rows": {
             "items": {
-              "$ref": "#/components/schemas/StatsDayOut"
+              "$ref": "#/components/schemas/StatsRowOut"
             },
-            "title": "By Day",
+            "title": "Rows",
             "type": "array"
-          },
-          "by_label": {
-            "items": {
-              "$ref": "#/components/schemas/StatsLabelOut"
-            },
-            "title": "By Label",
-            "type": "array"
-          },
-          "by_person": {
-            "items": {
-              "$ref": "#/components/schemas/StatsPersonOut"
-            },
-            "title": "By Person",
-            "type": "array"
-          },
-          "currency_code": {
-            "title": "Currency Code",
-            "type": "string"
-          },
-          "currency_id": {
-            "title": "Currency Id",
-            "type": "integer"
-          },
-          "total": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "integer"
-              }
-            ],
-            "title": "Total"
           }
         },
         "required": [
-          "currency_code",
-          "currency_id",
-          "total",
-          "by_label",
-          "by_country",
-          "by_person",
-          "by_day"
+          "by",
+          "rows"
         ],
-        "title": "StatsBlockOut",
-        "type": "object"
-      },
-      "StatsCountryOut": {
-        "description": "Wire representation of spending totals for one country.",
-        "properties": {
-          "amount": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "integer"
-              }
-            ],
-            "title": "Amount"
-          },
-          "country_id": {
-            "title": "Country Id",
-            "type": "integer"
-          },
-          "item_count": {
-            "title": "Item Count",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "country_id",
-          "amount",
-          "item_count"
-        ],
-        "title": "StatsCountryOut",
-        "type": "object"
-      },
-      "StatsDayOut": {
-        "description": "Wire representation of spending totals for one day.",
-        "properties": {
-          "amount": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "integer"
-              }
-            ],
-            "title": "Amount"
-          },
-          "date": {
-            "title": "Date",
-            "type": "string"
-          }
-        },
-        "required": [
-          "date",
-          "amount"
-        ],
-        "title": "StatsDayOut",
-        "type": "object"
-      },
-      "StatsLabelOut": {
-        "description": "Wire representation of spending totals for one label.",
-        "properties": {
-          "amount": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "integer"
-              }
-            ],
-            "title": "Amount"
-          },
-          "item_count": {
-            "title": "Item Count",
-            "type": "integer"
-          },
-          "label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Label"
-          }
-        },
-        "required": [
-          "label",
-          "amount",
-          "item_count"
-        ],
-        "title": "StatsLabelOut",
+        "title": "StatsGroupOut",
         "type": "object"
       },
       "StatsOut": {
-        "description": "Wire representation of trip statistics across all currencies.",
+        "description": "Wire representation of trip statistics: one entry per requested grouping.",
         "properties": {
           "day_count": {
             "anyOf": [
@@ -1524,23 +1391,23 @@
             ],
             "title": "Day Count"
           },
-          "stats": {
+          "groups": {
             "items": {
-              "$ref": "#/components/schemas/StatsBlockOut"
+              "$ref": "#/components/schemas/StatsGroupOut"
             },
-            "title": "Stats",
+            "title": "Groups",
             "type": "array"
           }
         },
         "required": [
-          "stats",
+          "groups",
           "day_count"
         ],
         "title": "StatsOut",
         "type": "object"
       },
-      "StatsPersonOut": {
-        "description": "Wire representation of spending totals for one person.",
+      "StatsRowOut": {
+        "description": "Wire representation of one grouped total: its dimension values, the sum, the item count.",
         "properties": {
           "amount": {
             "anyOf": [
@@ -1553,16 +1420,34 @@
             ],
             "title": "Amount"
           },
-          "person_id": {
-            "title": "Person Id",
+          "item_count": {
+            "title": "Item Count",
             "type": "integer"
+          },
+          "keys": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Keys",
+            "type": "object"
           }
         },
         "required": [
-          "person_id",
-          "amount"
+          "keys",
+          "amount",
+          "item_count"
         ],
-        "title": "StatsPersonOut",
+        "title": "StatsRowOut",
         "type": "object"
       },
       "SuggestionOut": {
@@ -4505,7 +4390,7 @@
     },
     "/api/v1/trips/{slug}/stats": {
       "get": {
-        "description": "Get spending statistics for a trip.",
+        "description": "Get spending statistics for a trip, grouped by the requested dimension chains.",
         "operationId": "get_stats_api_v1_trips__slug__stats_get",
         "parameters": [
           {
@@ -4515,6 +4400,20 @@
             "schema": {
               "title": "Slug",
               "type": "string"
+            }
+          },
+          {
+            "description": "A comma-separated dimension chain; repeat for several breakdowns.",
+            "in": "query",
+            "name": "group_by",
+            "required": false,
+            "schema": {
+              "description": "A comma-separated dimension chain; repeat for several breakdowns.",
+              "items": {
+                "type": "string"
+              },
+              "title": "Group By",
+              "type": "array"
             }
           }
         ],
@@ -4538,6 +4437,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {

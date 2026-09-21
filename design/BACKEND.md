@@ -45,7 +45,7 @@ app/
 │   ├── settle.py       round nets to hundredths with the zero-sum correction, then
 │   │                   the greedy plan. THE one place money is rounded.
 │   ├── balances.py     per-currency paid/owed/net via SQL aggregates
-│   ├── stats.py        by_label / by_country / by_person / by_day, per currency
+│   ├── stats.py        the dimension registry + one GROUP BY per requested chain
 │   ├── roster.py       people / currencies / countries / wallets CRUD + the
 │   │                   in-use guards; `create_person` also seeds the default `Card`
 │   ├── wallets.py       wallet_balances(): received/sent/spent per tracked wallet
@@ -202,7 +202,7 @@ lives, which is rarely where the code that answers it lives.
 | `test_balances.py` | `net == paid − owed + sent − received`, the zero-sum bound, suggestions replayed to prove they settle |
 | `test_wallets.py` | the wallet balances report — `received/sent/spent`, the overcharge sign, untracked `[]`, currency order |
 | `test_transfers.py` | transfer CRUD, the plain/exchange mirroring rule, `same_wallet`/`cross_owner_exchange`, exclusion from spend |
-| `test_stats.py` | group totals against the trip total, the deliberate `by_label` overlap, `by_person` as owed |
+| `test_stats.py` | prefix expansion, nested rows against their parent, each dimension's own column, the deliberate `label` overlap, `person` as owed |
 | `test_export.py` | both formats, the pinned CSV header, an empty trip |
 | `test_validation.py` | the `API.md` §4 table, row by row, each as a real request |
 | `test_errors.py` | catalog ↔ contract ↔ wire consistency; no `message` key anywhere |

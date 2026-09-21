@@ -37,6 +37,27 @@ export function combineGroup(blocks, groupKey, rowKey, targetId, values, locale,
   return totals;
 }
 
+// The statistics Total's version of the above: one grouping's rows arrive
+// already grouped per currency, so combining them means dropping `currency_id`
+// from the key and summing the converted amounts of everything that remains
+// identical. Same exception, same all-or-nothing gate as `combineGroup`.
+export function combineRows(rows, targetId, values, locale) {
+  const totals = new Map();
+  for (const row of rows) {
+    const rate = rateFor(row.keys.currency_id, targetId, values, locale);
+    if (rate === null) continue;
+    const { currency_id, ...keys } = row.keys;
+    const id = JSON.stringify(keys);
+    const previous = totals.get(id);
+    totals.set(id, {
+      keys,
+      amount: (previous?.amount ?? 0) + convert(row.amount, rate),
+      item_count: (previous?.item_count ?? 0) + row.item_count,
+    });
+  }
+  return [...totals.values()];
+}
+
 // Combines each currency's already-computed settle-up suggestions into one
 // converted list — never a fresh minimum-transfer plan (that's `settle.py`'s
 // job, not the client's). The same two people can owe each other in opposite

@@ -1,12 +1,21 @@
-"""Tests for the statistics Total section (rates.js + Stats.js's TotalBlock).
+"""Tests for the statistics Total section (rates.js + Stats.js's TotalSection).
 
-The Total is another entry in the currency switcher, gated all-or-nothing: it
-shows nothing but the rate form until every currency has a positive typed
-rate, never a partial sum quietly missing one; a completed rate set survives a
-reload; and no currency's own per-currency total is ever touched by it.
+The Total is another option in the page's currency dropdown, gated
+all-or-nothing: it shows nothing but the rate form until every currency has a
+positive typed rate, never a partial sum quietly missing one; a completed rate
+set survives a reload; and no currency's own total is ever touched by it.
 """
 
+import pytest
 from playwright.sync_api import expect
+
+
+@pytest.fixture
+def stats_page(stats_page):
+    """Return the Statistics tab switched to the Total, which is where rates are typed."""
+    stats_page.locator("#stats-currency").select_option(label="Total")
+    stats_page.locator("#cur-total").wait_for()
+    return stats_page
 
 
 def rate_input(page, currency_code):
@@ -28,12 +37,20 @@ def convert(amount, rate):
     return round(amount * rate * 100) / 100
 
 
+def total_of(fixture_data, currency_code):
+    """Return one currency's trip total — the row of the API's ["currency"] grouping."""
+    trip = fixture_data["trip"]["trip"]
+    currency_id = next(c["id"] for c in trip["currencies"] if c["code"] == currency_code)
+    totals = next(g for g in fixture_data["stats"]["groups"] if g["by"] == ["currency"])
+    return next(r["amount"] for r in totals["rows"] if r["keys"]["currency_id"] == currency_id)
+
+
 def test_total_shows_only_the_rate_form_until_every_currency_has_a_rate(stats_page):
     """With no rates typed, the Total offers only the form — no stat sections, no figure."""
     expect(stats_page.locator("#cur-total")).to_contain_text(
         "Add a rate for every currency to see the total."
     )
-    assert stats_page.locator('[data-bs-target="#sec-total-by_label-body"]').count() == 0
+    assert stats_page.locator("#breakdown-total").count() == 0
 
 
 def test_total_stays_hidden_with_only_some_currencies_rated(stats_page):
@@ -48,15 +65,14 @@ def test_total_stays_hidden_with_only_some_currencies_rated(stats_page):
     expect(stats_page.locator("#cur-total")).to_contain_text(
         "Add a rate for every currency to see the total."
     )
-    assert stats_page.locator('[data-bs-target="#sec-total-by_label-body"]').count() == 0
+    assert stats_page.locator("#breakdown-total").count() == 0
 
 
 def test_total_appears_once_every_currency_has_a_rate(stats_page, fixture_data):
     """Filling in the last missing rate reveals the Total's figure and its sections."""
-    stats = fixture_data["stats"]["stats"]
-    isk_total = next(s for s in stats if s["currency_code"] == "ISK")["total"]
-    eur_total = next(s for s in stats if s["currency_code"] == "EUR")["total"]
-    dkk_total = next(s for s in stats if s["currency_code"] == "DKK")["total"]
+    isk_total = total_of(fixture_data, "ISK")
+    eur_total = total_of(fixture_data, "EUR")
+    dkk_total = total_of(fixture_data, "DKK")
 
     rate_input(stats_page, "EUR").fill("150")
     rate_input(stats_page, "EUR").blur()
@@ -66,7 +82,7 @@ def test_total_appears_once_every_currency_has_a_rate(stats_page, fixture_data):
     expected_total = isk_total + convert(eur_total, 150) + convert(dkk_total, 20)
     heading = stats_page.locator("#cur-total h2")
     expect(heading).to_contain_text(f"{fmt_money(stats_page, expected_total)} total")
-    assert stats_page.locator('[data-bs-target="#sec-total-by_label-body"]').count() == 1
+    assert stats_page.locator("#breakdown-total").count() == 1
     expect(stats_page.locator("#cur-total")).not_to_contain_text(
         "Add a rate for every currency to see the total."
     )
@@ -74,10 +90,9 @@ def test_total_appears_once_every_currency_has_a_rate(stats_page, fixture_data):
 
 def test_total_rates_survive_a_reload(stats_page, fixture_data):
     """Once complete, the typed rates and the resulting total are still there after a reload."""
-    stats = fixture_data["stats"]["stats"]
-    isk_total = next(s for s in stats if s["currency_code"] == "ISK")["total"]
-    eur_total = next(s for s in stats if s["currency_code"] == "EUR")["total"]
-    dkk_total = next(s for s in stats if s["currency_code"] == "DKK")["total"]
+    isk_total = total_of(fixture_data, "ISK")
+    eur_total = total_of(fixture_data, "EUR")
+    dkk_total = total_of(fixture_data, "DKK")
 
     rate_input(stats_page, "EUR").fill("150")
     rate_input(stats_page, "EUR").blur()
@@ -95,25 +110,24 @@ def test_total_rates_survive_a_reload(stats_page, fixture_data):
 
 def test_per_currency_totals_are_unaffected_by_the_total_rates(stats_page, fixture_data):
     """A currency's own heading total stays the raw fixture value regardless of any rate."""
-    dkk = next(s for s in fixture_data["stats"]["stats"] if s["currency_code"] == "DKK")
-    dkk_heading = stats_page.locator(f"#cur-{dkk['currency_id']} h2")
-    expected_text = f"{fmt_money(stats_page, dkk['total'])} total"
-    expect(dkk_heading).to_contain_text(expected_text)
+    trip = fixture_data["trip"]["trip"]
+    dkk_id = next(c["id"] for c in trip["currencies"] if c["code"] == "DKK")
+    expected_text = f"{fmt_money(stats_page, total_of(fixture_data, 'DKK'))} total"
 
     rate_input(stats_page, "EUR").fill("150")
     rate_input(stats_page, "EUR").blur()
+    stats_page.locator("#stats-currency").select_option(label="DKK")
 
-    expect(dkk_heading).to_contain_text(expected_text)
+    expect(stats_page.locator(f"#cur-{dkk_id} h2")).to_contain_text(expected_text)
 
 
-def test_total_switch_is_in_the_sidebar_and_scrolls_to_it(stats_page):
-    """The Total is reachable exactly like a currency: a real anchor link that scrolls to it."""
-    base_url = stats_page.url
+def test_total_is_picked_from_the_same_dropdown_as_a_currency(stats_page):
+    """The Total is reachable exactly like a currency: one more option in the dropdown."""
+    expect(stats_page.locator("#cur-total")).to_be_visible()
 
-    stats_page.locator(".side-nav a", has_text="Total").click()
+    stats_page.locator("#stats-currency").select_option(label="DKK")
 
-    expect(stats_page).to_have_url(f"{base_url}#cur-total")
-    expect(stats_page.locator("#cur-total")).to_be_in_viewport()
+    expect(stats_page.locator("#cur-total")).to_have_count(0)
 
 
 def test_total_defaults_to_converting_into_the_primary_currency(stats_page):
@@ -125,10 +139,9 @@ def test_total_defaults_to_converting_into_the_primary_currency(stats_page):
 
 def test_total_can_convert_into_any_currency_not_just_the_primary(stats_page, fixture_data):
     """Picking EUR as the target (ISK is the primary) totals everything in EUR instead."""
-    stats = fixture_data["stats"]["stats"]
-    isk_total = next(s for s in stats if s["currency_code"] == "ISK")["total"]
-    eur_total = next(s for s in stats if s["currency_code"] == "EUR")["total"]
-    dkk_total = next(s for s in stats if s["currency_code"] == "DKK")["total"]
+    isk_total = total_of(fixture_data, "ISK")
+    eur_total = total_of(fixture_data, "EUR")
+    dkk_total = total_of(fixture_data, "DKK")
 
     stats_page.locator("#rates-target").select_option(label="EUR")
 

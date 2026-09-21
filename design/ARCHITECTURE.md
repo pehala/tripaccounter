@@ -165,7 +165,8 @@ flowchart LR
   remainder**: an item's shares may sum a few micro-units under the total, which is
   invisible at two decimals.
 - **Balances and statistics are `GROUP BY` aggregates** over hundredths and that view.
-  The client never adds a column of money.
+  The client never adds a column of money — including the subtotals of a nested
+  statistics breakdown, which are prefixes the server grouped.
 - **The orange box is the only rounding in the system.** Nets are rounded to
   hundredths, the largest rounding error is corrected first (ties by roster order) so
   the column sums to zero exactly, and then a greedy minimum-transfer plan produces at

@@ -205,9 +205,11 @@ def test_transfers_are_absent_from_day_totals_stats_and_total_spent(
     ]
     assert len(items_response["transfers"]) == 1
 
-    stats = client.get(f"/api/v1/trips/{trip['slug']}/stats").json()["stats"]
-    isk_stats = next(s for s in stats if s["currency_code"] == "ISK")
-    assert isk_stats["total"] == 100
+    groups = client.get(f"/api/v1/trips/{trip['slug']}/stats").json()["groups"]
+    totals = next(g for g in groups if g["by"] == ["currency"])["rows"]
+    assert totals == [
+        {"keys": {"currency_id": trip["currencies"][0]["id"]}, "amount": 100, "item_count": 1}
+    ]
 
     balances = client.get(f"/api/v1/trips/{trip['slug']}/balances").json()["balances"]
     isk_balances = next(b for b in balances if b["currency_code"] == "ISK")

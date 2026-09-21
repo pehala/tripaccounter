@@ -1,26 +1,51 @@
-"""Compute by_label / by_country / by_person / by_day breakdowns.
+"""Group a trip's spend by any chain of dimensions.
 
-Plain GROUP BY aggregates, per currency, never across them.
+One `GROUP BY` per chain, built from the registry below. `currency` leads every
+chain, so a row is always one currency's money and nothing is ever converted.
+A chain is answered together with its own prefixes, which is where a nested
+breakdown's subtotals come from - see design/STATS.md §4.
 """
 
+from dataclasses import dataclass
 from datetime import date
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.db_views import share_owed_view
 from app.models.items import LineItem
 from app.models.labels import ItemLabel, Label
 from app.models.trip import Trip
-from app.schemas.responses import (
-    StatsBlockOut,
-    StatsCountryOut,
-    StatsDayOut,
-    StatsLabelOut,
-    StatsOut,
-    StatsPersonOut,
-)
-from app.services import queries
+from app.schemas.responses import StatsGroupOut, StatsOut, StatsRowOut
+from app.services.errors.fields import UnknownDimensionError
 from app.services.money import AMOUNT_SCALE, MICRO_SCALE, to_wire
+
+
+@dataclass(frozen=True)
+class Dimension:
+    """One groupable column: the key it answers under, what it groups on, how it sorts."""
+
+    key: str
+    column: Any
+    shares: bool = False
+    ordinal: bool = False
+
+
+# `label` is the only dimension needing a join of its own; `person` is the only
+# one living on the share view rather than on the item.
+DIMENSIONS: dict[str, Dimension] = {
+    "currency": Dimension("currency_id", LineItem.currency_id),
+    "label": Dimension("label", Label.name),
+    "country": Dimension("country_id", LineItem.country_id),
+    "city": Dimension("city", LineItem.city),
+    "payer": Dimension("payer_id", LineItem.payer_id),
+    "wallet": Dimension("wallet_id", LineItem.wallet_id),
+    "day": Dimension("date", func.date(LineItem.occurred_at), ordinal=True),
+    "person": Dimension("person_id", share_owed_view.c.person_id, shares=True),
+}
+
+CURRENCY = "currency"
 
 
 def _day_count(trip: Trip) -> int | None:
@@ -29,89 +54,75 @@ def _day_count(trip: Trip) -> int | None:
     return (date.fromisoformat(trip.end_date) - date.fromisoformat(trip.start_date)).days + 1
 
 
-def compute_stats(session: Session, trip: Trip) -> StatsOut:
-    """Return each currency's by-label, by-country, by-person and by-day spend breakdowns."""
-    currencies = session.execute(queries.currencies_for_trip(trip.id)).scalars().all()
+def expand_groupings(specs: list[str]) -> list[tuple[str, ...]]:
+    """Turn the requested chains into the distinct chains to answer, shortest first.
 
-    blocks = []
-    for currency in currencies:
-        total_minor = session.execute(queries.spend_total(trip.id, currency.id)).scalar_one()
-        if not total_minor:
-            continue
+    Each spec is a comma-separated chain. `currency` leads every chain, and a
+    chain is expanded into its prefixes so each nesting level has a row of its
+    own. `("currency",)` is therefore always answered: it is every chain's
+    shortest prefix, and carries the per-currency trip total.
+    """
+    chains = {(CURRENCY,): None}
+    for spec in specs:
+        chain = [CURRENCY]
+        for name in (part.strip() for part in spec.split(",")):
+            if not name:
+                continue
+            if name not in DIMENSIONS or name in chain:
+                raise UnknownDimensionError(name)
+            chain.append(name)
+            chains[tuple(chain)] = None
+    # Stable: shallowest first, and within a depth the order they were asked in.
+    return sorted(chains, key=len)
 
-        labelled_rows = session.execute(
-            select(Label.name, func.sum(LineItem.amount_minor), func.count(LineItem.id.distinct()))
-            .select_from(LineItem)
-            .join(ItemLabel, ItemLabel.item_id == LineItem.id)
-            .join(Label, Label.id == ItemLabel.label_id)
-            .where(LineItem.trip_id == trip.id, LineItem.currency_id == currency.id)
-            .group_by(Label.name)
-            .order_by(func.sum(LineItem.amount_minor).desc(), Label.name)
-        ).all()
-        by_label = [
-            StatsLabelOut(label=name, amount=to_wire(amount, AMOUNT_SCALE), item_count=count)
-            for name, amount, count in labelled_rows
-        ]
-        unlabelled_minor, unlabelled_count = session.execute(
-            select(func.coalesce(func.sum(LineItem.amount_minor), 0), func.count(LineItem.id))
-            .select_from(LineItem)
-            .outerjoin(ItemLabel, ItemLabel.item_id == LineItem.id)
-            .where(
-                LineItem.trip_id == trip.id,
-                LineItem.currency_id == currency.id,
-                ItemLabel.item_id.is_(None),
-            )
-        ).one()
-        if unlabelled_count:
-            by_label.append(
-                StatsLabelOut(
-                    label=None,
-                    amount=to_wire(unlabelled_minor, AMOUNT_SCALE),
-                    item_count=unlabelled_count,
-                )
-            )
 
-        by_country = [
-            StatsCountryOut(
-                country_id=country_id, amount=to_wire(amount, AMOUNT_SCALE), item_count=count
-            )
-            for country_id, amount, count in session.execute(
-                select(
-                    LineItem.country_id, func.sum(LineItem.amount_minor), func.count(LineItem.id)
-                )
-                .where(LineItem.trip_id == trip.id, LineItem.currency_id == currency.id)
-                .group_by(LineItem.country_id)
-                .order_by(func.sum(LineItem.amount_minor).desc(), LineItem.country_id)
-            ).all()
-        ]
+def _grouping(session: Session, trip_id: int, names: tuple[str, ...]) -> StatsGroupOut:
+    """Run one chain's `GROUP BY` and return its rows."""
+    dims = [DIMENSIONS[name] for name in names]
+    columns = [dim.column for dim in dims]
 
-        by_person = [
-            StatsPersonOut(person_id=person_id, amount=to_wire(amount, MICRO_SCALE))
-            for person_id, amount in session.execute(
-                queries.owed_by_person(trip.id, currency.id)
-            ).all()
-        ]
+    if any(dim.shares for dim in dims):
+        # What a person owes is the share view's floored micro-units, never a
+        # sum of typed amounts - design/ARCHITECTURE.md §Money.
+        total = func.sum(share_owed_view.c.owed_micro)
+        item_count = func.count(share_owed_view.c.item_id.distinct())
+        source = share_owed_view.join(LineItem, LineItem.id == share_owed_view.c.item_id)
+        scale = MICRO_SCALE
+    else:
+        total = func.sum(LineItem.amount_minor)
+        item_count = func.count(LineItem.id.distinct())
+        source = LineItem
+        scale = AMOUNT_SCALE
 
-        by_day = [
-            StatsDayOut(date=day, amount=to_wire(amount, AMOUNT_SCALE))
-            for day, amount in session.execute(
-                select(func.date(LineItem.occurred_at), func.sum(LineItem.amount_minor))
-                .where(LineItem.trip_id == trip.id, LineItem.currency_id == currency.id)
-                .group_by(func.date(LineItem.occurred_at))
-                .order_by(func.date(LineItem.occurred_at))
-            ).all()
-        ]
+    stmt = select(*columns, total, item_count).select_from(source)
+    if "label" in names:
+        # Outer, so items carrying no label group under `null`.
+        stmt = stmt.outerjoin(ItemLabel, ItemLabel.item_id == LineItem.id).outerjoin(
+            Label, Label.id == ItemLabel.label_id
+        )
+    ordinal = [dim.column for dim in dims if dim.ordinal]
+    stmt = (
+        stmt.where(LineItem.trip_id == trip_id)
+        .group_by(*columns)
+        .order_by(*ordinal, total.desc(), *columns)
+    )
 
-        blocks.append(
-            StatsBlockOut(
-                currency_code=currency.code,
-                currency_id=currency.id,
-                total=to_wire(total_minor, AMOUNT_SCALE),
-                by_label=by_label,
-                by_country=by_country,
-                by_person=by_person,
-                by_day=by_day,
+    rows = []
+    for row in session.execute(stmt).all():
+        *values, amount, count = row
+        rows.append(
+            StatsRowOut(
+                keys={dim.key: value for dim, value in zip(dims, values, strict=True)},
+                amount=to_wire(amount, scale),
+                item_count=count,
             )
         )
+    return StatsGroupOut(by=list(names), rows=rows)
 
-    return StatsOut(stats=blocks, day_count=_day_count(trip))
+
+def compute_stats(session: Session, trip: Trip, chains: list[tuple[str, ...]]) -> StatsOut:
+    """Return one grouping per chain, each summed per currency."""
+    return StatsOut(
+        groups=[_grouping(session, trip.id, chain) for chain in chains],
+        day_count=_day_count(trip),
+    )

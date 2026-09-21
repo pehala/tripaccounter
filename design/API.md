@@ -61,7 +61,7 @@ kept safe by four rules:
    Postgres alike, never stored, never rounded to a cent per item, so nobody
    systematically absorbs remainders.
 3. **The backend aggregates in SQL** over hundredths and that view — balances and every
-   statistics group arrive already summed. The client never adds up a column of money.
+   statistics grouping arrive already summed. The client never adds up a column of money.
 4. **Money is rounded exactly once**, in `suggestions`: nets to hundredths with a
    zero-sum correction, then the transfer plan. Everything else is shown as delivered,
    trimmed to two fraction digits by the client's formatter.
@@ -265,7 +265,7 @@ both sides in the same currency is meaningless (`422 same_wallet`).
 `GET /trips/{slug}/items` carries transfers too, under `transfers`, sorted the same
 way items are (`occurred_at DESC, id DESC`) — a client merges the two lists by
 timestamp to paint one feed. A transfer is **movement, not spending**: `day_totals`,
-every statistics group and `total_spent` stay sums of items only.
+every statistics grouping and `total_spent` stay sums of items only.
 
 A transfer between two different people's wallets is the one case that changes who
 owes whom: it enters `sent`/`received` on the balances endpoint below and is always
@@ -350,19 +350,38 @@ Plain `GROUP BY` aggregates — per currency, never across them. The totals arri
 already summed, so a client never adds a column of floats over this API's own
 response; all it does with these numbers otherwise is format them.
 
-`by_person` is a sum over the share view (six places); every other group is a sum of
-typed amounts (two). **`by_person[].amount` is what that person owes** in the period —
-their share of everything — not what they paid out. The two are visibly different on
-a trip where one person pays for everything.
+**What to group by is the client's choice.** `?group_by=` takes a comma-separated
+chain of dimensions and may be repeated for several breakdowns at once. The registry
+is `label`, `country`, `person`, `day`, `city`, `payer`, `wallet` — a name outside it,
+or one repeated within a chain, is `422 unknown_dimension`. There is no depth limit.
 
-**`by_label` rows overlap.** An item with two labels counts in both, so the rows sum
-to more than `total`, and a client must say so on screen. Items with no label appear
-under `"label": null`. `by_day` groups on `occurred_at`; `day_count` spans the trip.
+**`currency` leads every chain, and is never asked for.** The server prepends it, so
+`?group_by=day` groups by `(currency_id, date)` and no row ever spans two currencies.
+Naming it is `unknown_dimension` like any other non-choice.
+
+**A chain is answered with its own prefixes**, shortest first: `?group_by=day,person`
+answers `["currency"]`, `["currency","day"]` and `["currency","day","person"]`. That
+is where a nested breakdown's subtotals come from — each level is another grouping's
+row, summed in SQL, never a client-side accumulation. `["currency"]` therefore always
+comes back, and it carries each currency's trip total.
+
+A `row` is `{keys, amount, item_count}`; `keys` holds one entry per dimension in `by`,
+under `label`, `country_id`, `person_id`, `date`, `city`, `payer_id`, `wallet_id` and
+`currency_id`. A currency with no spend appears in no grouping at all.
+
+**`person` is what someone owes; `payer` is what they paid.** The first is a sum over
+the share view (six places), everything else a sum of typed amounts (two). The two are
+visibly different on a trip where one person pays for everything.
+
+**`label` rows overlap.** An item with two labels counts in both, so a label chain sums
+to more than the total, and a client must say so on screen. Items with no label appear
+under `"label": null`, as does an item with no `city` under `"city": null`. `day` groups
+on `occurred_at`; `day_count` spans the trip.
 
 **The Total is the single client-side exception, and it is all-or-nothing.** It sits
 in the statistics page (and, the same way, the balances page) as another switch
 alongside the currencies: the user types a rate per currency, and only once every
-currency (not just some) has a positive rate does the client multiply each group
+currency (not just some) has a positive rate does the client multiply each grouped
 total by its rate, round to two places, and sum those rounded figures across
 currencies — on the balances page this converts and sums `people[].net`, and nets
 `suggestions[]` by unordered person pair, rather than re-running the settle-up
@@ -431,6 +450,7 @@ rule, its code and its intended meaning sit in one row.
 | `from_amount`, `to_amount` | canonical grammar, `> 0` | `invalid_amount` | | "Enter an amount." |
 | `from_currency_id`, `to_currency_id` | in trip; differ only when both wallets have one owner | `not_in_trip` / `cross_owner_exchange` | | "Exchange only between your own wallets." |
 | `DELETE` default wallet | refused | `is_default` | | "Make another wallet the default first." |
+| `group_by` (stats) | each name in the dimension registry, once per chain | `unknown_dimension` | `{dimension}` | "Not something statistics can group by: wallet." |
 
 A new rule adds a row here, the code to `services/errors/`, and an `err.<code>`
 key to every frontend catalog **in the same commit** — `test_errors.py` and
