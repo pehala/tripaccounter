@@ -14,7 +14,9 @@ and the split phrase ("equally, 4 ways", "shares 1·1·1·0.5").
 
 Preact + htm as ES modules through an import map. No build step, no Node, no npm.
 Pinned versions with SRI hashes. Page width is Bootstrap's `.container` at its own
-breakpoints, with no cap of ours on top. Bootstrap 5 CSS plus `bootstrap.bundle.min.js` for
+breakpoints, with no cap of ours on top. Leaflet joins them on the map tab alone, imported
+dynamically when that tab mounts so no other page pays for it — a dynamic import takes
+no `integrity` attribute, so its hash sits in the import map's own `integrity` block. Bootstrap 5 CSS plus `bootstrap.bundle.min.js` for
 the modal and tabs — Preact renders the markup, Bootstrap animates it. Bootstrap
 Icons for glyphs. Roughly 500 lines of own JS.
 
@@ -29,8 +31,10 @@ the hard parts for every locale.
 static/
 ├── index.html            <head>, pinned CDN tags + SRI, import map, <div id="app">
 ├── app.css               ~80 lines on top of Bootstrap. No framework rewrite.
+│                         Holds the body→#app→main→.map-page flex chain the map's
+│                         height comes out of — no JS measures a box.
 └── js/
-    ├── app.js            mount + router: / and /t/:slug/items|balances|stats|setup
+    ├── app.js            mount + router: / and /t/:slug/items|balances|stats|map|setup
     ├── api.js            fetch wrapper: base path, JSON,
     │                     error envelope → {status, code, params, fields};
     │                     attempt() runs a write and hands back that error
@@ -48,6 +52,9 @@ static/
     │                     the money-combination math behind every page's Total
     ├── collapse.js       toggleCollapse(), showCollapse() — tiny Bootstrap Collapse
     │                     API wrappers, for a click that must also scroll natively
+    ├── filter.js         itemMatches() — the one needle matcher, shared by the
+    │                     item feed and the map
+    ├── tiles.js          the basemap URL, its zoom ceiling and its attribution
     ├── i18n/
     │   ├── index.js      LANGS, current locale, t(key, params), setLocale()
     │   ├── en.js         source catalog, flat dotted keys
@@ -59,6 +66,8 @@ static/
     │   ├── Balances.js   per-currency + Total, collapsible sections, jump-to sidebar
     │   ├── Wallets.js    one card per person, a balance row per tracked wallet's currency
     │   ├── Stats.js      per-currency + Total, collapsible sections, jump-to sidebar
+    │   ├── Map.js        pins from the items' coordinates, filters, the selected
+    │   │                 pin's expense list
     │   ├── Setup.js      composes the six setup sections
     │   └── setup/
     │       ├── PeopleSection.js  WalletsSection.js
@@ -76,6 +85,9 @@ static/
         │                   any page with a currency-first layout
         ├── RatesForm.js    the "convert to" picker + one rate input per currency,
         │                   shared by every page with a Total
+        ├── MapCanvas.js    the Leaflet instance: imports leaflet on mount, owns
+        │                   every node inside the canvas, draws one pin per point
+        ├── MapFilters.js   the map's search box, label chips and date range
         ├── ItemRow.js  TransferRow.js  DayGroup.js
         ├── ItemModal.js  Expense/Transfer switch + two modes, one component
         ├── TransferFields.js  wallet selects, the from/to amount+currency pairs
@@ -91,7 +103,8 @@ static/
 State keys are exactly the API's resource names: `trip` (with embedded `people`,
 `currencies`, `countries`, `wallets`), `labels`, `items` (with `transfers`
 alongside), `balances`, `wallets` (the balances report, its own lazily-loaded key),
-`stats`.
+`stats`. The map owns no key of its own: coordinates ride along on every item, so the
+tab is a second reading of `items`.
 
 ## 3. Data flow
 
@@ -219,6 +232,7 @@ it opens; landing straight on a tab via a direct link or a hard refresh pays for
 | Stats tab, first open | 1 | `GET /stats?group_by=…` — `trip` is already in the store |
 | Changing the breakdown | 1 | the chain is a new `group_by`, so the answer is refetched |
 | Changing the shown currency | 0 | every grouping already carries every currency |
+| Map tab, any open | 0 | it reads `store.items`, which the feed already loaded |
 | Setup tab, first open | 0 or 1 | `GET /labels`, unless Items already loaded them |
 | Balances/Wallets/Stats/Setup, cold (direct link) | 2 | `GET /trips/{slug}` plus that tab's own endpoint |
 | Revisiting a loaded tab | 0 | already in the store |
@@ -267,8 +281,15 @@ tests/frontend/
 │   ├── empty.json       a trip with no items, for the empty states
 │   ├── hostile.json     markup in names and labels, for escaping
 │   └── errors/          one file per envelope: 404, 409_in_use, 422_shares, 500_html
+├── map/                 the map tab's suites, with the pins, page fixtures and
+│   ├── conftest.py      items-stub helper they share
+│   └── test_*.py
 └── test_*.py
 ```
+
+**Tiles never leave the process.** An autouse fixture answers every
+`tile.openstreetmap.org` request with a transparent pixel, so the suite cannot be
+slowed by the tile server, cannot fail when it is down, and never sends it CI traffic.
 
 **Two data mechanisms, and the choice is not a matter of taste.** Baseline `GET`s come
 from the mock server — that is the app's resting state. Everything else — writes, error

@@ -1,7 +1,7 @@
 """Tests for the API call budget in design/FRONTEND.md §5.
 
 Intercept network — opening a trip makes exactly 3 API calls, opening the edit
-modal makes 0, saving makes 2, the stats tab 1, the balances tab 1 — every row of
+modal makes 0, saving makes 2, the stats tab 1, the balances tab 1, the map 0 — every row of
 the table, asserted as equality, not a ceiling. Setup only needs `labels`, and Items
 already loads those, so Setup's own cost only shows up when it opens before Items
 ever does.
@@ -54,12 +54,13 @@ def test_opening_the_edit_modal_makes_no_calls(items_page, count_requests, open_
     [
         pytest.param("Balances", 1, id="balances"),
         pytest.param("Statistics", 1, id="stats"),
+        pytest.param("Map", 0, id="map"),
     ],
 )
-def test_first_visit_to_a_derived_tab_makes_exactly_one_call(
+def test_first_visit_to_a_derived_tab_costs_only_its_own_resource(
     items_page, count_requests, open_tab, tab, expected_calls
 ):
-    """Opening Balances or Statistics for the first time is one GET of that resource."""
+    """Balances and Statistics cost one GET each; the map reads store.items and costs none."""
     calls = count_requests(API_CALLS)
 
     open_tab(tab)

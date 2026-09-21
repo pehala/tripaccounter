@@ -34,7 +34,7 @@ flowchart TD
 |---|---|
 | **Auth** | None. The VPN is the perimeter. A trip is reachable at `/t/{slug}`. |
 | **Backend** | **Pure JSON REST under `/api/v1`.** No templates, no HTML fragments, no form posts. It knows nothing about the frontend; the frontend is one client among any. Static files are mounted at `/` as a deployment convenience only. |
-| **Frontend** | **Static, client-rendered.** Preact + htm as ES modules through an import map, Bootstrap 5 for the modal and tabs, pinned versions with SRI hashes. No build step, no Node, no npm at runtime. Page width is Bootstrap's own `.container`: the 48 rem cap the first commit inlined into three containers is gone, so the balances and statistics grids get the room they were built for. |
+| **Frontend** | **Static, client-rendered.** Preact + htm as ES modules through an import map, Bootstrap 5 for the modal and tabs, pinned versions with SRI hashes. No build step, no Node, no npm at runtime. Page width is Bootstrap's own `.container`: the 48 rem cap the first commit inlined into three containers is gone, so the balances and statistics grids get the room they were built for and the map gets the window. |
 | **Currency** | Multi-currency, **zero conversion server-side**. Balances, settle-up and each currency's own stats are strictly per currency. Both the balances and statistics pages' Total section convert client-side with rates the user types, kept in `localStorage` and shared between the two pages, and only compute once every currency has one. |
 | **i18n** | **Frontend-only, from the first commit.** `en` (source) and `cs` as flat ES modules; `t()` over `Intl.PluralRules` / `NumberFormat` / `DateTimeFormat`, no library. Adding a language is one file plus one line. **The API has no language at all**: errors are `{code, params}` with no message, amounts cross the wire in one canonical grammar, and `app/` contains no user-facing string. |
 | **Money** | **Only typed values are stored, as integer hundredths, for every currency.** Computed shares are a SQL view in integer micro-units, never stored, never rounded per item. Balances and stats are `GROUP BY` over hundredths and that view. Input is a canonical decimal string; output is plain JSON numbers — typed to 2 places, computed to 6. **Rounded exactly once**, in settle-up, with a zero-sum correction. No `Currency.decimals`, no `*_display`, no `*_minor` on the wire. |
@@ -42,6 +42,7 @@ flowchart TD
 | **Splits** | Equal by default; override to weighted shares or exact amounts. Computed server-side only; `preview-split` gives the form live numbers from the same expression that will be saved. |
 | **Paybacks** | **A settle-up suggestion is never recorded as paid** — no "Mark paid". A wallet transfer is different: it is a real, typed movement of money, and one between two people's wallets is exactly the amendment this row used to reserve for later (§2, "Why paybacks are not recorded"). |
 | **Wallets** | Every person gets one untracked, default wallet (`Card`) on creation, server-assigned. A wallet is either untracked (unlimited, no balance) or tracked (`received − sent − spent` per currency). Transfers between wallets have no stored exchange rate — both typed sides — and an exchange is same-owner only. |
+| **Map** | **Leaflet 1.9.4 as one ESM module, OpenStreetMap's standard raster tiles, no key.** The map tab reads the coordinates the item feed already carries, filters them client-side, and never totals what a pin holds. Dark mode inverts the tile pane in CSS; there is no second tile provider and no geocoding. |
 | **Viewer** | **No "current user" anywhere.** An item states who paid and what each person owes. Nothing is rendered relative to a viewer. |
 | **Countries** | A strict per-trip list, **required on every item**. Managed in Setup like people and currencies; the item form only picks. Independent of currency. |
 | **Labels** | Free-typed, many per item, trip-scoped, auto-created on first use. **Space-separated in the input**, so one label is one token — `street-food`, never `street food`. Always an array on the wire. |
@@ -121,6 +122,18 @@ unset (a wallet holds any currency, like everything else in this app) and why th
 migration was frozen to explicit `op.create_table` calls rather than
 `metadata.create_all` while adding it.
 
+### Why Leaflet and OSM tiles, not MapLibre, CARTO or a keyed provider
+MapLibre GL is the better renderer and has real dark styles, but it is ESM-only across
+three chunks pulled by dynamic import — which take no `integrity` attribute — plus a
+worker and a WebGL context, about 1 MB for a page that draws a few dozen dots. Leaflet
+ships one ESM file that the import map pins and hashes. On tiles: CARTO's keyless raster
+basemaps started serving an `API KEY REQUIRED` watermark at the end of August 2026, and
+Mapbox, Google, Stadia and MapTiler all want an account in an app whose premise is that
+it has none. `tile.openstreetmap.org` needs nothing but visible attribution and casual,
+viewport-only use, which is what a VPN-only trip tracker does. It has no dark variant, so
+dark mode inverts the tile pane — one CSS rule instead of a second provider. If OSM ever
+rate-limits us, OpenFreeMap is keyless too, and taking it means taking MapLibre with it.
+
 ### Why no authentication
 The VPN is the perimeter and the trust boundary is a group of people who are already
 on holiday together. This is a real limitation, not an oversight — see the warning in
@@ -130,6 +143,10 @@ on holiday together. This is a real limitation, not an oversight — see the war
 
 ## 3. Deliberately out of scope
 
-Receipt photos, recurring expenses, per-item comments, a map view of all pins, undo
-history, PWA/offline, item-list filters and pagination, more than two languages. The
-model and the API leave room for each; none is needed to settle a holiday.
+Receipt photos, recurring expenses, per-item comments, undo history, PWA/offline,
+item-list pagination, more than two languages. The map tab draws the coordinates an
+expense already carries and nothing more: no geocoding of a `city` (Nominatim's policy
+forbids bulk lookups and there is no queue to do it politely), no per-location totals
+(a `by_location` SQL aggregate, the day the question is asked) and no marker clustering
+(`leaflet.markercluster` is UMD-only and could not enter the import map). The model and
+the API leave room for each; none is needed to settle a holiday.

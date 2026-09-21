@@ -53,3 +53,23 @@ body { padding-bottom: 5rem; }
 .side-nav { position: sticky; top: var(--header-h, 6.6rem); }
 .side-nav-mobile { z-index: 5; }
 [id^="cur-"], [id^="sec-"] { scroll-margin-top: var(--header-h, 6.6rem); }
+
+/* The flex chain the map's height comes out of: the page is at least a screen tall,
+   #app and main take what the chrome above them leaves, and .map-page hands that on
+   to the canvas — which is why the filters and the selected pin's expenses sit above
+   the map, and why the page-bottom room the FAB needs elsewhere is dropped here. */
+body { min-height: 100dvh; display: flex; flex-direction: column; }
+body:has(.map-page) { padding-bottom: 0; }
+#app { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+main { flex: 1 1 auto; min-height: 0; }
+/* Only this tab's main: a stretched flex item keeps height:auto, so a percentage
+   height inside it resolves to nothing - the column has to continue as flex. */
+main:has(.map-page) { display: flex; flex-direction: column; }
+.map-page { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.map-canvas { flex: 1 1 auto; min-height: 16rem; z-index: 0; }
+
+/* Leaflet draws tiles into their own pane, so inverting it turns the standard OSM
+   raster dark without touching the pins or the attribution. */
+.map-pin { fill: var(--bs-primary); fill-opacity: .6; stroke: var(--bs-body-bg); stroke-width: 2; }
+.map-pin-on { fill: var(--bs-danger); fill-opacity: .85; }
+[data-bs-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.95); }

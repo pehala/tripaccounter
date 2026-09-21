@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { html } from '../h.js';
 import { useStore, reload } from '../store.js';
+import { itemMatches } from '../filter.js';
 import { t, getLocale } from '../i18n/index.js';
 import { DayGroup } from '../components/DayGroup.js';
 import { ItemModal } from '../components/ItemModal.js';
@@ -44,10 +45,7 @@ function groupByDay(entries, startDate) {
 }
 
 function matches(entry, needle, walletName) {
-  if (entry.kind === 'item') {
-    const item = entry.row;
-    return item.name.toLowerCase().includes(needle) || item.labels.some((l) => l.includes(needle));
-  }
+  if (entry.kind === 'item') return itemMatches(entry.row, needle);
   const transfer = entry.row;
   const note = (transfer.note || '').toLowerCase();
   const fromName = (walletName(transfer.from_wallet_id) || '').toLowerCase();

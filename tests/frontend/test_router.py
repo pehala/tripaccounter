@@ -5,6 +5,7 @@ forward switch tabs without refetching; an unknown slug renders the 404 view, no
 an empty shell.
 """
 
+import pytest
 from playwright.sync_api import expect
 
 
@@ -45,11 +46,18 @@ def test_back_and_forward_switch_tabs_without_refetching_balances(
     assert len(balance_requests) == 1
 
 
-def test_cold_load_with_wallets_path_lands_directly_on_that_tab(open_trip):
-    """A first paint at /wallets renders the Wallets tab active, deep-linked like any other."""
-    page = open_trip("wallets")
+@pytest.mark.parametrize(
+    ("path", "tab"),
+    [
+        pytest.param("wallets", "Wallets", id="wallets"),
+        pytest.param("map", "Map", id="map"),
+    ],
+)
+def test_cold_load_with_a_tab_path_lands_directly_on_that_tab(open_trip, path, tab):
+    """A first paint at /{tab} renders that tab active, deep-linked like any other."""
+    page = open_trip(path)
 
-    expect(page.locator(".nav-link.active")).to_have_text("Wallets")
+    expect(page.locator(".nav-link.active")).to_have_text(tab)
 
 
 def test_unknown_slug_renders_the_notfound_view(page, mockserver):

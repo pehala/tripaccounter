@@ -5,6 +5,7 @@ modal fixtures on top of it, route stubs for writes and errors, and a session-sc
 trip page per tab for the tests that only read it. No DB, no `app.*`.
 """
 
+import base64
 import json
 from fnmatch import fnmatchcase
 from pathlib import Path
@@ -28,6 +29,7 @@ TABS = {
     "Balances": ("balances", lambda page: page.locator(".balances-content").first),
     "Wallets": ("wallets", lambda page: page.get_by_text("untracked", exact=False).first),
     "Statistics": ("stats", lambda page: page.locator(".stats-content").first),
+    "Map": ("map", lambda page: page.locator(".map-canvas")),
     "Setup": ("setup", lambda page: page.get_by_text("People", exact=True)),
 }
 TAB_PARAMS = [pytest.param(name, id=path) for name, (path, _) in TABS.items()]
@@ -36,6 +38,24 @@ TAB_BY_PATH = {path: name for name, (path, _) in TABS.items()}
 
 # Bootstrap's modal fade and collapse resolve on CSS transition end; waiting for
 # `.modal.show` or `#split-body.show` cost a test up to 1.4 s of pure animation.
+# One transparent pixel, served for every raster tile the map tab asks for. The suite
+# must not depend on the tile server being up, must not be paced by it, and must not
+# send OpenStreetMap traffic nobody asked for.
+TILE_GLOB = "**/tile.openstreetmap.org/**"
+TILE_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
+    "+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+)
+
+
+def stub_tiles(context):
+    """Fulfil every tile request in that browser context from `TILE_PNG`."""
+    context.route(
+        TILE_GLOB,
+        lambda route: route.fulfill(status=200, content_type="image/png", body=TILE_PNG),
+    )
+
+
 NO_TRANSITIONS = """document.addEventListener('DOMContentLoaded', () => {
   const style = document.createElement('style');
   style.textContent =
@@ -96,6 +116,12 @@ def page(page):
     page.add_init_script("window.localStorage.setItem('lang', 'en')")
     page.add_init_script(NO_TRANSITIONS)
     return page
+
+
+@pytest.fixture(autouse=True)
+def osm_tiles(context):
+    """Stub the tile server for every test that opens a browser context."""
+    stub_tiles(context)
 
 
 @pytest.fixture
@@ -213,7 +239,8 @@ def open_tab(page):
     """Return `open_tab(name) -> page`: click the nav link and wait for that tab's landmark."""
 
     def go(name):
-        page.get_by_role("link", name=name).click()
+        # exact: an item row mentioning a map link is a link whose name contains "Map" too.
+        page.get_by_role("link", name=name, exact=True).click()
         expect(page.locator(".nav-link.active")).to_have_text(name)
         expect(TABS[name][1](page)).to_be_visible()
         return page
@@ -263,6 +290,7 @@ def shared_trip(browser):
     context = browser.new_context(timezone_id="UTC")
     context.add_init_script("window.localStorage.setItem('lang', 'en')")
     context.add_init_script(NO_TRANSITIONS)
+    stub_tiles(context)
     pages = {}
 
     with MockServer(data) as server:
