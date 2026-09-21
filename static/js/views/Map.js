@@ -122,14 +122,14 @@ export function Map() {
               <button type="button" class="btn-close" aria-label=${t('map.close')}
                       onClick=${() => setSelectedKey(null)}></button>
             </div>
-            <div class="list-group list-group-flush item-list">
+            <div class="list-group list-group-flush">
               ${selected.items.map((item) => html`
                 <button key=${item.id} type="button"
-                        class="list-group-item list-group-item-action d-flex gap-3 text-start"
+                        class="list-group-item list-group-item-action d-flex gap-3 text-start py-2 px-3"
                         onClick=${() => setModalEntry({ kind: 'item', row: item })}>
                   <span class="flex-grow-1 min-w-0">
-                    <span class="d-block fw-semibold item-line">${item.name}</span>
-                    <small class="text-body-secondary d-block item-line">${dateTime(item.occurred_at, locale)} · <${Avatar} person=${payerOf(item)} /> ${t('items.paid_by', { name: payerOf(item)?.name || '' })}</small>
+                    <span class="d-block fw-semibold lh-sm">${item.name}</span>
+                    <small class="text-body-secondary d-block lh-sm">${dateTime(item.occurred_at, locale)} · <${Avatar} person=${payerOf(item)} /> ${t('items.paid_by', { name: payerOf(item)?.name || '' })}</small>
                   </span>
                   <span class="text-end num text-nowrap fw-semibold">
                     ${money(item.amount, locale)} ${item.currency_code}

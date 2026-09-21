@@ -19,10 +19,6 @@ body { padding-bottom: 5rem; }
 .owed span { display: inline-flex; align-items: center; gap: .2rem; margin-right: .6rem; white-space: nowrap; }
 .owed .av { width: 1.05rem; height: 1.05rem; font-size: .55rem; }
 
-.item-list .list-group-item { padding: .55rem .75rem; }
-.item-line { line-height: 1.2; }
-.item-line.owed { line-height: 1.4; }
-
 .tag-input { min-height: calc(1.5em + .75rem + 2px); }
 .tag-input:focus-within {
   border-color: var(--bs-primary); box-shadow: 0 0 0 .25rem rgba(var(--bs-primary-rgb), .25);

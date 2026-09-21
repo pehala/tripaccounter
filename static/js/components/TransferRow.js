@@ -17,10 +17,10 @@ export function TransferRow({ transfer, trip, locale, onSelect }) {
   const isExchange = transfer.from_currency_code !== transfer.to_currency_code;
 
   return html`
-    <a href="#" class="list-group-item list-group-item-action d-flex align-items-center gap-3 transfer-row"
+    <a href="#" class="list-group-item list-group-item-action d-flex align-items-center gap-3 transfer-row py-2 px-3"
        onClick=${(e) => { e.preventDefault(); onSelect?.(transfer); }}>
       <i class="bi bi-arrow-left-right text-body-secondary"></i>
-      <span class="flex-grow-1 min-w-0 d-flex align-items-center flex-wrap gap-2 item-line">
+      <span class="flex-grow-1 min-w-0 d-flex align-items-center flex-wrap gap-2 lh-sm">
         <span class="d-inline-flex align-items-center gap-1"><${Avatar} person=${fromOwner} />${fromWallet?.name}</span>
         <i class="bi bi-arrow-right text-body-secondary"></i>
         <span class="d-inline-flex align-items-center gap-1"><${Avatar} person=${toOwner} />${toWallet?.name}</span>

@@ -23,7 +23,7 @@ export function DayGroup({ date, beforeTrip, entries, totals, trip, locale, onSe
         ${(totals || []).map((ct) => html`<span key=${ct.currency_id} class="ms-2">${money(Math.ceil(ct.amount), locale)} ${ct.currency_code}</span>`)}
       </small>
     </div>
-    <div class="list-group item-list shadow-sm mb-3">
+    <div class="list-group shadow-sm mb-3">
       ${entries.map((entry) => entry.kind === 'transfer'
         ? html`<${TransferRow} key="transfer-${entry.row.id}" transfer=${entry.row} trip=${trip} locale=${locale}
                                onSelect=${() => onSelect(entry)} />`
