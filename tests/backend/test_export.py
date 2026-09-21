@@ -8,8 +8,13 @@ import pytest
 
 @pytest.fixture()
 def two_person_item(client, trip, people, item_body):
-    """Create a two-person, share-grained item that CSV/JSON parity tests compare against."""
-    return client.post(
+    """Create the two-person item the CSV/JSON parity tests compare against.
+
+    The second sharer is deactivated afterwards: a person keeps the shares they
+    already carry, and export resolves against the whole roster, so both shares
+    stay in the file.
+    """
+    item = client.post(
         f"/api/v1/trips/{trip['slug']}/items",
         json=item_body(
             name="Layover lunch",
@@ -19,6 +24,8 @@ def two_person_item(client, trip, people, item_body):
             shares=[{"person_id": people[0]["id"]}, {"person_id": people[1]["id"]}],
         ),
     ).json()["item"]
+    client.patch(f"/api/v1/trips/{trip['slug']}/people/{people[1]['id']}", json={"active": False})
+    return item
 
 
 def test_csv_export_one_row_per_share(client, trip, people, item_body):
@@ -147,8 +154,8 @@ def test_json_export_is_share_grained_like_the_csv(client, trip, people, two_per
     assert body["transfers"] == []
 
 
-def test_csv_and_json_export_carry_the_same_rows(client, trip, two_person_item):
-    """CSV and JSON export are identical except for the format."""
+def test_csv_and_json_export_carry_the_same_rows(client, trip, people, two_person_item):
+    """CSV and JSON export are identical except for the format, deactivated sharer included."""
     csv_text = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "csv"}).text
     json_rows = client.get(
         f"/api/v1/trips/{trip['slug']}/export", params={"format": "json"}
@@ -156,6 +163,8 @@ def test_csv_and_json_export_carry_the_same_rows(client, trip, two_person_item):
     csv_rows = list(csv.DictReader(io.StringIO(csv_text)))
 
     assert len(csv_rows) == len(json_rows) == 2
+    assert [row["person_name"] for row in json_rows] == [people[0]["name"], people[1]["name"]]
+    assert [row["owed"] for row in json_rows] == [60, 60]
     for csv_row, json_row in zip(csv_rows, json_rows, strict=True):
         assert csv_row["item_id"] == str(json_row["item_id"])
         assert csv_row["name"] == json_row["name"]

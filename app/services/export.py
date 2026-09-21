@@ -6,7 +6,6 @@ import io
 from sqlalchemy.orm import Session
 
 from app.models.items import LineItem
-from app.models.roster import active_roster_ids
 from app.models.trip import Trip
 from app.schemas.responses import ItemOut, TransferOut, TripOut
 from app.services import queries
@@ -50,7 +49,12 @@ def _items(session: Session, trip_id: int) -> list[LineItem]:
 
 def _export_rows(session: Session, trip: Trip) -> list[dict]:
     """One flat dict per resolved share: the row shape CSV and JSON export share."""
-    roster_ids = active_roster_ids(trip.people)
+    # Export resolves against the whole roster, inactive people included: a
+    # deactivated person keeps the shares they already carry (`delete_person`
+    # refuses while any exist) and the balances still charge them, so dropping
+    # them here would export an item whose owed column no longer sums to its
+    # amount.
+    roster_ids = [person.id for person in trip.people]
     person_names = {person.id: person.name for person in trip.people}
     rows = []
     for item in _items(session, trip.id):
