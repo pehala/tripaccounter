@@ -129,7 +129,7 @@ guards a state production never reaches.
 def test_item_totals(session):
     trip = Trip(name="Iceland", slug="iceland")
     session.add(trip)
-    people = [Person(trip=trip, name=n, sort_order=i) for i, n in enumerate("ABCD")]
+    people = [Person(trip=trip, name=n) for n in "ABCD"]
     currency = Currency(trip=trip, code="ISK", decimals=0)
     session.add_all([*people, currency])
     session.flush()

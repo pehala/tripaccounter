@@ -167,7 +167,7 @@ flowchart LR
 - **Balances and statistics are `GROUP BY` aggregates** over hundredths and that view.
   The client never adds a column of money.
 - **The orange box is the only rounding in the system.** Nets are rounded to
-  hundredths, the largest rounding error is corrected first (ties by `sort_order`) so
+  hundredths, the largest rounding error is corrected first (ties by roster order) so
   the column sums to zero exactly, and then a greedy minimum-transfer plan produces at
   most n−1 payments per currency.
 

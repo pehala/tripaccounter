@@ -47,7 +47,7 @@ def currencies_for_trip(trip_id: int):
     return (
         select(TripCurrency)
         .where(TripCurrency.trip_id == trip_id)
-        .order_by(TripCurrency.sort_order)
+        .order_by(TripCurrency.is_primary.desc(), TripCurrency.code)
     )
 
 

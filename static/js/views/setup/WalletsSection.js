@@ -105,10 +105,8 @@ export function WalletsSection({ trip, locale }) {
     await reload('trip');
   }
 
-  // trip.wallets already arrives in owner sort_order then wallet sort_order
-  // (API.md "Roster") - a client-side re-sort would only get it wrong for a
-  // freshly created row the mock (or a real server before its next reload)
-  // hands back with no sort_order of its own.
+  // trip.wallets arrives in owner then wallet order (API.md "Roster"), which the
+  // server owns, so rendering the list as it stands keeps the two in step.
   const wallets = trip.wallets;
 
   return html`

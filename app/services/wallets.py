@@ -33,15 +33,13 @@ def wallet_balances(session: Session, trip_id: int) -> list[WalletReportOut]:
         session.execute(
             select(Person)
             .where(Person.trip_id == trip_id)
-            .order_by(Person.sort_order)
+            .order_by(Person.sort_order, Person.name)
             .options(selectinload(Person.wallets))
         )
         .scalars()
         .all()
     )
     currencies = session.execute(queries.currencies_for_trip(trip_id)).scalars().all()
-    currency_order = {c.id: c.sort_order for c in currencies}
-    currency_codes = {c.id: c.code for c in currencies}
 
     received = _group_sum(
         session,
@@ -66,25 +64,21 @@ def wallet_balances(session: Session, trip_id: int) -> list[WalletReportOut]:
 
     reports = []
     for person in people:
-        for wallet in sorted(person.wallets, key=lambda w: w.sort_order):
+        for wallet in person.wallets:
             balances = []
             if wallet.tracked:
-                currency_ids = sorted(
-                    {
-                        currency_id
-                        for wallet_id, currency_id in (*received, *sent, *spent)
-                        if wallet_id == wallet.id
-                    },
-                    key=lambda cid: currency_order.get(cid, 0),
-                )
-                for currency_id in currency_ids:
-                    r = received.get((wallet.id, currency_id), 0)
-                    s = sent.get((wallet.id, currency_id), 0)
-                    sp = spent.get((wallet.id, currency_id), 0)
+                # Walking `currencies` puts the rows in the trip's currency order.
+                for currency in currencies:
+                    key = (wallet.id, currency.id)
+                    if key not in received and key not in sent and key not in spent:
+                        continue
+                    r = received.get(key, 0)
+                    s = sent.get(key, 0)
+                    sp = spent.get(key, 0)
                     balances.append(
                         WalletBalanceOut(
-                            currency_code=currency_codes[currency_id],
-                            currency_id=currency_id,
+                            currency_code=currency.code,
+                            currency_id=currency.id,
                             received=to_wire(r, AMOUNT_SCALE),
                             sent=to_wire(s, AMOUNT_SCALE),
                             spent=to_wire(sp, AMOUNT_SCALE),
@@ -98,7 +92,6 @@ def wallet_balances(session: Session, trip_id: int) -> list[WalletReportOut]:
                     name=wallet.name,
                     tracked=wallet.tracked,
                     is_default=wallet.is_default,
-                    sort_order=wallet.sort_order,
                     balances=balances,
                 )
             )

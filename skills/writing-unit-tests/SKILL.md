@@ -156,9 +156,9 @@ datetime in the request body, or freeze it with a fixture — never assert again
 `date.today()` computed inside the test as well as inside the code, because that
 hides an off-by-one at midnight and makes the test pass for the wrong reason.
 
-`money.allocate` has a deterministic tie-break by `sort_order`. Tests must pin that
-order explicitly; a test that passes only because dict iteration happened to agree
-is a flake waiting for a schema change.
+`settle.round_nets_to_minor` has a deterministic tie-break by roster order. Tests
+must pin that order explicitly; a test that passes only because dict iteration
+happened to agree is a flake waiting for a schema change.
 
 ### No Underscore-Prefixed Names
 
@@ -376,8 +376,9 @@ the contract promises anyway, and the `trip` fixture already hands you JSON.
 
 ### Numbers are off by one minor unit
 
-`allocate` distributes the remainder by `sort_order`; the expected values in the test
-have to follow the same order. If they do and the sum is still wrong, the bug is
+`round_nets_to_minor` distributes the correction by roster order; the expected
+values in the test have to follow the same order. If they do and the sum is still
+wrong, the bug is
 real — that is exactly what these tests exist to catch, so do not "fix" it by
 loosening the assertion.
 
@@ -392,7 +393,7 @@ rule is one-way, integers in, numbers out.
 
 ```python
 def test_parse_amount_empty_string_raises(): ...
-def test_allocate_remainder_follows_sort_order(): ...
+def test_round_nets_to_minor_follows_roster_order(): ...
 def test_delete_country_in_use_returns_409(): ...
 def test_preview_split_matches_saved_item(): ...
 ```

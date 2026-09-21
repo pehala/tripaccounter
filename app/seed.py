@@ -202,44 +202,26 @@ def seed_demo(session: Session) -> Trip:
     session.flush()
 
     wallets = [
-        Wallet(
-            id=1, trip_id=1, person_id=1, name="Card", tracked=False, is_default=True, sort_order=0
-        ),
-        Wallet(
-            id=2, trip_id=1, person_id=2, name="Card", tracked=False, is_default=True, sort_order=0
-        ),
-        Wallet(
-            id=3, trip_id=1, person_id=3, name="Card", tracked=False, is_default=True, sort_order=0
-        ),
-        Wallet(
-            id=4, trip_id=1, person_id=4, name="Card", tracked=False, is_default=True, sort_order=0
-        ),
-        Wallet(
-            id=5, trip_id=1, person_id=1, name="Cash", tracked=True, is_default=False, sort_order=1
-        ),
-        Wallet(
-            id=6,
-            trip_id=1,
-            person_id=2,
-            name="Envelope",
-            tracked=True,
-            is_default=False,
-            sort_order=1,
-        ),
+        Wallet(id=1, trip_id=1, person_id=1, name="Card", tracked=False, is_default=True),
+        Wallet(id=2, trip_id=1, person_id=2, name="Card", tracked=False, is_default=True),
+        Wallet(id=3, trip_id=1, person_id=3, name="Card", tracked=False, is_default=True),
+        Wallet(id=4, trip_id=1, person_id=4, name="Card", tracked=False, is_default=True),
+        Wallet(id=5, trip_id=1, person_id=1, name="Cash", tracked=True, is_default=False),
+        Wallet(id=6, trip_id=1, person_id=2, name="Envelope", tracked=True, is_default=False),
     ]
     session.add_all(wallets)
     session.flush()
 
     currencies = [
-        TripCurrency(id=1, trip_id=1, code="ISK", symbol="kr", is_primary=True, sort_order=0),
-        TripCurrency(id=2, trip_id=1, code="EUR", symbol="€", is_primary=False, sort_order=1),
-        TripCurrency(id=3, trip_id=1, code="DKK", symbol="kr.", is_primary=False, sort_order=2),
+        TripCurrency(id=1, trip_id=1, code="ISK", symbol="kr", is_primary=True),
+        TripCurrency(id=2, trip_id=1, code="EUR", symbol="€", is_primary=False),
+        TripCurrency(id=3, trip_id=1, code="DKK", symbol="kr.", is_primary=False),
     ]
     session.add_all(currencies)
 
     countries = [
-        TripCountry(id=1, trip_id=1, name="Iceland", code="IS", is_default=True, sort_order=0),
-        TripCountry(id=2, trip_id=1, name="Denmark", code="DK", is_default=False, sort_order=1),
+        TripCountry(id=1, trip_id=1, name="Iceland", code="IS", is_default=True),
+        TripCountry(id=2, trip_id=1, name="Denmark", code="DK", is_default=False),
     ]
     session.add_all(countries)
 

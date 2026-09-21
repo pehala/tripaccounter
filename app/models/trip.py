@@ -35,20 +35,23 @@ class Trip(SQLModel, table=True):
 
     people: list["Person"] = Relationship(
         back_populates="trip",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "Person.sort_order"},
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "order_by": "[Person.sort_order, Person.name]",
+        },
     )
     currencies: list["TripCurrency"] = Relationship(
         back_populates="trip",
         sa_relationship_kwargs={
             "cascade": "all, delete-orphan",
-            "order_by": "TripCurrency.sort_order",
+            "order_by": "[TripCurrency.is_primary.desc(), TripCurrency.code]",
         },
     )
     countries: list["TripCountry"] = Relationship(
         back_populates="trip",
         sa_relationship_kwargs={
             "cascade": "all, delete-orphan",
-            "order_by": "TripCountry.sort_order",
+            "order_by": "[TripCountry.is_default.desc(), TripCountry.name]",
         },
     )
     labels: list["Label"] = Relationship(

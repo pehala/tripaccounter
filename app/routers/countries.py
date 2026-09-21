@@ -48,9 +48,7 @@ class CountryRoutes(TripChildRoutes):
     @route(Route.UPDATE)
     def update(self, session: Session, country: TripCountry, body: CountryUpdate) -> TripCountry:
         """Update a trip country's fields."""
-        return roster.update_country(
-            session, country, body.name, body.code, body.is_default, body.sort_order
-        )
+        return roster.update_country(session, country, body.name, body.code, body.is_default)
 
     @route(Route.DELETE)
     def delete_row(self, session: Session, country: TripCountry) -> None:

@@ -56,7 +56,6 @@ class WalletOut(BaseModel):
     name: str
     tracked: bool
     is_default: bool
-    sort_order: int
 
 
 class WalletBalanceOut(BaseModel):
@@ -85,7 +84,6 @@ class CurrencyOut(BaseModel):
     code: str
     symbol: str | None
     is_primary: bool
-    sort_order: int
 
 
 class CountryOut(BaseModel):
@@ -96,7 +94,6 @@ class CountryOut(BaseModel):
     code: str | None
     flag: str | None
     is_default: bool
-    sort_order: int
     item_count: int
 
     @classmethod
@@ -108,7 +105,6 @@ class CountryOut(BaseModel):
             code=country.code,
             flag=flag_from_code(country.code),
             is_default=country.is_default,
-            sort_order=country.sort_order,
             item_count=item_count,
         )
 
@@ -266,7 +262,7 @@ class ItemOut(BaseModel):
             payer_id=item.payer_id,
             country_id=item.country_id,
             wallet_id=item.wallet_id,
-            labels=sorted(label.name_norm for label in item.label_rows),
+            labels=[label.name_norm for label in item.label_rows],
             map_url=item.map_url,
             lat=item.lat,
             lon=item.lon,

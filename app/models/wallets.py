@@ -36,7 +36,6 @@ class Wallet(SQLModel, table=True):
     name: str = Field(max_length=60)
     tracked: bool = False
     is_default: bool = False
-    sort_order: int = 0
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())
     )

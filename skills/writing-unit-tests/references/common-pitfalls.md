@@ -91,7 +91,7 @@ def test_allocate_four_ways():
     ],
 )
 def test_allocate(total, weights, expected):
-    """The remainder goes to the earliest rows by sort_order and the sum stays exact."""
+    """The remainder goes to the earliest rows in weight order and the sum stays exact."""
     result = allocate(total, weights)
     assert result == expected
     assert sum(result) == total
@@ -153,7 +153,7 @@ assert [person["person_id"] for person in balances[0]["people"]] == [1, 2, 3, 4]
 
 ✅ **Good — assert the order the contract promises, and let the failure name it:**
 ```python
-# API.md: people are in roster sort_order, always
+# API.md: people are in roster order, always
 roster = [person["id"] for person in trip["people"]]
 assert [person["person_id"] for person in balances[0]["people"]] == roster
 ```

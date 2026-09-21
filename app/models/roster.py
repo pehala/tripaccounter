@@ -13,8 +13,11 @@ if TYPE_CHECKING:
 
 
 def active_roster_ids(people: list["Person"]) -> list[int]:
-    """Return the ids of active people, ordered by sort_order."""
-    return [p.id for p in sorted(people, key=lambda p: p.sort_order) if p.active]
+    """Return the ids of active people, in the order given.
+
+    Callers pass `Trip.people`, whose relationship carries the roster order.
+    """
+    return [p.id for p in people if p.active]
 
 
 class Person(SQLModel, table=True):
@@ -42,7 +45,10 @@ class Person(SQLModel, table=True):
     trip: Trip = Relationship(back_populates="people")
     wallets: list["Wallet"] = Relationship(
         back_populates="person",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "Wallet.sort_order"},
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "order_by": "[Wallet.is_default.desc(), Wallet.name]",
+        },
     )
 
 
@@ -61,7 +67,6 @@ class TripCurrency(SQLModel, table=True):
     code: str = Field(max_length=3)
     symbol: str | None = Field(default=None, max_length=10)
     is_primary: bool = False
-    sort_order: int = 0
 
     trip: Trip = Relationship(back_populates="currencies")
 
@@ -81,7 +86,6 @@ class TripCountry(SQLModel, table=True):
     name: str = Field(max_length=100)
     code: str | None = Field(default=None, max_length=2)
     is_default: bool = False
-    sort_order: int = 0
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())
     )

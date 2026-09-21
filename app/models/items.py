@@ -75,7 +75,9 @@ class LineItem(SQLModel, table=True):
     shares: list["ItemShare"] = Relationship(
         back_populates="item", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    label_rows: list[Label] = Relationship(link_model=ItemLabel)
+    label_rows: list[Label] = Relationship(
+        link_model=ItemLabel, sa_relationship_kwargs={"order_by": "Label.name_norm"}
+    )
 
 
 class ItemShare(SQLModel, table=True):

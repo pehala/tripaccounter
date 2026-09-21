@@ -50,9 +50,7 @@ class WalletRoutes(TripChildRoutes):
     @route(Route.UPDATE)
     def update(self, session: Session, wallet: Wallet, body: WalletUpdate) -> Wallet:
         """Update a wallet's fields."""
-        return roster.update_wallet(
-            session, wallet, body.name, body.tracked, body.is_default, body.sort_order
-        )
+        return roster.update_wallet(session, wallet, body.name, body.tracked, body.is_default)
 
     @route(Route.DELETE)
     def delete_row(self, session: Session, wallet: Wallet) -> None:

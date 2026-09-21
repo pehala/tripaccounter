@@ -51,7 +51,7 @@ erDiagram
         string   name "unique per trip"
         string   color "hex, for avatar chip"
         decimal  default_weight "default 1.0, e.g. 0.5 for a child"
-        int      sort_order
+        int      sort_order "the one stored order; the client may reorder"
         bool     active "soft-hide, never delete if referenced"
         datetime created_at
     }
@@ -62,7 +62,6 @@ erDiagram
         string   code "unique per trip: EUR, ISK, CZK"
         string   symbol "nullable, display only"
         bool     is_primary "one per trip, pre-selected in forms"
-        int      sort_order
     }
 
     TRIP_COUNTRY {
@@ -72,7 +71,6 @@ erDiagram
         string   code "nullable ISO-3166 alpha-2, e.g. 'IS'"
         string   flag "nullable emoji, derived from code"
         bool     is_default "one per trip, pre-selected in the form"
-        int      sort_order
         datetime created_at
     }
 
@@ -125,7 +123,6 @@ erDiagram
         string   name "unique per owner, 1-60 chars"
         bool     tracked "false = unlimited, no balance (the default Card)"
         bool     is_default "exactly one per person; an item's fallback wallet"
-        int      sort_order
         datetime created_at
     }
 
@@ -267,7 +264,8 @@ people.
 **Who pays whom** — the single rounding step in the system:
 1. `net_cents[p] = round(net_micro[p] / 10⁴)` for every active person.
 2. While `Σ net_cents ≠ 0`: adjust by one cent the person with the largest rounding
-   error, ties by `PERSON.sort_order`. Deterministic; at most n steps.
+   error, ties by roster order (`PERSON.sort_order, PERSON.name`). Deterministic;
+   at most n steps.
 3. Greedy min-cash-flow on `net_cents`: repeatedly match the largest creditor with the
    largest debtor. At most n−1 transfers per currency, in hundredths, summing to zero.
 
@@ -318,6 +316,24 @@ from a suggestion, though — a suggestion is never recorded, a transfer always 
   `spent` sums `LINE_ITEM.amount_minor` where `wallet_id` matches. Negative is the
   overcharge signal — the client renders the sign, the server just computes it.
 
+**`PERSON.sort_order` is the only stored order.** People are the one roster a user
+has a reason to arrange by hand, so that column stays and `PATCH /people/{id}`
+writes it. Every other list orders on columns that already carry the meaning, so
+the order is a function of the data and stays correct as rows come and go.
+
+| Rows | Order | Total because |
+|---|---|---|
+| `PERSON` | `sort_order, name` | `person(trip_id, name)` is UNIQUE |
+| `TRIP_CURRENCY` | `is_primary DESC, code` | `trip_currency(trip_id, code)` is UNIQUE |
+| `TRIP_COUNTRY` | `is_default DESC, name` | `trip_country(trip_id, name)` is UNIQUE |
+| `WALLET` | `is_default DESC, name` | `wallet(person_id, name)` is UNIQUE |
+
+Every key is a total order, so each list is deterministic on the key alone.
+`PERSON.sort_order` is assigned on create as the current roster size and keeps that
+value for life, so two people can share one and `name` settles them — which is what
+lets the settle-up tie-break rely on the roster order being total. "Roster order"
+anywhere else in these documents means this key.
+
 ## Indexes
 ```
 trip(slug) UNIQUE                       trip(slug)
@@ -336,7 +352,6 @@ wallet_transfer(to_wallet_id)
 share_owed                              VIEW — not a table, no index of its own
 ```
 
-The roster's `sort_order` carries no index. `Trip.people`, `Trip.currencies`,
-`Trip.countries` and `Person.wallets` declare `order_by` on the relationship, so
-every load of one sorts on it — over the handful of rows a trip holds, which is why
-the column is left unindexed.
+`Trip.people`, `Trip.currencies`, `Trip.countries` and `Person.wallets` declare
+`order_by` on the relationship, so every load of one sorts on its ordering key. A
+trip holds a handful of each, so those sorts run unindexed.
