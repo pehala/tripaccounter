@@ -119,6 +119,16 @@ def format_weight(weight_scaled: int) -> str:
     return format(value, "f")
 
 
+def format_amount(amount_minor: int) -> str:
+    """Return the minor units as the canonical decimal string a write body carries.
+
+    The counterpart of `format_weight` for an `exact` row, and the only way
+    stored money re-enters a write path: `money.to_wire` produces a JSON
+    number, which `parse_amount` rejects.
+    """
+    return format(Decimal(amount_minor) / AMOUNT_SCALE, "f")
+
+
 def resolve_shares_wire(
     roster_ids_sorted: list[int], rows: list[dict], amount_minor: int
 ) -> list[dict]:

@@ -328,3 +328,50 @@ def test_occurred_at_sent_as_null_defaults_to_clock(client, trip, item_body, fro
 
     assert response.status_code == 201
     assert response.json()["item"]["occurred_at"] == "2026-08-01T10:30:00Z"
+
+
+def test_patch_item_amount_on_an_exact_item_is_sum_mismatch(client, trip, people, item_body):
+    """An exact item keeps its saved rows on a re-amount, so a new total no longer adds up."""
+    created = client.post(
+        f"/api/v1/trips/{trip['slug']}/items",
+        json=item_body(
+            amount="184.00",
+            split_mode="exact",
+            shares=[
+                {"person_id": people[0]["id"], "amount": "92.00"},
+                {"person_id": people[1]["id"], "amount": "92.00"},
+            ],
+        ),
+    ).json()["item"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{created['id']}", json={"amount": "200.00"}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"]["shares"] == {
+        "code": "sum_mismatch",
+        "params": {"diff": 1600, "currency_code": "ISK"},
+    }
+
+
+def test_patch_item_split_mode_on_an_exact_item_keeps_its_rows(client, trip, people, item_body):
+    """An exact item's saved amounts survive a write that omits `shares`, unrounded."""
+    created = client.post(
+        f"/api/v1/trips/{trip['slug']}/items",
+        json=item_body(
+            amount="184.05",
+            split_mode="exact",
+            shares=[
+                {"person_id": people[0]["id"], "amount": "92.05"},
+                {"person_id": people[1]["id"], "amount": "92.00"},
+            ],
+        ),
+    ).json()["item"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{created['id']}", json={"split_mode": "exact"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["item"]["split"] == created["split"]
