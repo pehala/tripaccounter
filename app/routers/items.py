@@ -18,7 +18,7 @@ from app.schemas.responses import (
 )
 from app.services import items as item_service
 from app.services import queries, splits
-from app.services.errors.api import ValidationError, run_field
+from app.services.errors.api import ValidationError, field_errors
 from app.services.errors.fields import NotInTripError
 from app.services.labels import release_item_labels, set_item_labels
 from app.services.money import AMOUNT_SCALE, to_hundredths, to_wire
@@ -38,15 +38,10 @@ def preview_split(body: PreviewSplitRequest, trip: TripDep, session: SessionDep)
     if currency is None:
         raise ValidationError({"currency_id": NotInTripError()})
 
-    rows = run_field(
-        "shares",
-        item_service.build_shares,
-        trip,
-        body.split_mode,
-        body.shares,
-        body.amount,
-        currency.code,
-    )
+    with field_errors("shares"):
+        rows = item_service.build_shares(
+            trip, body.split_mode, body.shares, body.amount, currency.code
+        )
 
     amount_minor = to_hundredths(body.amount)
     resolved = splits.resolve_shares_wire(active_roster_ids(trip.people), rows, amount_minor)
@@ -115,14 +110,12 @@ def create_item(body: ItemWrite, trip: TripDep, session: SessionDep, clock: Cloc
     if fields:
         raise ValidationError(fields)
 
-    wallet_id = run_field(
-        "wallet_id", item_service.resolve_wallet_id, session, body.wallet_id, body.payer_id
-    )
+    with field_errors("wallet_id"):
+        wallet_id = item_service.resolve_wallet_id(session, body.wallet_id, body.payer_id)
     mode = item_service.split_mode(body, None)
     currency = session.get(TripCurrency, body.currency_id)
-    rows = run_field(
-        "shares", item_service.build_shares, trip, mode, body.shares, body.amount, currency.code
-    )
+    with field_errors("shares"):
+        rows = item_service.build_shares(trip, mode, body.shares, body.amount, currency.code)
 
     item = LineItem(trip_id=trip.id, occurred_at=clock, wallet_id=wallet_id, split_mode=mode)
     item_service.apply_write(item, body)
@@ -150,9 +143,11 @@ def update_item(item_id: int, body: ItemWrite, trip: TripDep, session: SessionDe
     if fields:
         raise ValidationError(fields)
 
-    run_field("wallet_id", item_service.rewrite_wallet, session, item, body)
+    with field_errors("wallet_id"):
+        item_service.rewrite_wallet(session, item, body)
     item_service.apply_write(item, body)
-    run_field("shares", item_service.rewrite_shares, session, trip, item, body)
+    with field_errors("shares"):
+        item_service.rewrite_shares(session, trip, item, body)
 
     if body.labels is not None:
         set_item_labels(session, item, body.labels)

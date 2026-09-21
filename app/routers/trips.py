@@ -12,7 +12,7 @@ from app.schemas.error_shapes import error_responses
 from app.schemas.requests import TripCreate, TripUpdate
 from app.schemas.responses import TripOut, TripSummaryOut
 from app.services import roster
-from app.services.errors.api import ValidationError, run_field
+from app.services.errors.api import ValidationError, field_errors
 from app.services.errors.fields import EmptyError
 from app.services.labels import get_or_create as get_or_create_label
 from app.services.roster import country_item_counts
@@ -70,36 +70,21 @@ def create_trip(body: TripCreate, session: SessionDep):
     session.flush()
     trip.slug = unique_slug(session, body.name)
 
-    for person_in in body.people:
-        run_field(
-            "people",
-            roster.create_person,
-            session,
-            trip,
-            person_in.name,
-            person_in.default_weight,
-            person_in.color,
-        )
-    for currency_in in body.currencies:
-        run_field(
-            "currencies",
-            roster.create_currency,
-            session,
-            trip,
-            currency_in.code,
-            currency_in.symbol,
-            currency_in.is_primary,
-        )
-    for country_in in body.countries:
-        run_field(
-            "countries",
-            roster.create_country,
-            session,
-            trip,
-            country_in.name,
-            country_in.code,
-            country_in.is_default,
-        )
+    with field_errors("people"):
+        for person_in in body.people:
+            roster.create_person(
+                session, trip, person_in.name, person_in.default_weight, person_in.color
+            )
+    with field_errors("currencies"):
+        for currency_in in body.currencies:
+            roster.create_currency(
+                session, trip, currency_in.code, currency_in.symbol, currency_in.is_primary
+            )
+    with field_errors("countries"):
+        for country_in in body.countries:
+            roster.create_country(
+                session, trip, country_in.name, country_in.code, country_in.is_default
+            )
     for token in body.labels or []:
         get_or_create_label(session, trip.id, token)
 

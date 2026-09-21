@@ -58,7 +58,7 @@ app/
 │   └── errors/         the {code, params} catalog. No text. Depends on nothing.
 │       ├── base.py     FieldError, ConflictFieldError, ApiError
 │       ├── fields.py   the field codes, grouped by category
-│       └── api.py      the status-carrying codes + wrap_field_error/run_field
+│       └── api.py      the status-carrying codes + wrap_field_error/field_errors
 └── routers/
     ├── trips.py  items.py  people.py  currencies.py  countries.py  labels.py
     ├── wallets.py  transfers.py
@@ -91,9 +91,9 @@ The rule of thumb: **if it decides a number, it is in `services/`. If it decides
 status code, it is in `routers/`. If it decides a shape, it is in `schemas/`.**
 
 A router never does arithmetic. A service never raises an `HTTPException` — it raises
-a `FieldError`, and `run_field(field, fn, ...)` addresses it to the right request
-field with the right status (`409` for a naming or reference conflict, `422` for
-everything else). A serializer never queries.
+a `FieldError`, and the `field_errors(field)` context manager addresses it to the right
+request field with the right status (`409` for a naming or reference conflict, `422`
+for everything else). A serializer never queries.
 
 ## 3. The one thing to understand before changing anything
 
