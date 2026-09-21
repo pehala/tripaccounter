@@ -1,5 +1,7 @@
 """Functional tests for item split modes and share resolution."""
 
+import pytest
+
 
 def test_equal_split_pads_the_roster(client, trip, item_body):
     """Equal split lists all four people; owed distributes evenly."""
@@ -123,12 +125,20 @@ def test_shares_duplicate_person_rejected(client, trip, people, item_body):
     }
 
 
-def test_shares_weight_not_positive_rejected(client, trip, people, item_body):
-    """A zero or negative weight is not_positive."""
+@pytest.mark.parametrize(
+    "weight",
+    [
+        pytest.param("0", id="zero"),
+        pytest.param(1, id="json-number-not-a-string"),
+        pytest.param("one", id="not-a-number"),
+    ],
+)
+def test_shares_weight_not_positive_rejected(client, trip, people, item_body, weight):
+    """A weight that is not a canonical decimal string greater than zero is not_positive."""
     pid = people[0]["id"]
     response = client.post(
         f"/api/v1/trips/{trip['slug']}/items",
-        json=item_body(split_mode="shares", shares=[{"person_id": pid, "weight": "0"}]),
+        json=item_body(split_mode="shares", shares=[{"person_id": pid, "weight": weight}]),
     )
     assert response.status_code == 422
     assert response.json() == {
@@ -149,3 +159,61 @@ def test_preview_split_matches_saved_item(client, trip, item_body):
 
     assert preview["split"] == created["split"]
     assert preview["total"] == created["amount"]
+
+
+@pytest.mark.parametrize(
+    "shares",
+    [
+        pytest.param([], id="no-rows"),
+        pytest.param([{"weight": "1"}], id="row-without-a-person"),
+    ],
+)
+def test_shares_without_a_usable_row_is_empty(client, trip, item_body, shares):
+    """A `shares` array with no rows, or a row naming nobody, is `empty`."""
+    response = client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(shares=shares))
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "error": {
+            "code": "validation_error",
+            "params": {},
+            "fields": {"shares": {"code": "empty", "params": {}}},
+        }
+    }
+
+
+def test_shares_person_from_another_trip_is_not_in_trip(client, trip, item_body):
+    """A share row naming someone on a different trip is rejected, not silently dropped."""
+    other = client.post(
+        "/api/v1/trips",
+        json={
+            "name": "Other trip",
+            "people": [{"name": "X"}],
+            "currencies": [{"code": "USD"}],
+            "countries": [{"name": "Nowhere"}],
+        },
+    ).json()["trip"]
+
+    response = client.post(
+        f"/api/v1/trips/{trip['slug']}/items",
+        json=item_body(shares=[{"person_id": other["people"][0]["id"]}]),
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"]["shares"] == {"code": "not_in_trip", "params": {}}
+
+
+def test_preview_split_currency_from_another_trip_is_not_in_trip(client, trip, item_body):
+    """preview-split checks the currency belongs to this trip before splitting anything."""
+    response = client.post(
+        f"/api/v1/trips/{trip['slug']}/items/preview-split", json=item_body(currency_id=999999)
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "error": {
+            "code": "validation_error",
+            "params": {},
+            "fields": {"currency_id": {"code": "not_in_trip", "params": {}}},
+        }
+    }

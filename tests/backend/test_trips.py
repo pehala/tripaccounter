@@ -1,5 +1,7 @@
 """Functional tests for creating and reading trips."""
 
+import re
+
 
 def test_create_trip_returns_embedded_rosters(client):
     """201 body carries the embedded people/currencies/countries."""
@@ -165,3 +167,40 @@ def test_trip_payload_orders_people_and_wallets_by_sort_order(client, trip, peop
     assert [wallet["person_id"] for wallet in body["wallets"]] == [
         person["id"] for person in body["people"]
     ]
+
+
+def test_patch_trip_writes_dates_note_and_archived(trip, client):
+    """PATCH writes each optional trip field a body carries, leaving the name alone."""
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}",
+        json={
+            "start_date": "2026-09-13",
+            "end_date": "2026-09-22",
+            "note": "flights booked",
+            "archived": True,
+        },
+    )
+
+    assert response.status_code == 200
+    updated = response.json()["trip"]
+    assert updated["name"] == trip["name"]
+    assert updated["start_date"] == "2026-09-13"
+    assert updated["end_date"] == "2026-09-22"
+    assert updated["note"] == "flights booked"
+    assert updated["archived"] is True
+
+
+def test_trip_name_with_no_ascii_letters_gets_a_random_slug(client):
+    """A name that folds away to nothing still gets a usable, unique slug."""
+    response = client.post(
+        "/api/v1/trips",
+        json={
+            "name": "日本",
+            "people": [{"name": "Petr"}],
+            "currencies": [{"code": "JPY"}],
+            "countries": [{"name": "Japan"}],
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    assert re.fullmatch(r"[0-9a-f]{8}", response.json()["trip"]["slug"])

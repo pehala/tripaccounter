@@ -225,3 +225,72 @@ def test_wallet_list_is_default_then_name(client, trip, person_id):
     wallets = client.get(f"/api/v1/trips/{trip['slug']}").json()["trip"]["wallets"]
 
     assert [w["name"] for w in wallets if w["person_id"] == petr] == ["Card", "Cash", "Purse"]
+
+
+def test_patch_wallet_renames_and_tracks(client, trip, person_id):
+    """A PATCH carrying a new name and `tracked` writes both."""
+    petr = person_id("Petr")
+    cash = client.post(
+        f"/api/v1/trips/{trip['slug']}/wallets", json={"person_id": petr, "name": "Cash"}
+    ).json()["wallet"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/wallets/{cash['id']}",
+        json={"name": "Envelope", "tracked": True},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["wallet"] == {
+        "id": cash["id"],
+        "person_id": petr,
+        "name": "Envelope",
+        "tracked": True,
+        "is_default": False,
+    }
+
+
+def test_patch_wallet_onto_another_wallet_of_the_same_person_is_409(client, trip, person_id):
+    """Renaming a wallet to a name its owner already uses conflicts."""
+    petr = person_id("Petr")
+    cash = client.post(
+        f"/api/v1/trips/{trip['slug']}/wallets", json={"person_id": petr, "name": "Cash"}
+    ).json()["wallet"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/wallets/{cash['id']}", json={"name": "Card"}
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["fields"]["name"] == {
+        "code": "duplicate",
+        "params": {"name": "Card"},
+    }
+
+
+def test_patch_wallet_blank_name_is_required(client, trip, person_id):
+    """A rename to a blank name is rejected, like a create with one."""
+    petr = person_id("Petr")
+    cash = client.post(
+        f"/api/v1/trips/{trip['slug']}/wallets", json={"person_id": petr, "name": "Cash"}
+    ).json()["wallet"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/wallets/{cash['id']}", json={"name": "   "}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"]["name"] == {"code": "required", "params": {}}
+
+
+def test_delete_unused_wallet_removes_it(client, trip, person_id):
+    """A wallet no item or transfer references deletes, and its id stops resolving."""
+    petr = person_id("Petr")
+    cash = client.post(
+        f"/api/v1/trips/{trip['slug']}/wallets", json={"person_id": petr, "name": "Cash"}
+    ).json()["wallet"]
+
+    response = client.delete(f"/api/v1/trips/{trip['slug']}/wallets/{cash['id']}")
+
+    assert response.status_code == 204
+    gone = client.delete(f"/api/v1/trips/{trip['slug']}/wallets/{cash['id']}")
+    assert gone.json() == {"error": {"code": "not_found", "params": {"resource": "wallet"}}}
