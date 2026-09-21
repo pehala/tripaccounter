@@ -381,7 +381,7 @@ export function ItemModal({ trip, labels, entry, onClose }) {
             ${fieldError('country_id')}
 
             <label class="form-label small mb-1">${t('item.paid_by_label')}</label>
-            <div class="who d-flex gap-1 flex-wrap mb-3">
+            <div class="d-flex gap-1 flex-wrap mb-3">
               ${activePeople.map((p) => html`
                 <${PersonChip} key=${p.id} person=${p} type="radio" name="payer_id" id="pay-${p.id}"
                                 checked=${state.payerId === p.id} onChange=${() => payerChanged(p.id)} />
