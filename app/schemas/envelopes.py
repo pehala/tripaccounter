@@ -56,10 +56,16 @@ class DayTotalOut(BaseModel):
 
 
 class ItemListEnvelope(BaseModel):
-    """`{ "items": [Item], "day_totals": [DayTotal], "transfers": [Transfer] }`."""
+    """`{ "items", "day_totals", "before_trip_totals", "transfers" }`.
+
+    `before_trip_totals` is the same per-currency shape as one `day_totals` entry's
+    `totals`, reported on its own key instead of a sentinel `date` - items dated
+    before the trip's `start_date` have no real day to carry it.
+    """
 
     items: list[ItemOut]
     day_totals: list[DayTotalOut]
+    before_trip_totals: list[DayCurrencyTotalOut]
     transfers: list[TransferOut]
 
 

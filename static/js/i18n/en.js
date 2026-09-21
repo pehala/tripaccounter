@@ -40,6 +40,7 @@ export default {
   'notfound.body': "There's no trip at this link.",
 
   'items.empty': 'No expenses yet.',
+  'items.before_trip': 'Before the trip',
   'items.filter_placeholder': 'filter by name or label',
   'items.paid_by': '{name} paid',
   'items.map': 'map',

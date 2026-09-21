@@ -23,18 +23,31 @@ def test_list_items_orders_by_occurred_at_desc_then_id_desc(
     """List order is occurred_at DESC, id DESC; day_totals sums each day, newest first."""
     items = client.get(f"/api/v1/trips/{trip['slug']}/items").json()
     dates = [item["occurred_at"] for item in items["items"]]
-    assert dates == ["2026-07-02T09:00:00Z", "2026-07-02T09:00:00Z", "2026-07-01T09:00:00Z"]
+    assert dates == ["2026-09-14T09:00:00Z", "2026-09-14T09:00:00Z", "2026-09-13T09:00:00Z"]
     assert items["items"][0]["id"] > items["items"][1]["id"]
 
     assert items["day_totals"] == [
         {
-            "date": "2026-07-02",
+            "date": "2026-09-14",
             "totals": [{"currency_code": "ISK", "currency_id": currencies[0]["id"], "amount": 200}],
         },
         {
-            "date": "2026-07-01",
+            "date": "2026-09-13",
             "totals": [{"currency_code": "ISK", "currency_id": currencies[0]["id"], "amount": 100}],
         },
+    ]
+
+
+def test_before_trip_totals_sums_items_before_trip_start(client, trip, item_body, currencies):
+    """Items on two days before `start_date` (2026-09-12) sum into `before_trip_totals`."""
+    for occurred_at in ("2026-09-09T09:00:00", "2026-09-10T09:00:00"):
+        client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(occurred_at=occurred_at))
+
+    items = client.get(f"/api/v1/trips/{trip['slug']}/items").json()
+
+    assert items["day_totals"] == []
+    assert items["before_trip_totals"] == [
+        {"currency_code": "ISK", "currency_id": currencies[0]["id"], "amount": 200},
     ]
 
 

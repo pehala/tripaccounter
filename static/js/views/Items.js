@@ -25,13 +25,17 @@ function mergeFeed(items, transfers) {
   return entries;
 }
 
-function groupByDay(entries) {
+// Entries older than the trip's start date collapse into one "Before the
+// trip" group instead of a group per day; entries sort newest first, so once
+// that boundary is crossed everything after it belongs there too.
+function groupByDay(entries, startDate) {
   const groups = [];
   let current = null;
   for (const entry of entries) {
     const day = entry.row.occurred_at.slice(0, 10);
-    if (!current || current.date !== day) {
-      current = { date: day, entries: [] };
+    const key = startDate && day < startDate ? 'before' : day;
+    if (!current || current.date !== key) {
+      current = { date: key, beforeTrip: key === 'before', entries: [] };
       groups.push(current);
     }
     current.entries.push(entry);
@@ -68,12 +72,14 @@ export function Items() {
   const needle = filter.trim().toLowerCase();
   const feed = mergeFeed(store.items, store.transfers || []);
   const filtered = needle ? feed.filter((entry) => matches(entry, needle, walletName)) : feed;
-  const groups = groupByDay(filtered);
-  // day_totals covers every item for the day; once a filter hides some of them
-  // the total no longer matches what's on screen, so don't show it.
+  const groups = groupByDay(filtered, store.trip.start_date);
+  // day_totals/before_trip_totals cover every item for their bucket; once a
+  // filter hides some of them the total no longer matches what's on screen,
+  // so don't show it.
   const totalsByDay = needle
     ? {}
     : Object.fromEntries((store.dayTotals || []).map((day) => [day.date, day.totals]));
+  const beforeTripTotals = needle ? [] : store.beforeTripTotals || [];
 
   return html`
     <div class="d-flex align-items-center gap-2 mb-3">
@@ -87,7 +93,9 @@ export function Items() {
     </div>
     ${groups.length === 0 && html`<p class="text-body-secondary">${t('items.empty')}</p>`}
     ${groups.map((group) => html`
-      <${DayGroup} key=${group.date} date=${group.date} entries=${group.entries} totals=${totalsByDay[group.date]}
+      <${DayGroup} key=${group.date} date=${group.date} beforeTrip=${group.beforeTrip}
+                   entries=${group.entries}
+                   totals=${group.beforeTrip ? beforeTripTotals : totalsByDay[group.date]}
                    trip=${store.trip} locale=${locale} onSelect=${(entry) => setModalEntry(entry)} />
     `)}
 

@@ -226,11 +226,11 @@ def item_body(trip, people, currencies, countries):
 
 @pytest.fixture()
 def items_two_same_day_one_earlier(client, trip, item_body):
-    """Create three items: two posted for 2026-07-02, one for 2026-07-01.
+    """Create three items, after the trip's start: two posted for 2026-09-14, one for 2026-09-13.
 
     The earlier item sets up the occurred_at/id tie-break ordering test.
     """
-    dates = ("2026-07-01T09:00:00", "2026-07-02T09:00:00", "2026-07-02T09:00:00")
+    dates = ("2026-09-13T09:00:00", "2026-09-14T09:00:00", "2026-09-14T09:00:00")
     return [
         client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(occurred_at=d)).json()[
             "item"

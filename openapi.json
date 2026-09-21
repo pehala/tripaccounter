@@ -567,8 +567,15 @@
         "type": "object"
       },
       "ItemListEnvelope": {
-        "description": "`{ \"items\": [Item], \"day_totals\": [DayTotal], \"transfers\": [Transfer] }`.",
+        "description": "`{ \"items\", \"day_totals\", \"before_trip_totals\", \"transfers\" }`.\n\n`before_trip_totals` is the same per-currency shape as one `day_totals` entry's\n`totals`, reported on its own key instead of a sentinel `date` - items dated\nbefore the trip's `start_date` have no real day to carry it.",
         "properties": {
+          "before_trip_totals": {
+            "items": {
+              "$ref": "#/components/schemas/DayCurrencyTotalOut"
+            },
+            "title": "Before Trip Totals",
+            "type": "array"
+          },
           "day_totals": {
             "items": {
               "$ref": "#/components/schemas/DayTotalOut"
@@ -594,6 +601,7 @@
         "required": [
           "items",
           "day_totals",
+          "before_trip_totals",
           "transfers"
         ],
         "title": "ItemListEnvelope",
