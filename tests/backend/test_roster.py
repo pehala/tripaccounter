@@ -129,37 +129,52 @@ def test_people_list_follows_sort_order_not_row_age(client, trip, people):
     assert [person["sort_order"] for person in listed] == [0, 1, 2, 3]
 
 
-def test_currencies_list_follows_sort_order_not_code(client, trip, currencies):
-    """The currency list holds sort_order, which is neither alphabetical by code nor row age."""
-    listed = client.get(f"/api/v1/trips/{trip['slug']}/currencies").json()["currencies"]
-    assert [currency["code"] for currency in listed] == ["ISK", "EUR"]
+def test_people_tied_on_sort_order_fall_back_to_name(client, trip, person_id):
+    """Two people on the same `sort_order` order by name, so the roster stays total."""
+    client.patch(f"/api/v1/trips/{trip['slug']}/people/{person_id('Petr')}", json={"sort_order": 1})
 
-    for position, currency in enumerate(reversed(currencies)):
-        response = client.patch(
-            f"/api/v1/trips/{trip['slug']}/currencies/{currency['id']}",
-            json={"sort_order": position},
-        )
-        assert response.status_code == 200, response.text
+    listed = client.get(f"/api/v1/trips/{trip['slug']}/people").json()["people"]
+
+    assert [person["name"] for person in listed] == ["Ann", "Petr", "Bob", "Eva"]
+
+
+def test_currencies_list_is_primary_then_code_not_row_age(client, trip):
+    """The currency list leads with the primary, then by code - neither is row age."""
+    client.post(f"/api/v1/trips/{trip['slug']}/currencies", json={"code": "DKK"})
 
     listed = client.get(f"/api/v1/trips/{trip['slug']}/currencies").json()["currencies"]
+
+    assert [currency["code"] for currency in listed] == ["ISK", "DKK", "EUR"]
+
+
+def test_currencies_list_follows_a_moved_primary(client, trip, currencies):
+    """Making EUR primary moves it to the front, which code order alone would not."""
+    eur = next(currency for currency in currencies if currency["code"] == "EUR")
+    client.patch(f"/api/v1/trips/{trip['slug']}/currencies/{eur['id']}", json={"is_primary": True})
+
+    listed = client.get(f"/api/v1/trips/{trip['slug']}/currencies").json()["currencies"]
+
     assert [currency["code"] for currency in listed] == ["EUR", "ISK"]
 
 
-def test_countries_list_follows_sort_order_not_name(client, trip):
-    """The country list holds sort_order, which is neither alphabetical by name nor row age."""
+def test_countries_list_is_default_then_name_not_row_age(client, trip):
+    """The country list leads with the default, then by name - neither is row age."""
+    client.post(f"/api/v1/trips/{trip['slug']}/countries", json={"name": "Denmark", "code": "DK"})
+
+    listed = client.get(f"/api/v1/trips/{trip['slug']}/countries").json()["countries"]
+
+    assert [entry["name"] for entry in listed] == ["Iceland", "Denmark"]
+
+
+def test_countries_list_follows_a_moved_default(client, trip):
+    """Making Denmark the default moves it ahead of Iceland, which name order would not."""
     added = client.post(
         f"/api/v1/trips/{trip['slug']}/countries", json={"name": "Denmark", "code": "DK"}
     ).json()["country"]
+    client.patch(f"/api/v1/trips/{trip['slug']}/countries/{added['id']}", json={"is_default": True})
 
     listed = client.get(f"/api/v1/trips/{trip['slug']}/countries").json()["countries"]
-    assert [entry["name"] for entry in listed] == ["Iceland", "Denmark"]
 
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/countries/{added['id']}", json={"sort_order": -1}
-    )
-    assert response.status_code == 200, response.text
-
-    listed = client.get(f"/api/v1/trips/{trip['slug']}/countries").json()["countries"]
     assert [entry["name"] for entry in listed] == ["Denmark", "Iceland"]
 
 
@@ -178,15 +193,14 @@ def test_create_person_gets_a_default_card_wallet(client, trip):
         "name": "Card",
         "tracked": False,
         "is_default": True,
-        "sort_order": 0,
     }
 
 
 def test_delete_person_referenced_by_transfer_is_409_in_use(
-    client, trip, people, default_wallet_of
+    client, trip, person_id, default_wallet_of
 ):
     """A person whose wallet appears in a transfer can't be deleted, even with no items."""
-    ann, bob = people[1]["id"], people[2]["id"]
+    ann, bob = person_id("Ann"), person_id("Bob")
     client.post(
         f"/api/v1/trips/{trip['slug']}/transfers",
         json={
@@ -203,10 +217,10 @@ def test_delete_person_referenced_by_transfer_is_409_in_use(
 
 
 def test_delete_currency_referenced_by_transfer_is_409_in_use(
-    client, trip, people, default_wallet_of, currencies
+    client, trip, person_id, default_wallet_of, currencies
 ):
     """A currency used only by a transfer, never an item, still can't be deleted."""
-    ann, bob = people[1]["id"], people[2]["id"]
+    ann, bob = person_id("Ann"), person_id("Bob")
     eur = currencies[1]["id"]
     client.post(
         f"/api/v1/trips/{trip['slug']}/transfers",

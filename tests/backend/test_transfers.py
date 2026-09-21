@@ -15,10 +15,10 @@ def test_create_transfer_omitted_to_side_mirrors_the_from_side(client, trip, tra
 
 
 def test_create_transfer_exchange_inside_one_wallet_is_accepted(
-    client, trip, default_wallet_of, people, transfer_body
+    client, trip, default_wallet_of, person_id, transfer_body
 ):
     """Two different currencies on the same person's own wallet is a valid exchange."""
-    petr = people[0]["id"]
+    petr = person_id("Petr")
     wallet_id = default_wallet_of(petr)["id"]
 
     response = client.post(
@@ -138,10 +138,10 @@ def test_update_transfer_exchange_keeps_to_amount_when_only_from_changes(
 
 
 def test_update_transfer_dropping_to_currency_becomes_plain_and_mirrors(
-    client, trip, default_wallet_of, people, transfer_body
+    client, trip, default_wallet_of, person_id, transfer_body
 ):
     """Setting to_currency_id back to the from side, with to_amount omitted, mirrors from_amount."""
-    petr = people[0]["id"]
+    petr = person_id("Petr")
     card = default_wallet_of(petr)["id"]
     cash = client.post(
         f"/api/v1/trips/{trip['slug']}/wallets",

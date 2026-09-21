@@ -34,8 +34,7 @@
           "id": 1,
           "code": "ISK",
           "symbol": "kr",
-          "is_primary": true,
-          "sort_order": 0
+          "is_primary": true
         }
       ],
       "countries": [
@@ -45,13 +44,12 @@
           "code": "IS",
           "flag": "🇮🇸",
           "is_default": true,
-          "sort_order": 0,
           "item_count": 0
         }
       ],
       "wallets": [
-        {"id": 1, "person_id": 1, "name": "Card", "tracked": false, "is_default": true, "sort_order": 0, "balances": []},
-        {"id": 2, "person_id": 2, "name": "Card", "tracked": false, "is_default": true, "sort_order": 0, "balances": []}
+        {"id": 1, "person_id": 1, "name": "Card", "tracked": false, "is_default": true, "balances": []},
+        {"id": 2, "person_id": 2, "name": "Card", "tracked": false, "is_default": true, "balances": []}
       ],
       "created_at": "2026-09-01T08:12:00Z",
       "updated_at": "2026-09-01T08:12:00Z"

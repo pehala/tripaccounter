@@ -39,9 +39,7 @@ class CurrencyRoutes(TripChildRoutes):
         self, session: Session, currency: TripCurrency, body: CurrencyUpdate
     ) -> TripCurrency:
         """Update a trip currency's fields."""
-        return roster.update_currency(
-            session, currency, body.symbol, body.is_primary, body.sort_order
-        )
+        return roster.update_currency(session, currency, body.symbol, body.is_primary)
 
     @route(Route.DELETE)
     def delete_row(self, session: Session, currency: TripCurrency) -> None:

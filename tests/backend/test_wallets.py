@@ -14,10 +14,10 @@ def test_wallets_report_lists_every_wallet_untracked_empty(client, trip, wallets
 
 
 def test_wallets_report_tracked_wallet_shows_funded_and_spent_balance(
-    client, trip, people, default_wallet_of, item_body
+    client, trip, person_id, default_wallet_of, item_body
 ):
     """Funding a tracked wallet then spending from it nets `received - spent`."""
-    petr = people[0]["id"]
+    petr = person_id("Petr")
     card = default_wallet_of(petr)["id"]
     cash = client.post(
         f"/api/v1/trips/{trip['slug']}/wallets",
@@ -35,7 +35,7 @@ def test_wallets_report_tracked_wallet_shows_funded_and_spent_balance(
     )
     client.post(
         f"/api/v1/trips/{trip['slug']}/items",
-        json=item_body(amount="18400.00", wallet_id=cash["id"]),
+        json=item_body(amount="18400.00", payer_id=petr, wallet_id=cash["id"]),
     )
 
     report = client.get(f"/api/v1/trips/{trip['slug']}/wallets").json()["wallets"]
@@ -53,10 +53,10 @@ def test_wallets_report_tracked_wallet_shows_funded_and_spent_balance(
 
 
 def test_wallets_report_overcharge_is_a_negative_balance(
-    client, trip, people, default_wallet_of, item_body
+    client, trip, person_id, default_wallet_of, item_body
 ):
     """Spending more than a tracked wallet ever received leaves a negative balance."""
-    ann = people[1]["id"]
+    ann = person_id("Ann")
     envelope = client.post(
         f"/api/v1/trips/{trip['slug']}/wallets",
         json={"person_id": ann, "name": "Envelope", "tracked": True},
@@ -87,10 +87,10 @@ def test_wallets_report_overcharge_is_a_negative_balance(
 
 
 def test_wallets_report_exchange_debits_one_currency_credits_another(
-    client, trip, people, default_wallet_of
+    client, trip, person_id, default_wallet_of
 ):
     """An exchange in one wallet is a `sent` row in one currency, `received` in another."""
-    petr = people[0]["id"]
+    petr = person_id("Petr")
     cash = client.post(
         f"/api/v1/trips/{trip['slug']}/wallets",
         json={"person_id": petr, "name": "Cash", "tracked": True},
@@ -118,11 +118,11 @@ def test_wallets_report_exchange_debits_one_currency_credits_another(
     assert by_currency[isk]["balance"] == 2800
 
 
-def test_wallets_report_currency_order_follows_trip_sort_order(
-    client, trip, people, default_wallet_of
+def test_wallets_report_currency_order_is_primary_then_code(
+    client, trip, person_id, default_wallet_of
 ):
-    """Balance rows are ordered by the trip's currency `sort_order`, not insertion order."""
-    petr = people[0]["id"]
+    """Balance rows are ordered primary currency first, then by code, not by insertion."""
+    petr = person_id("Petr")
     cash = client.post(
         f"/api/v1/trips/{trip['slug']}/wallets",
         json={"person_id": petr, "name": "Cash", "tracked": True},
@@ -130,7 +130,7 @@ def test_wallets_report_currency_order_follows_trip_sort_order(
     isk, eur = trip["currencies"][0]["id"], trip["currencies"][1]["id"]
 
     # Fund the EUR side first, then the ISK side - insertion order is reversed
-    # from currency sort_order (ISK is sort_order 0, EUR is 1).
+    # from the report order (ISK is primary, so it leads).
     client.post(
         f"/api/v1/trips/{trip['slug']}/transfers",
         json={
@@ -155,9 +155,9 @@ def test_wallets_report_currency_order_follows_trip_sort_order(
     assert [row["currency_id"] for row in cash_report["balances"]] == [isk, eur]
 
 
-def test_create_wallet_duplicate_name_is_409(client, trip, people):
+def test_create_wallet_duplicate_name_is_409(client, trip, person_id):
     """Two wallets with the same name for the same person conflict."""
-    petr = people[0]["id"]
+    petr = person_id("Petr")
     client.post(
         f"/api/v1/trips/{trip['slug']}/wallets",
         json={"person_id": petr, "name": "Cash", "tracked": True},
@@ -173,9 +173,9 @@ def test_create_wallet_duplicate_name_is_409(client, trip, people):
     }
 
 
-def test_update_wallet_is_default_moves_the_flag(client, trip, people, default_wallet_of):
+def test_update_wallet_is_default_moves_the_flag(client, trip, person_id, default_wallet_of):
     """Making a new wallet the default un-defaults the old one."""
-    petr = people[0]["id"]
+    petr = person_id("Petr")
     cash = client.post(
         f"/api/v1/trips/{trip['slug']}/wallets",
         json={"person_id": petr, "name": "Cash", "tracked": True},
@@ -197,9 +197,9 @@ def test_delete_default_wallet_is_409(client, trip, default_wallet_of, people):
     assert response.json()["error"]["fields"]["id"]["code"] == "is_default"
 
 
-def test_delete_wallet_in_use_by_item_is_409(client, trip, people, item_body):
+def test_delete_wallet_in_use_by_item_is_409(client, trip, person_id, item_body):
     """A wallet referenced by an item can't be deleted."""
-    petr = people[0]["id"]
+    petr = person_id("Petr")
     cash = client.post(
         f"/api/v1/trips/{trip['slug']}/wallets",
         json={"person_id": petr, "name": "Cash", "tracked": True},
@@ -214,3 +214,14 @@ def test_delete_wallet_in_use_by_item_is_409(client, trip, people, item_body):
         "code": "in_use",
         "params": {"count": 1, "name": "Cash"},
     }
+
+
+def test_wallet_list_is_default_then_name(client, trip, person_id):
+    """A person's wallets lead with their default `Card`, the rest follow by name."""
+    petr = person_id("Petr")
+    for name in ("Purse", "Cash"):
+        client.post(f"/api/v1/trips/{trip['slug']}/wallets", json={"person_id": petr, "name": name})
+
+    wallets = client.get(f"/api/v1/trips/{trip['slug']}").json()["trip"]["wallets"]
+
+    assert [w["name"] for w in wallets if w["person_id"] == petr] == ["Card", "Cash", "Purse"]

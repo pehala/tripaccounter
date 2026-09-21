@@ -131,6 +131,16 @@ def people(trip):
 
 
 @pytest.fixture()
+def person_id(people):
+    """Return a function that finds a person's id by name."""
+
+    def _find(name):
+        return next(p["id"] for p in people if p["name"] == name)
+
+    return _find
+
+
+@pytest.fixture()
 def currencies(trip):
     """List the trip's currencies: ISK (primary) then EUR."""
     return trip["currencies"]
@@ -156,7 +166,7 @@ def country(countries):
 
 @pytest.fixture()
 def wallets(trip):
-    """List the trip's wallets: each person's default `Card`, in owner sort_order."""
+    """List the trip's wallets: each person's default `Card`, in owner roster order."""
     return trip["wallets"]
 
 
@@ -230,7 +240,7 @@ def items_two_same_day_one_earlier(client, trip, item_body):
 
 
 @pytest.fixture()
-def scenario_items(client, trip, people, item_body):
+def scenario_items(client, trip, person_id, item_body):
     """Create one shared, richer batch of items in the standard `trip`.
 
     Pre-created for every functional test whose behaviour only shows up once
@@ -257,6 +267,6 @@ def scenario_items(client, trip, people, item_body):
         "food_casing_padded": _post(amount="10.00", labels=[" food "]),
         "label_b_and_a": _post(amount="10.00", labels=["b", "a"]),
         "label_b_only": _post(amount="10.00", labels=["b"]),
-        "balance_eva_pays": _post(amount="184.00", payer_id=people[3]["id"]),
-        "balance_bob_pays": _post(amount="79.00", payer_id=people[2]["id"]),
+        "balance_eva_pays": _post(amount="184.00", payer_id=person_id("Eva")),
+        "balance_bob_pays": _post(amount="79.00", payer_id=person_id("Bob")),
     }

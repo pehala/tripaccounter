@@ -120,7 +120,6 @@ erDiagram
         string   name "unique per person, 1-60"
         bool     tracked "false = unlimited, no balance"
         bool     is_default "exactly one per person"
-        int      sort_order
         datetime created_at
     }
 
@@ -205,8 +204,9 @@ stays within floor loss of zero. `suggestions` are unchanged; they consume `net_
 
 Shapes come from `app/schemas/` and `openapi.json`; this is the meaning.
 
-**Roster.** `trip.wallets` is a flat list in owner `sort_order` then wallet
-`sort_order`: `{id, person_id, name, tracked, is_default, sort_order}`. CRUD at
+**Roster.** `trip.wallets` is a flat list in owner order then wallet order — owners
+in roster order, each owner's wallets `is_default` first then by `name`:
+`{id, person_id, name, tracked, is_default}`. CRUD at
 `/trips/{slug}/wallets[/{id}]`. `is_default` is not just a form hint here — it is the
 server's own fallback.
 
@@ -231,7 +231,8 @@ is items only.
 
 **Wallets report.** `GET /trips/{slug}/wallets` → `{wallets: [...]}`, each wallet as
 in the roster plus `balances: [{currency_code, currency_id, received, sent, spent,
-balance}]` — one row per currency with activity, currency `sort_order`; `[]` for an
+balance}]` — one row per currency with activity, primary currency first then by
+code; `[]` for an
 untracked wallet or a tracked one nothing touched yet. A negative `balance` is the
 overcharge; the client says so, the server just reports the sign.
 

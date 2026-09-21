@@ -132,19 +132,19 @@ def test_unparseable_map_url_is_stored_not_an_error(client, trip, item_body):
 
 
 def test_create_item_omitted_wallet_id_uses_payer_default(
-    client, trip, people, default_wallet_of, item_body
+    client, trip, person_id, default_wallet_of, item_body
 ):
     """Omitting `wallet_id` on create falls back to the payer's default wallet."""
-    bob = people[2]["id"]
+    bob = person_id("Bob")
     response = client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(payer_id=bob))
     assert response.json()["item"]["wallet_id"] == default_wallet_of(bob)["id"]
 
 
 def test_create_item_wallet_not_owned_by_payer_is_wallet_owner_mismatch(
-    client, trip, people, default_wallet_of, item_body
+    client, trip, person_id, default_wallet_of, item_body
 ):
     """A wallet id that belongs to someone else is rejected."""
-    petr, ann = people[0]["id"], people[1]["id"]
+    petr, ann = person_id("Petr"), person_id("Ann")
     response = client.post(
         f"/api/v1/trips/{trip['slug']}/items",
         json=item_body(payer_id=ann, wallet_id=default_wallet_of(petr)["id"]),
@@ -157,10 +157,10 @@ def test_create_item_wallet_not_owned_by_payer_is_wallet_owner_mismatch(
 
 
 def test_patch_item_payer_change_resets_wallet_to_new_payers_default(
-    client, trip, people, default_wallet_of, item_body
+    client, trip, person_id, default_wallet_of, item_body
 ):
     """Changing `payer_id` with no `wallet_id` re-defaults to the new payer's wallet."""
-    petr, ann = people[0]["id"], people[1]["id"]
+    petr, ann = person_id("Petr"), person_id("Ann")
     created = client.post(
         f"/api/v1/trips/{trip['slug']}/items", json=item_body(payer_id=petr)
     ).json()["item"]
@@ -173,10 +173,10 @@ def test_patch_item_payer_change_resets_wallet_to_new_payers_default(
 
 
 def test_patch_item_wallet_owner_mismatch_leaves_item_unchanged(
-    client, trip, people, default_wallet_of, item_body
+    client, trip, person_id, default_wallet_of, item_body
 ):
     """A mismatched wallet_id on PATCH is rejected and the item is not touched."""
-    petr, ann = people[0]["id"], people[1]["id"]
+    petr, ann = person_id("Petr"), person_id("Ann")
     created = client.post(
         f"/api/v1/trips/{trip['slug']}/items", json=item_body(payer_id=ann, name="Original")
     ).json()["item"]
@@ -193,10 +193,10 @@ def test_patch_item_wallet_owner_mismatch_leaves_item_unchanged(
 
 
 def test_patch_item_payer_and_wallet_together_is_accepted(
-    client, trip, people, default_wallet_of, item_body
+    client, trip, person_id, default_wallet_of, item_body
 ):
     """A PATCH naming both the new payer and their wallet in one body succeeds."""
-    petr, ann = people[0]["id"], people[1]["id"]
+    petr, ann = person_id("Petr"), person_id("Ann")
     created = client.post(
         f"/api/v1/trips/{trip['slug']}/items", json=item_body(payer_id=ann)
     ).json()["item"]

@@ -39,9 +39,9 @@ def test_already_even_trip_has_no_suggestions(client, trip, people, item_body):
     assert block["suggestions"] == []
 
 
-def test_same_owner_transfer_changes_no_net(client, trip, people, default_wallet_of, item_body):
+def test_same_owner_transfer_changes_no_net(client, trip, person_id, default_wallet_of, item_body):
     """A transfer between one person's own wallets moves nothing between people."""
-    petr = people[0]["id"]
+    petr = person_id("Petr")
     client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(amount="100.00"))
     before = client.get(f"/api/v1/trips/{trip['slug']}/balances").json()["balances"]
 
@@ -64,10 +64,10 @@ def test_same_owner_transfer_changes_no_net(client, trip, people, default_wallet
 
 
 def test_same_owner_exchange_changes_no_net_in_either_currency(
-    client, trip, people, default_wallet_of, item_body
+    client, trip, person_id, default_wallet_of, item_body
 ):
     """An exchange inside one wallet moves nothing between people, in either currency."""
-    petr = people[0]["id"]
+    petr = person_id("Petr")
     client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(amount="100.00"))
     before = client.get(f"/api/v1/trips/{trip['slug']}/balances").json()["balances"]
 
@@ -92,10 +92,10 @@ def test_same_owner_exchange_changes_no_net_in_either_currency(
 
 
 def test_cross_owner_transfer_shifts_sent_and_received_and_net(
-    client, trip, people, default_wallet_of, item_body
+    client, trip, person_id, default_wallet_of, item_body
 ):
     """A handover between two people's wallets enters `sent`/`received` and shifts `net`."""
-    ann, bob = people[1]["id"], people[2]["id"]
+    ann, bob = person_id("Ann"), person_id("Bob")
     client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(amount="100.00"))
 
     client.post(
@@ -122,9 +122,9 @@ def test_cross_owner_transfer_shifts_sent_and_received_and_net(
     assert abs(sum(p["net"] for p in block["people"])) < 0.00001
 
 
-def test_transfer_only_currency_appears_in_balances(client, trip, people, default_wallet_of):
+def test_transfer_only_currency_appears_in_balances(client, trip, person_id, default_wallet_of):
     """A currency touched only by a cross-owner transfer, never an item, still shows a block."""
-    ann, bob = people[1]["id"], people[2]["id"]
+    ann, bob = person_id("Ann"), person_id("Bob")
     eur = trip["currencies"][1]["id"]
 
     client.post(

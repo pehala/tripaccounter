@@ -8,11 +8,11 @@ from fractions import Fraction
 from app.services.money import MICRO_PER_MINOR
 
 
-def round_nets_to_minor(net_micro: dict[int, int], sort_order: dict[int, int]) -> dict[int, int]:
+def round_nets_to_minor(net_micro: dict[int, int], roster_order: dict[int, int]) -> dict[int, int]:
     """Round each person's net (in micro-units) to the nearest minor unit (cent).
 
     Then nudge by one minor unit, largest rounding error first, until the
-    total is exactly zero. Deterministic; ties broken by `sort_order`.
+    total is exactly zero. Deterministic; ties broken by `roster_order`.
     """
     exact = {pid: Fraction(value, MICRO_PER_MINOR) for pid, value in net_micro.items()}
     minor = {pid: round(value) for pid, value in exact.items()}
@@ -21,12 +21,12 @@ def round_nets_to_minor(net_micro: dict[int, int], sort_order: dict[int, int]) -
     total = sum(minor.values())
     while total != 0:
         if total > 0:
-            pid = max(minor, key=lambda p: (error[p], -sort_order[p]))
+            pid = max(minor, key=lambda p: (error[p], -roster_order[p]))
             minor[pid] -= 1
             error[pid] -= 1
             total -= 1
         else:
-            pid = min(minor, key=lambda p: (error[p], sort_order[p]))
+            pid = min(minor, key=lambda p: (error[p], roster_order[p]))
             minor[pid] += 1
             error[pid] += 1
             total += 1
@@ -35,7 +35,7 @@ def round_nets_to_minor(net_micro: dict[int, int], sort_order: dict[int, int]) -
 
 
 def suggest_transfers(
-    net_minor: dict[int, int], sort_order: dict[int, int]
+    net_minor: dict[int, int], roster_order: dict[int, int]
 ) -> list[dict[str, int]]:
     """Greedy min-cash-flow: repeatedly match the largest creditor with the largest debtor.
 
@@ -43,11 +43,11 @@ def suggest_transfers(
     """
     creditors = sorted(
         ([pid, amount] for pid, amount in net_minor.items() if amount > 0),
-        key=lambda pair: (-pair[1], sort_order[pair[0]]),
+        key=lambda pair: (-pair[1], roster_order[pair[0]]),
     )
     debtors = sorted(
         ([pid, amount] for pid, amount in net_minor.items() if amount < 0),
-        key=lambda pair: (pair[1], sort_order[pair[0]]),
+        key=lambda pair: (pair[1], roster_order[pair[0]]),
     )
 
     transfers: list[dict[str, int]] = []

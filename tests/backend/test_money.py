@@ -68,8 +68,8 @@ def test_to_wire_negative_whole_is_int():
 def test_round_nets_to_minor_zero_sums_stay_zero():
     """Nets already at zero net_micro round to zero minor units."""
     nets = {1: 0, 2: 0}
-    sort_order = {1: 0, 2: 1}
-    result = round_nets_to_minor(nets, sort_order)
+    roster_order = {1: 0, 2: 1}
+    result = round_nets_to_minor(nets, roster_order)
     assert result == {1: 0, 2: 0}
     assert sum(result.values()) == 0
 
@@ -77,25 +77,25 @@ def test_round_nets_to_minor_zero_sums_stay_zero():
 def test_round_nets_to_minor_zero_sum_correction_deterministic():
     """Three people with a rounding-ambiguous split still sum to exactly zero.
 
-    The correction applies to the largest rounding error, ties by sort_order.
+    The correction applies to the largest rounding error, ties by roster order.
     """
     # -1/3, -1/3, +2/3 of a currency unit, in micro units: -3333.33.., -3333.33.., 6666.66..
     nets = {1: -33333333, 2: -33333333, 3: 66666667}
-    sort_order = {1: 0, 2: 1, 3: 2}
+    roster_order = {1: 0, 2: 1, 3: 2}
 
-    result = round_nets_to_minor(nets, sort_order)
+    result = round_nets_to_minor(nets, roster_order)
 
     assert sum(result.values()) == 0
     assert result[3] == 6667
 
 
-def test_round_nets_to_minor_is_deterministic_by_sort_order():
-    """Two people tied on rounding error break the tie by sort_order, lowest first."""
+def test_round_nets_to_minor_is_deterministic_by_roster_order():
+    """Two people tied on rounding error break the tie by roster order, lowest first."""
     # exact minor units: 1.5 and -0.5; banker's rounding gives 2 and 0, sum 2,
     # so two one-cent corrections are needed and both candidates tie on error.
     nets = {10: 15000, 20: -5000}
-    sort_order = {10: 0, 20: 1}
-    result = round_nets_to_minor(nets, sort_order)
+    roster_order = {10: 0, 20: 1}
+    result = round_nets_to_minor(nets, roster_order)
     assert result == {10: 1, 20: -1}
     assert sum(result.values()) == 0
 
@@ -103,9 +103,9 @@ def test_round_nets_to_minor_is_deterministic_by_sort_order():
 def test_suggest_transfers_sums_to_zero_and_matches_largest_first():
     """Greedy min-cash-flow matches the largest creditor with the largest debtor."""
     net_minor = {1: -500, 2: -300, 3: 800}
-    sort_order = {1: 0, 2: 1, 3: 2}
+    roster_order = {1: 0, 2: 1, 3: 2}
 
-    transfers = suggest_transfers(net_minor, sort_order)
+    transfers = suggest_transfers(net_minor, roster_order)
 
     assert sum(t["amount"] for t in transfers if t["to_person_id"] == 3) == 800
     assert len(transfers) <= len(net_minor) - 1

@@ -61,3 +61,36 @@ def test_delete_label_leaves_items_untouched(client, trip, item_body):
 
     read_back = client.get(f"/api/v1/trips/{trip['slug']}/items/{item['id']}").json()["item"]
     assert read_back["labels"] == []
+
+
+def test_item_labels_are_alphabetical_on_create(client, trip, item_body):
+    """A created item answers with its labels alphabetical, whatever order they were sent."""
+    item = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(labels=["zulu", "alpha", "mike"])
+    ).json()["item"]
+
+    assert item["labels"] == ["alpha", "mike", "zulu"]
+
+
+def test_item_labels_are_alphabetical_on_update(client, trip, item_body):
+    """Re-labelling an item answers with the new labels alphabetical."""
+    item = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(labels=["alpha"])
+    ).json()["item"]
+
+    updated = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{item['id']}", json={"labels": ["yankee", "bravo"]}
+    ).json()["item"]
+
+    assert updated["labels"] == ["bravo", "yankee"]
+
+
+def test_item_labels_are_alphabetical_on_read(client, trip, item_body):
+    """Reading an item back answers with its labels alphabetical."""
+    item = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(labels=["zulu", "alpha", "mike"])
+    ).json()["item"]
+
+    read_back = client.get(f"/api/v1/trips/{trip['slug']}/items/{item['id']}").json()["item"]
+
+    assert read_back["labels"] == ["alpha", "mike", "zulu"]

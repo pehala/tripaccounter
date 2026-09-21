@@ -86,7 +86,6 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=100), nullable=False),
         sa.Column("code", sa.String(length=2), nullable=True),
         sa.Column("is_default", sa.Boolean(), nullable=False),
-        sa.Column("sort_order", sa.Integer(), nullable=False),
         sa.Column(
             "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True
         ),
@@ -105,7 +104,6 @@ def upgrade() -> None:
         sa.Column("code", sa.String(length=3), nullable=False),
         sa.Column("symbol", sa.String(length=10), nullable=True),
         sa.Column("is_primary", sa.Boolean(), nullable=False),
-        sa.Column("sort_order", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(
             ["trip_id"],
             ["trip.id"],
@@ -122,7 +120,6 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=60), nullable=False),
         sa.Column("tracked", sa.Boolean(), nullable=False),
         sa.Column("is_default", sa.Boolean(), nullable=False),
-        sa.Column("sort_order", sa.Integer(), nullable=False),
         sa.Column(
             "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True
         ),

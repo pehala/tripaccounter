@@ -68,7 +68,11 @@ def list_items(trip: TripDep, session: SessionDep):
         .join(TripCurrency, TripCurrency.id == LineItem.currency_id)
         .where(LineItem.trip_id == trip.id)
         .group_by(func.date(LineItem.occurred_at), TripCurrency.id)
-        .order_by(func.date(LineItem.occurred_at).desc(), TripCurrency.sort_order)
+        .order_by(
+            func.date(LineItem.occurred_at).desc(),
+            TripCurrency.is_primary.desc(),
+            TripCurrency.code,
+        )
     ).all()
     day_totals: dict[str, list[DayCurrencyTotalOut]] = {}
     for day, code, currency_id, amount_minor in day_rows:

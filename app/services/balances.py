@@ -60,11 +60,13 @@ def compute_balances(session: Session, trip_id: int) -> list[BalanceBlockOut]:
     """Return each currency's total spend, per-person balance fields, and settle-up suggestions."""
     currencies = session.execute(queries.currencies_for_trip(trip_id)).scalars().all()
     people = (
-        session.execute(select(Person).where(Person.trip_id == trip_id).order_by(Person.sort_order))
+        session.execute(
+            select(Person).where(Person.trip_id == trip_id).order_by(Person.sort_order, Person.name)
+        )
         .scalars()
         .all()
     )
-    sort_order = {person.id: person.sort_order for person in people}
+    roster_order = {person.id: index for index, person in enumerate(people)}
 
     blocks = []
     for currency in currencies:
@@ -102,14 +104,14 @@ def compute_balances(session: Session, trip_id: int) -> list[BalanceBlockOut]:
                 )
             )
 
-        net_minor = settle.round_nets_to_minor(net_micro, sort_order)
+        net_minor = settle.round_nets_to_minor(net_micro, roster_order)
         suggestions = [
             SuggestionOut(
                 from_person_id=transfer["from_person_id"],
                 to_person_id=transfer["to_person_id"],
                 amount=to_wire(transfer["amount"], AMOUNT_SCALE),
             )
-            for transfer in settle.suggest_transfers(net_minor, sort_order)
+            for transfer in settle.suggest_transfers(net_minor, roster_order)
         ]
 
         blocks.append(

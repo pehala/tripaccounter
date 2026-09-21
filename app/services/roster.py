@@ -42,8 +42,8 @@ def ensure_unique(session: Session, column, value, scope, exclude_id: int | None
         raise DuplicateError(name=value)
 
 
-def next_sort_order(session: Session, model, scope) -> int:
-    """Return the row count under `scope`, the sort_order a newly added row takes."""
+def roster_size(session: Session, model, scope) -> int:
+    """Return the number of rows under `scope`, the position a newly added row takes."""
     return session.execute(select(func.count()).select_from(model).where(scope)).scalar_one()
 
 
@@ -80,7 +80,7 @@ def create_person(
     """Create a person on the trip's roster, raising on a duplicate name."""
     scope = Person.trip_id == trip.id
     ensure_unique(session, Person.name, name, scope)
-    count = next_sort_order(session, Person, scope)
+    count = roster_size(session, Person, scope)
     person = Person(
         trip_id=trip.id,
         name=name,
@@ -143,7 +143,7 @@ def create_currency(
     code = code.upper()
     scope = TripCurrency.trip_id == trip.id
     ensure_unique(session, TripCurrency.code, code, scope)
-    count = next_sort_order(session, TripCurrency, scope)
+    count = roster_size(session, TripCurrency, scope)
     if is_primary:
         clear_flag(session, TripCurrency.is_primary, scope)
     currency = TripCurrency(
@@ -151,24 +151,19 @@ def create_currency(
         code=code,
         symbol=symbol,
         is_primary=bool(is_primary) or count == 0,
-        sort_order=count,
     )
     session.add(currency)
     session.flush()
     return currency
 
 
-def update_currency(
-    session: Session, currency: TripCurrency, symbol, is_primary, sort_order
-) -> TripCurrency:
+def update_currency(session: Session, currency: TripCurrency, symbol, is_primary) -> TripCurrency:
     """Apply the given field updates to a currency."""
     if symbol is not None:
         currency.symbol = symbol
     if is_primary:
         clear_flag(session, TripCurrency.is_primary, TripCurrency.trip_id == currency.trip_id)
         currency.is_primary = True
-    if sort_order is not None:
-        currency.sort_order = sort_order
     session.flush()
     return currency
 
@@ -201,7 +196,7 @@ def create_country(
     """Create a country on the trip, raising on a duplicate name."""
     scope = TripCountry.trip_id == trip.id
     ensure_unique(session, TripCountry.name, name, scope)
-    count = next_sort_order(session, TripCountry, scope)
+    count = roster_size(session, TripCountry, scope)
     if is_default:
         clear_flag(session, TripCountry.is_default, scope)
     country = TripCountry(
@@ -209,16 +204,13 @@ def create_country(
         name=name,
         code=code.upper() if code else None,
         is_default=bool(is_default) or count == 0,
-        sort_order=count,
     )
     session.add(country)
     session.flush()
     return country
 
 
-def update_country(  # noqa: PLR0913, PLR0917
-    session: Session, country: TripCountry, name, code, is_default, sort_order
-) -> TripCountry:
+def update_country(session: Session, country: TripCountry, name, code, is_default) -> TripCountry:
     """Apply the given field updates to a country, raising on a duplicate name."""
     scope = TripCountry.trip_id == country.trip_id
     if name is not None and name != country.name:
@@ -229,8 +221,6 @@ def update_country(  # noqa: PLR0913, PLR0917
     if is_default:
         clear_flag(session, TripCountry.is_default, scope)
         country.is_default = True
-    if sort_order is not None:
-        country.sort_order = sort_order
     session.flush()
     return country
 
@@ -268,7 +258,6 @@ def create_default_wallet(session: Session, person: Person) -> Wallet:
         name=DEFAULT_WALLET_NAME,
         tracked=False,
         is_default=True,
-        sort_order=0,
     )
     session.add(wallet)
     session.flush()
@@ -295,16 +284,13 @@ def create_wallet(
         name=name,
         tracked=bool(tracked),
         is_default=False,
-        sort_order=next_sort_order(session, Wallet, scope),
     )
     session.add(wallet)
     session.flush()
     return wallet
 
 
-def update_wallet(  # noqa: PLR0913, PLR0917
-    session: Session, wallet: Wallet, name, tracked, is_default, sort_order
-) -> Wallet:
+def update_wallet(session: Session, wallet: Wallet, name, tracked, is_default) -> Wallet:
     """Apply the given field updates to a wallet, raising on an invalid/duplicate name."""
     scope = Wallet.person_id == wallet.person_id
     if name is not None and name != wallet.name:
@@ -316,8 +302,6 @@ def update_wallet(  # noqa: PLR0913, PLR0917
     if is_default:
         clear_flag(session, Wallet.is_default, scope)
         wallet.is_default = True
-    if sort_order is not None:
-        wallet.sort_order = sort_order
     session.flush()
     return wallet
 

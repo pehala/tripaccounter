@@ -51,7 +51,6 @@ class CurrencyUpdate(Strict):
 
     symbol: str | None = None
     is_primary: bool | None = None
-    sort_order: int | None = None
 
 
 class CountryCreate(Strict):
@@ -68,7 +67,6 @@ class CountryUpdate(Strict):
     name: str | None = None
     code: str | None = None
     is_default: bool | None = None
-    sort_order: int | None = None
 
 
 class LabelCreate(Strict):
@@ -97,7 +95,6 @@ class WalletUpdate(Strict):
     name: str | None = None
     tracked: bool | None = None
     is_default: bool | None = None
-    sort_order: int | None = None
 
 
 class TripCreate(Strict):

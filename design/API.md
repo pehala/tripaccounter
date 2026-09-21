@@ -154,7 +154,7 @@ The schema says a field exists and what type it is. This section says what it
 
 ### The trip
 The trip is the aggregate: its people, currencies and countries are part of it and
-come embedded, in `sort_order`. They are also addressable on their own for writes
+come embedded, in roster order. They are also addressable on their own for writes
 and for clients that want one list. The trip list replaces those embedded lists with
 `people_count` and `item_count`, and orders by `end_date` descending — the trip that
 ended most recently first; a trip with no `end_date` sorts after every dated one,
@@ -183,10 +183,14 @@ A country's `flag` is derived from its ISO `code`; a country typed by hand with 
 code has `null`. `item_count` tells a client in advance whether a delete will be
 refused.
 
-People, currencies, countries and labels share one CRUD shape. Lists come back in
-`sort_order`; labels come back in `use_count DESC, name ASC` — the suggestion order,
-which is the server's and is not re-sorted client-side. A trip has at most a few
-dozen labels, so a suggestion box filters them locally rather than querying.
+People, currencies, countries and labels share one CRUD shape. **`sort_order` on a
+person is the only position field**, writable through `PATCH`, and people come back
+in it with `name` settling ties. Every other list derives its order: currencies
+`is_primary` first then by `code`, countries `is_default` first then by `name`, a
+person's wallets `is_default` first then by `name` (`design/ERD.md`). Labels come
+back in `use_count DESC, name ASC` — the suggestion order, which is the server's and
+which a client renders as it stands. A trip has at most a few dozen labels, so a
+suggestion box filters them locally rather than querying.
 
 A `DELETE` refused because the row is still referenced answers `409` with
 `fields.id.code = "in_use"` and `params {count, name}` — enough to say which items
@@ -216,7 +220,8 @@ and win.
 rounding; wording is the client's business.
 
 - `split.shares` has **one entry per active person of the trip, in roster order**
-  (`sort_order`). A person left out of the item has `"weight": null, "owed": null`.
+  (`sort_order`, ties by `name`). A person left out of the item has
+  `"weight": null, "owed": null`.
   No filtering, no set difference, no "is this person in the list" check. `"owed": 0`
   is a different thing: they are in the split and rounding gave them nothing.
 - `owed` is the share as a fraction, to six places, **never rounded to a cent per
@@ -321,7 +326,7 @@ in front of a credit is the client's choice.
 
 `suggestions` is **the one rounded output** in the whole system: nets rounded to
 hundredths with a zero-sum correction (largest rounding error adjusted first, ties by
-`sort_order`), then the greedy minimum-transfer plan — at most n−1 entries, amounts in
+roster order), then the greedy minimum-transfer plan — at most n−1 entries, amounts in
 hundredths, summing to zero exactly. Who hands whom how much at the end of the trip.
 **Nothing records that a settle-up suggestion was paid**: the trip is settled once,
 when it is over, and the app is not a ledger of paybacks. A wallet transfer is

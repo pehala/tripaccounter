@@ -246,10 +246,6 @@
           "name": {
             "title": "Name",
             "type": "string"
-          },
-          "sort_order": {
-            "title": "Sort Order",
-            "type": "integer"
           }
         },
         "required": [
@@ -258,7 +254,6 @@
           "code",
           "flag",
           "is_default",
-          "sort_order",
           "item_count"
         ],
         "title": "CountryOut",
@@ -300,17 +295,6 @@
               }
             ],
             "title": "Name"
-          },
-          "sort_order": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sort Order"
           }
         },
         "title": "CountryUpdate",
@@ -398,10 +382,6 @@
             "title": "Is Primary",
             "type": "boolean"
           },
-          "sort_order": {
-            "title": "Sort Order",
-            "type": "integer"
-          },
           "symbol": {
             "anyOf": [
               {
@@ -418,8 +398,7 @@
           "id",
           "code",
           "symbol",
-          "is_primary",
-          "sort_order"
+          "is_primary"
         ],
         "title": "CurrencyOut",
         "type": "object"
@@ -438,17 +417,6 @@
               }
             ],
             "title": "Is Primary"
-          },
-          "sort_order": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sort Order"
           },
           "symbol": {
             "anyOf": [
@@ -2345,10 +2313,6 @@
             "title": "Person Id",
             "type": "integer"
           },
-          "sort_order": {
-            "title": "Sort Order",
-            "type": "integer"
-          },
           "tracked": {
             "title": "Tracked",
             "type": "boolean"
@@ -2359,8 +2323,7 @@
           "person_id",
           "name",
           "tracked",
-          "is_default",
-          "sort_order"
+          "is_default"
         ],
         "title": "WalletOut",
         "type": "object"
@@ -2391,10 +2354,6 @@
             "title": "Person Id",
             "type": "integer"
           },
-          "sort_order": {
-            "title": "Sort Order",
-            "type": "integer"
-          },
           "tracked": {
             "title": "Tracked",
             "type": "boolean"
@@ -2406,7 +2365,6 @@
           "name",
           "tracked",
           "is_default",
-          "sort_order",
           "balances"
         ],
         "title": "WalletReportOut",
@@ -2437,17 +2395,6 @@
               }
             ],
             "title": "Name"
-          },
-          "sort_order": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sort Order"
           },
           "tracked": {
             "anyOf": [
