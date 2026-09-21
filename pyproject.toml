@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=9.1", "httpx2>=2.12", "pytest-playwright>=0.9", "pytest-xdist>=3.6", "ruff>=0.16", "lefthook>=2.1.14", "commitlint>=2.0"]
+dev = ["pytest>=9.1", "httpx2>=2.12", "pytest-playwright>=0.9", "pytest-xdist>=3.6", "ruff>=0.16.8", "lefthook>=2.1.14", "commitlint>=2.0"]
 
 [tool.ruff]
 line-length = 100
