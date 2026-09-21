@@ -40,6 +40,7 @@ class LineItem(SQLModel, table=True):
     occurred_at: datetime = Field(sa_column=Column(DateTime(timezone=True), index=True))
     name: str = Field(max_length=200)
     note: str | None = None
+    city: str | None = None
     currency_id: int = Field(index=True)
     amount_minor: int = Field(sa_column=Column(BigInteger))
     payer_id: int = Field(index=True)

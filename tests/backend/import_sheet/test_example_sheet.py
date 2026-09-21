@@ -135,6 +135,16 @@ def test_apply_carries_labels_and_notes_onto_the_items(client, imported):
     }
 
 
+def test_apply_carries_the_city_column_onto_the_items(client, imported):
+    """The sheet's City column, read ahead of Country, lands on each item as given."""
+    items = client.get(f"/api/v1/trips/{imported.slug}/items").json()["items"]
+
+    assert {item["name"]: item["city"] for item in items if item["name"] in ("ITEM1", "ITEM3")} == {
+        "ITEM1": "Prague",
+        "ITEM3": "Berlin",
+    }
+
+
 @pytest.mark.parametrize(
     ("name", "mode", "owed"),
     [

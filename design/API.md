@@ -387,11 +387,11 @@ favor of the roster names a reader would otherwise have to look up: no
 `person_id`.
 
 The CSV header row is part of the contract, because something parses it: `item_id,
-name, note, occurred_at, currency_code, amount, payer_id, wallet_id, country_id,
-labels, map_url, lat, lon, created_at, updated_at, person_name, weight, owed`. CSV
-has no `null` or list type: `labels` joins with `;`, and an absent
-`note`/`map_url`/`lat`/`lon` is an empty field, not the string `"None"`. JSON keeps
-those as their native types — `labels` a list, an absent field `null`. Transfers are
+name, note, city, occurred_at, currency_code, amount, payer_id, wallet_id,
+country_id, labels, map_url, lat, lon, created_at, updated_at, person_name, weight,
+owed`. CSV has no `null` or list type: `labels` joins with `;`, and an absent
+`note`/`city`/`map_url`/`lat`/`lon` is an empty field, not the string `"None"`. JSON
+keeps those as their native types — `labels` a list, an absent field `null`. Transfers are
 not share-grained and stay out of the CSV entirely; JSON's `transfers` block is the
 same `TransferOut` shape the live API returns. An empty trip exports a header and
 nothing else, not a `500`.

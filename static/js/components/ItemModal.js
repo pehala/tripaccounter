@@ -37,6 +37,7 @@ function initialItemState(item, trip) {
       countryId: item.country_id,
       occurredAt: toInputValue(item.occurred_at),
       labels: [...item.labels],
+      city: item.city ?? '',
       mapUrl: item.map_url ?? '',
       lat: item.lat ?? '',
       lon: item.lon ?? '',
@@ -59,6 +60,7 @@ function initialItemState(item, trip) {
     countryId: defaultCountry?.id ?? null,
     occurredAt: toInputValue(new Date().toISOString()),
     labels: [],
+    city: '',
     mapUrl: '',
     lat: '',
     lon: '',
@@ -221,6 +223,7 @@ export function ItemModal({ trip, labels, entry, onClose }) {
       country_id: state.countryId,
       occurred_at: fromInputValue(state.occurredAt),
       labels: state.labels,
+      city: state.city.trim() || null,
       map_url: state.mapUrl.trim() || null,
       lat: state.lat === '' ? null : state.lat,
       lon: state.lon === '' ? null : state.lon,
@@ -412,6 +415,14 @@ export function ItemModal({ trip, labels, entry, onClose }) {
                 <${LabelInput} value=${state.labels} onChange=${(v) => set({ labels: v })}
                                suggestions=${labels.map((l) => l.name)} listId="trip-labels" />
                 <div class="form-text">${t('item.labels_hint')}</div>
+              </div>
+              <div class="col-12 col-sm-6">
+                <label class="form-label small mb-1">${t('item.city_label')}
+                  <span class="text-body-secondary">${t('item.city_optional')}</span></label>
+                <input class="form-control ${fieldErrors.city ? 'is-invalid' : ''}" name="city"
+                       placeholder=${t('item.city_placeholder')}
+                       value=${state.city} onInput=${(e) => set({ city: e.target.value })} />
+                ${fieldError('city')}
               </div>
               <div class="col-12">
                 <label class="form-label small mb-1">${t('item.location_label')}

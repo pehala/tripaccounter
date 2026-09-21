@@ -20,6 +20,7 @@ def two_person_item(client, trip, people, item_body):
             name="Layover lunch",
             amount="120.00",
             note="Split at the gate",
+            city="Kastrup",
             labels=["food", "airport"],
             shares=[{"person_id": people[0]["id"]}, {"person_id": people[1]["id"]}],
         ),
@@ -66,6 +67,7 @@ def test_csv_export_header_and_first_row_are_the_contract(client, trip, people, 
         "item_id",
         "name",
         "note",
+        "city",
         "occurred_at",
         "currency_code",
         "amount",
@@ -86,6 +88,7 @@ def test_csv_export_header_and_first_row_are_the_contract(client, trip, people, 
         "item_id": str(created["id"]),
         "name": "Layover lunch",
         "note": "Split at the gate",
+        "city": "Kastrup",
         "occurred_at": created["occurred_at"],
         "currency_code": "ISK",
         "amount": "120",
@@ -105,13 +108,14 @@ def test_csv_export_header_and_first_row_are_the_contract(client, trip, people, 
 
 
 def test_csv_export_blank_optional_fields_are_empty_not_the_string_none(client, trip, item_body):
-    """An item with no note/map_url/lat/lon exports empty fields, not the word 'None'."""
+    """An item with no note/city/map_url/lat/lon exports empty fields, not the word 'None'."""
     client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(name="Dinner"))
 
     response = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "csv"})
     row = next(csv.DictReader(io.StringIO(response.text)))
 
     assert row["note"] == ""
+    assert row["city"] == ""
     assert row["map_url"] == ""
     assert row["lat"] == ""
     assert row["lon"] == ""
@@ -134,6 +138,7 @@ def test_json_export_is_share_grained_like_the_csv(client, trip, people, two_per
         "item_id": created["id"],
         "name": "Layover lunch",
         "note": "Split at the gate",
+        "city": "Kastrup",
         "occurred_at": created["occurred_at"],
         "currency_code": "ISK",
         "amount": 120,
@@ -169,6 +174,7 @@ def test_csv_and_json_export_carry_the_same_rows(client, trip, people, two_perso
         assert csv_row["item_id"] == str(json_row["item_id"])
         assert csv_row["name"] == json_row["name"]
         assert csv_row["note"] == json_row["note"]
+        assert csv_row["city"] == json_row["city"]
         assert csv_row["labels"] == ";".join(json_row["labels"])
         assert csv_row["person_name"] == json_row["person_name"]
         assert csv_row["weight"] == json_row["weight"]

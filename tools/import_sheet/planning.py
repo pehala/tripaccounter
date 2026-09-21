@@ -22,6 +22,7 @@ from tools.import_sheet.cells import (
 from tools.import_sheet.layout import (
     COLUMN_AMOUNT,
     COLUMN_CATEGORY,
+    COLUMN_CITY,
     COLUMN_COUNTRY,
     COLUMN_CURRENCY,
     COLUMN_DATE,
@@ -57,6 +58,7 @@ class PlannedItem:
     row: int
     name: str
     note: str | None
+    city: str | None
     occurred_at: datetime
     amount: str
     currency_code: str
@@ -177,6 +179,7 @@ def plan_row(number, row, layout, problems):
         row=number,
         name=name,
         note=row[layout.note].strip() or None,
+        city=row[COLUMN_CITY].strip() or None,
         occurred_at=occurred_at,
         amount=canonical_amount(amount),
         currency_code=currency,

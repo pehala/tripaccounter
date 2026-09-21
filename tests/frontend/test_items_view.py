@@ -28,6 +28,7 @@ ZERO_SHARE_ITEM = {
     "id": 9999,
     "name": "Split with a zero share",
     "note": None,
+    "city": None,
     "occurred_at": "2026-09-14T19:30:00Z",
     "currency_code": "ISK",
     "currency_id": 1,
@@ -142,6 +143,21 @@ def test_owed_zero_renders_as_a_zero_and_null_share_gets_no_chip(zero_share_page
 def test_item_row_shows_country_flag_with_name(shared_items_page, item_name, text):
     """A row shows its country's flag next to the country name, not the name alone."""
     expect(shared_items_page.locator(ROW, has_text=item_name)).to_contain_text(text)
+
+
+def test_item_row_shows_city_between_country_and_time(shared_items_page):
+    """A row with a city shows it right after the country, before the time."""
+    row = shared_items_page.locator(ROW, has_text="Dinner at Messinn")
+
+    expect(row.locator("small").first).to_contain_text("🇮🇸 Iceland · Reykjavík ·")
+
+
+def test_item_row_with_no_city_shows_no_extra_separator(shared_items_page):
+    """An item with no city renders no stray ` · ` where the city would sit."""
+    row = shared_items_page.locator(ROW, has_text="Fuel — N1 Selfoss")
+
+    text = row.locator("small").first.inner_text()
+    assert " ·  ·" not in text
 
 
 def test_labels_render_as_badges(shared_items_page):

@@ -9,6 +9,7 @@ from app.db import SessionLocal
 from tools.import_sheet.layout import (
     COLUMN_AMOUNT,
     COLUMN_CATEGORY,
+    COLUMN_CITY,
     COLUMN_COUNTRY,
     COLUMN_CURRENCY,
     COLUMN_DATE,
@@ -34,6 +35,7 @@ def describe_layout(plan):
         (COLUMN_PAYER, "payer", row[COLUMN_PAYER]),
         (COLUMN_AMOUNT, "amount", row[COLUMN_AMOUNT]),
         (COLUMN_CURRENCY, "currency", row[COLUMN_CURRENCY]),
+        (COLUMN_CITY, "city", row[COLUMN_CITY]),
         (COLUMN_COUNTRY, "country", row[COLUMN_COUNTRY]),
     ]
     targets += [

@@ -621,6 +621,17 @@
             ],
             "title": "Amount"
           },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
           "country_id": {
             "title": "Country Id",
             "type": "integer"
@@ -720,6 +731,7 @@
           "id",
           "name",
           "note",
+          "city",
           "occurred_at",
           "currency_code",
           "currency_id",
@@ -756,6 +768,17 @@
               }
             ],
             "title": "Amount"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
           },
           "country_id": {
             "anyOf": [
