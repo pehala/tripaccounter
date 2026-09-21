@@ -102,7 +102,7 @@ export function Map() {
   const payerOf = (item) => store.trip.people.find((person) => person.id === item.payer_id);
 
   return html`
-    <div class="map-page">
+    <div class="map-page d-flex flex-column flex-grow-1">
       <${CollapsibleSection} id=${CONTROLS} icon="bi-funnel" title=${t('map.controls')}
                              defaultOpen=${true}
                              summary=${t('map.placed', { n: shown, total: store.items.length })}>

@@ -104,5 +104,5 @@ export function MapCanvas({ points, selectedKey, focus, layout, onSelect }) {
     mapRef.current.fitBounds(bounds.pad(FIT_PADDING), { maxZoom: FIT_MAX_ZOOM });
   }, [ready, points]);
 
-  return html`<div class="map-canvas rounded shadow-sm" ref=${nodeRef}></div>`;
+  return html`<div class="map-canvas rounded shadow-sm flex-grow-1 z-0" ref=${nodeRef}></div>`;
 }
