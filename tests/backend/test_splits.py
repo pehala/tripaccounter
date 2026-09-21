@@ -217,3 +217,23 @@ def test_preview_split_currency_from_another_trip_is_not_in_trip(client, trip, i
             "fields": {"currency_id": {"code": "not_in_trip", "params": {}}},
         }
     }
+
+
+def test_shares_weight_past_four_decimals_is_too_precise(client, trip, people, item_body):
+    """A weight carrying a fifth decimal is too_precise, not a positivity failure."""
+    response = client.post(
+        f"/api/v1/trips/{trip['slug']}/items",
+        json=item_body(
+            split_mode="shares",
+            shares=[{"person_id": people[0]["id"], "weight": "1.00001"}],
+        ),
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "error": {
+            "code": "validation_error",
+            "params": {},
+            "fields": {"shares": {"code": "too_precise", "params": {"max": 4}}},
+        }
+    }

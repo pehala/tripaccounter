@@ -188,3 +188,16 @@ def test_patch_transfer_wallet_not_in_trip_is_rejected(client, trip, transfer_bo
         "code": "not_in_trip",
         "params": {},
     }
+
+
+def test_person_default_weight_past_four_decimals_is_too_precise(client, trip):
+    """A default weight carrying a fifth decimal names the precision limit it broke."""
+    response = client.post(
+        f"/api/v1/trips/{trip['slug']}/people", json={"name": "Zed", "default_weight": "0.50001"}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"]["default_weight"] == {
+        "code": "too_precise",
+        "params": {"max": 4},
+    }
