@@ -38,6 +38,7 @@ flowchart TD
 | **Currency** | Multi-currency, **zero conversion server-side**. Balances, settle-up and each currency's own stats are strictly per currency. Both the balances and statistics pages' Total section convert client-side with rates the user types, kept in `localStorage` and shared between the two pages, and only compute once every currency has one. |
 | **i18n** | **Frontend-only, from the first commit.** `en` (source) and `cs` as flat ES modules; `t()` over `Intl.PluralRules` / `NumberFormat` / `DateTimeFormat`, no library. Adding a language is one file plus one line. **The API has no language at all**: errors are `{code, params}` with no message, amounts cross the wire in one canonical grammar, and `app/` contains no user-facing string. |
 | **Money** | **Only typed values are stored, as integer hundredths, for every currency.** Computed shares are a SQL view in integer micro-units, never stored, never rounded per item. Balances and stats are `GROUP BY` over hundredths and that view. Input is a canonical decimal string; output is plain JSON numbers — typed to 2 places, computed to 6. **Rounded exactly once**, in settle-up, with a zero-sum correction. No `Currency.decimals`, no `*_display`, no `*_minor` on the wire. |
+| **Statistics** | **One `GROUP BY` engine over a dimension registry**, not a fixed set of breakdowns. `?group_by=` takes any chain of `label`/`country`/`person`/`day`/`city`/`payer`/`wallet`, at any depth; `currency` is prepended to every chain and is never a choice. A chain is answered with its own prefixes, which is where a nested view's subtotals come from — `ROLLUP`/`GROUPING SETS` would do it in one query but SQLite has neither, and the client may not sum a column. |
 | **Splits** | Equal by default; override to weighted shares or exact amounts. Computed server-side only; `preview-split` gives the form live numbers from the same expression that will be saved. |
 | **Paybacks** | **A settle-up suggestion is never recorded as paid** — no "Mark paid". A wallet transfer is different: it is a real, typed movement of money, and one between two people's wallets is exactly the amendment this row used to reserve for later (§2, "Why paybacks are not recorded"). |
 | **Wallets** | Every person gets one untracked, default wallet (`Card`) on creation, server-assigned. A wallet is either untracked (unlimited, no balance) or tracked (`received − sent − spent` per currency). Transfers between wallets have no stored exchange rate — both typed sides — and an exchange is same-owner only. |
@@ -111,7 +112,7 @@ a card in another's, and knowing which pot paid for what is what lets an overcha
 show up as a wallet running negative instead of a mystery in the balances. The
 alternative — a `kind` column on `line_item`, or joined-table inheritance for
 transfers — was rejected because it makes every existing `SUM(amount_minor)` in the
-codebase (six stats queries, `day_totals`, `total_spent`, the CSV export, the
+codebase (the statistics groupings, `day_totals`, `total_spent`, the CSV export, the
 `share_owed` view) silently wrong until it starts filtering by kind, and both shapes
 force a country and a fake split onto something that is not an expense. A separate
 `wallet_transfer` table changes the meaning of nothing that already exists — see

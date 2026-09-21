@@ -91,6 +91,16 @@ class LabelWhitespaceError(FieldError):
         super().__init__({"value": value})
 
 
+class UnknownDimensionError(FieldError):
+    """A `group_by` name isn't in the statistics dimension registry, or repeats within one chain."""
+
+    code = "unknown_dimension"
+    param_names = ("dimension",)
+
+    def __init__(self, dimension: str) -> None:
+        super().__init__({"dimension": dimension})
+
+
 # ---- trip references ---------------------------------------------------------
 
 

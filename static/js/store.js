@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { api } from './api.js';
+import { getDims } from './breakdown.js';
 
 // Per-trip state: trip, labels, items, transfers, balances, wallets, stats. Plain
 // object + subscribers, so any component can read it with useStore() and re-render
@@ -15,6 +16,7 @@ const state = {
   balances: null,
   wallets: null,
   stats: null,
+  statsDims: [],
   error: null,
 };
 
@@ -42,8 +44,21 @@ const LOADERS = {
   }),
   balances: (slug) => api.get(`/trips/${slug}/balances`).then((r) => { state.balances = r.balances; }),
   wallets: (slug) => api.get(`/trips/${slug}/wallets`).then((r) => { state.wallets = r.wallets; }),
-  stats: (slug) => api.get(`/trips/${slug}/stats`).then((r) => { state.stats = r.stats; }),
+  // The dimension chain is asked for as its own group_by; the server answers
+  // it together with its prefixes, which is where the nested subtotals come from.
+  stats: (slug) => {
+    const query = state.statsDims.length ? `?group_by=${state.statsDims.join(',')}` : '';
+    return api.get(`/trips/${slug}/stats${query}`).then((r) => { state.stats = r.groups; });
+  },
 };
+
+// Changing the breakdown drops the cached answer, so the Stats view's own
+// effect refetches it — a picker change costs the same one call a tab open does.
+export function setStatsDims(dims) {
+  state.statsDims = dims;
+  state.stats = null;
+  notify();
+}
 
 export async function reload(kind) {
   await LOADERS[kind](state.slug);
@@ -63,6 +78,7 @@ export async function load(slug) {
   state.slug = slug;
   state.trip = state.labels = state.items = state.dayTotals = state.beforeTripTotals = null;
   state.transfers = state.balances = state.wallets = state.stats = null;
+  state.statsDims = getDims(slug);
   state.error = null;
   notify();
   try {

@@ -34,7 +34,9 @@ static/
     │                     error envelope → {status, code, params, fields};
     │                     attempt() runs a write and hands back that error
     ├── store.js          per-trip state: trip, labels, items, balances, stats;
-    │                     load(), reload(kind)
+    │                     load(), reload(kind), setStatsDims(dims)
+    ├── breakdown.js      the statistics dimension chain and the currency on
+    │                     screen, one set per trip — localStorage only, never sent
     ├── fmt.js            money(), signed(), parse(), date() — one cached
     │                     Intl.NumberFormat per locale
     ├── h.js              html = htm.bind(h)
@@ -124,12 +126,13 @@ Note the dashed arrow: **a write is followed by a re-read, never by a local muta
 
    A direct consequence: the feed's per-day, per-currency subtotal comes from
    `items.day_totals` — one `GROUP BY` alongside the item query, never a client-side
-   sum over the day's rows. The same discipline holds on the statistics page:
-   `stats.by_day` renders what the API gives, one row per day, no client-side
-   arithmetic.
+   sum over the day's rows. The same discipline holds on the statistics page: each
+   level of a nested breakdown renders its own grouping's row — the API answers a
+   chain's prefixes for exactly that — and no level is ever summed from the one
+   below it.
 
    The exception is each page's own Total — on both statistics and balances: a switch
-   alongside the currencies that multiplies each group total (statistics) or each
+   alongside the currencies that multiplies each grouped total (statistics) or each
    person's net and each settle-up suggestion (balances, netted by unordered person
    pair) by a rate the user typed, **rounds each product to two places**, and sums
    those rounded figures across currencies. It is all-or-nothing — the Total renders
@@ -212,7 +215,9 @@ it opens; landing straight on a tab via a direct link or a hard refresh pays for
 | Open a trip (Items tab) | 3, parallel | `GET /trips/{slug}`, `/items`, `/labels` |
 | Balances tab, first open | 1 | `GET /balances` — `trip` is already in the store |
 | Wallets tab, first open | 1 | `GET /wallets` — `trip` is already in the store |
-| Stats tab, first open | 1 | `GET /stats` — `trip` is already in the store |
+| Stats tab, first open | 1 | `GET /stats?group_by=…` — `trip` is already in the store |
+| Changing the breakdown | 1 | the chain is a new `group_by`, so the answer is refetched |
+| Changing the shown currency | 0 | every grouping already carries every currency |
 | Setup tab, first open | 0 or 1 | `GET /labels`, unless Items already loaded them |
 | Balances/Wallets/Stats/Setup, cold (direct link) | 2 | `GET /trips/{slug}` plus that tab's own endpoint |
 | Revisiting a loaded tab | 0 | already in the store |
