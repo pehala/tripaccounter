@@ -5,11 +5,13 @@ import { html } from '../h.js';
 // accordion via `data-bs-parent`. Callers own the id scheme
 // (`sec-{ownerId}-{group}` bodies, `sec-accordion-{ownerId}` parent) — safe to
 // reuse across pages only because statistics and balances are never mounted at once.
-export function CollapsibleSection({ id, parentId, icon, title, summary, children, defaultOpen = false }) {
+// `anchor` marks a section as one of SideNav's jump-to targets, clearing the
+// sticky header on scroll (app.css `.scroll-anchor`) — not every caller is one.
+export function CollapsibleSection({ id, parentId, icon, title, summary, children, defaultOpen = false, anchor = false }) {
   const bodyId = `${id}-body`;
 
   return html`
-    <div id=${id} class="border rounded mb-2">
+    <div id=${id} class="border rounded mb-2 ${anchor ? 'scroll-anchor' : ''}">
       <button class="btn btn-sm w-100 text-start d-flex align-items-center gap-2 py-2" type="button"
               data-bs-toggle="collapse" data-bs-target="#${bodyId}">
         <i class="bi ${icon}"></i>

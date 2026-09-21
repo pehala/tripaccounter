@@ -18,7 +18,7 @@ function BalanceBlock({ id, badgeLabel, code, totalSpent, people, suggestions, t
   const maxAbs = Math.max(1e-9, ...[...people.values()].map((net) => Math.abs(net)));
 
   return html`
-    <section id="cur-${id}" class="mb-4">
+    <section id="cur-${id}" class="mb-4 scroll-anchor">
       <h2 class="h6 d-flex align-items-center gap-2 pt-2">
         <span class="badge text-bg-primary">${badgeLabel}</span>
         ${totalSpent !== null && html`<b class="num">${t('balances.spent', { amount: `${money(totalSpent, locale)} ${code}` })}</b>`}
@@ -27,7 +27,7 @@ function BalanceBlock({ id, badgeLabel, code, totalSpent, people, suggestions, t
       ${extra}
 
       ${showSections && html`
-        <${CollapsibleSection} id="sec-${id}-net" icon="bi-bar-chart" title=${t('balances.title')}>
+        <${CollapsibleSection} id="sec-${id}-net" icon="bi-bar-chart" title=${t('balances.title')} anchor=${true}>
           <ul class="list-group list-group-flush">
             ${trip.people.filter((p) => people.has(p.id)).map((p) => {
               const net = people.get(p.id);
@@ -46,7 +46,7 @@ function BalanceBlock({ id, badgeLabel, code, totalSpent, people, suggestions, t
           </ul>
         <//>
 
-        <${CollapsibleSection} id="sec-${id}-settle_up" icon="bi-arrow-left-right" defaultOpen=${true}
+        <${CollapsibleSection} id="sec-${id}-settle_up" icon="bi-arrow-left-right" defaultOpen=${true} anchor=${true}
                                 title=${t('balances.settle_up')} summary=${t('balances.transfers', { n: suggestions.length })}>
           <ul class="list-group list-group-flush">
             ${suggestions.map((s, i) => html`

@@ -33,7 +33,7 @@ body { padding-bottom: 5rem; }
 
 .side-nav { position: sticky; top: var(--header-h, 6.6rem); }
 .side-nav-mobile { z-index: 5; }
-[id^="cur-"], [id^="sec-"] { scroll-margin-top: var(--header-h, 6.6rem); }
+.scroll-anchor { scroll-margin-top: var(--header-h, 6.6rem); }
 
 /* The flex chain the map's height comes out of (display/flex-grow are Bootstrap
    utility classes on the elements themselves): 100dvh has no utility, and a flex
