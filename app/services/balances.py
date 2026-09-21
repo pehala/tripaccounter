@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, aliased
 
 from app.models.items import LineItem
+from app.models.roster import Person
 from app.models.wallets import Wallet, WalletTransfer
 from app.schemas.responses import BalanceBlockOut, BalancePersonOut, SuggestionOut
 from app.services import queries, settle
@@ -58,7 +59,11 @@ def _cross_owner_by_person(session: Session, trip_id: int, currency_id: int) -> 
 def compute_balances(session: Session, trip_id: int) -> list[BalanceBlockOut]:
     """Return each currency's total spend, per-person balance fields, and settle-up suggestions."""
     currencies = session.execute(queries.currencies_for_trip(trip_id)).scalars().all()
-    people = session.execute(queries.people_for_trip(trip_id)).scalars().all()
+    people = (
+        session.execute(select(Person).where(Person.trip_id == trip_id).order_by(Person.sort_order))
+        .scalars()
+        .all()
+    )
     sort_order = {person.id: person.sort_order for person in people}
 
     blocks = []

@@ -13,6 +13,7 @@ schedules — those described how the thing got built and were deleted when it w
 | [`API.md`](API.md) | the contract — what the numbers mean, the error catalog, the authoritative validation rules |
 | [`ERD.md`](ERD.md) | entities, invariants, the `share_owed` view, indexes |
 | [`BACKEND.md`](BACKEND.md) | how `app/` is laid out and what belongs in which layer |
+| [`CRUD_ROUTES.md`](CRUD_ROUTES.md) | how the five trip-scoped roster entities declare their list/create/update/delete routes |
 | [`FRONTEND.md`](FRONTEND.md) | how `static/` is laid out, and the rules that keep it from computing money |
 | [`MOCKAPI.md`](MOCKAPI.md) | the JSON-driven mock API the Playwright suite runs against: fixture grammar, resolution rules, conftest fixtures |
 | [`../tests/frontend/fixtures/`](../tests/frontend/fixtures/) | the canned responses the Playwright suite renders |

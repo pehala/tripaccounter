@@ -144,7 +144,6 @@ class TripOut(BaseModel):
     @classmethod
     def from_trip(cls, trip: Trip, country_item_counts: dict[int, int]) -> "TripOut":
         """Build a TripOut from a Trip model instance and its country item counts."""
-        people = sorted(trip.people, key=lambda p: p.sort_order)
         return cls(
             id=trip.id,
             slug=trip.slug,
@@ -153,16 +152,12 @@ class TripOut(BaseModel):
             end_date=trip.end_date,
             note=trip.note,
             archived=trip.archived,
-            people=[PersonOut.from_person(p) for p in people],
+            people=[PersonOut.from_person(p) for p in trip.people],
             currencies=[CurrencyOut.model_validate(c) for c in trip.currencies],
             countries=[
                 CountryOut.from_country(c, country_item_counts.get(c.id, 0)) for c in trip.countries
             ],
-            wallets=[
-                WalletOut.model_validate(w)
-                for p in people
-                for w in sorted(p.wallets, key=lambda w: w.sort_order)
-            ],
+            wallets=[WalletOut.model_validate(w) for p in trip.people for w in p.wallets],
             created_at=iso_z(trip.created_at),
             updated_at=iso_z(trip.updated_at),
         )

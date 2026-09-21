@@ -104,3 +104,9 @@ def update_label(session: Session, label: Label, name: str | None) -> Label:
         label.name_norm = norm
     session.flush()
     return label
+
+
+def delete_label(session: Session, label: Label) -> None:
+    """Delete the label from its trip."""
+    session.delete(label)
+    session.flush()

@@ -1,7 +1,10 @@
-"""Person roster routes: create, update, delete."""
+"""Person roster routes: list, create, update, delete."""
+
+from sqlalchemy.orm import Session
 
 from app.models.roster import Person
-from app.routers.crud import TripChildRoutes
+from app.models.trip import Trip
+from app.routers.crud import Route, TripChildRoutes, route
 from app.schemas.envelopes import PersonEnvelope, PersonListEnvelope
 from app.schemas.requests import PersonCreate, PersonUpdate
 from app.schemas.responses import PersonOut
@@ -14,37 +17,34 @@ class PersonRoutes(TripChildRoutes):
     model = Person
     resource = "person"
     collection = "people"
-    out = PersonOut
-    create_body = PersonCreate
-    update_body = PersonUpdate
     envelope = PersonEnvelope
     list_envelope = PersonListEnvelope
-    list_doc = "List people on a trip, in sort order."
-    create_doc = "Add a new person to a trip's roster."
-    update_doc = "Update a person's fields."
-    delete_doc = "Delete a person from the roster."
 
-    @classmethod
-    def serialize(cls, person, session):
+    def serialize(self, person: Person, session: Session) -> PersonOut:
         """Return the person with the initial and weight the wire form derives."""
         return PersonOut.from_person(person)
 
-    @classmethod
-    def create(cls, session, trip, body):
+    @route(Route.LIST)
+    def rows(self, session: Session, trip: Trip) -> list[Person]:
+        """List people on a trip, in sort order."""
+        return trip.people
+
+    @route(Route.CREATE)
+    def create(self, session: Session, trip: Trip, body: PersonCreate) -> Person:
         """Add a new person to a trip's roster."""
         return roster.create_person(session, trip, body.name, body.default_weight, body.color)
 
-    @classmethod
-    def update(cls, session, person, body):
+    @route(Route.UPDATE)
+    def update(self, session: Session, person: Person, body: PersonUpdate) -> Person:
         """Update a person's fields."""
         return roster.update_person(
             session, person, body.name, body.default_weight, body.active, body.sort_order
         )
 
-    @classmethod
-    def delete_row(cls, session, person):
-        """Delete a person, raising if they still pay or share any item."""
+    @route(Route.DELETE)
+    def delete_row(self, session: Session, person: Person) -> None:
+        """Delete a person from the roster."""
         roster.delete_person(session, person)
 
 
-router = PersonRoutes.router()
+router = PersonRoutes().router()

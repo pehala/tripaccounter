@@ -1,7 +1,10 @@
-"""Trip currency routes: create, update, delete."""
+"""Trip currency routes: list, create, update, delete."""
+
+from sqlalchemy.orm import Session
 
 from app.models.roster import TripCurrency
-from app.routers.crud import TripChildRoutes
+from app.models.trip import Trip
+from app.routers.crud import Route, TripChildRoutes, route
 from app.schemas.envelopes import CurrencyEnvelope, CurrencyListEnvelope
 from app.schemas.requests import CurrencyCreate, CurrencyUpdate
 from app.schemas.responses import CurrencyOut
@@ -14,33 +17,36 @@ class CurrencyRoutes(TripChildRoutes):
     model = TripCurrency
     resource = "currency"
     collection = "currencies"
-    out = CurrencyOut
-    create_body = CurrencyCreate
-    update_body = CurrencyUpdate
     envelope = CurrencyEnvelope
     list_envelope = CurrencyListEnvelope
-    conflict_field = "code"
-    list_doc = "List a trip's currencies, in sort order."
-    create_doc = "Add a new currency to a trip."
-    update_doc = "Update a trip currency's fields."
-    delete_doc = "Delete a currency from a trip."
 
-    @classmethod
-    def create(cls, session, trip, body):
+    def serialize(self, currency: TripCurrency, session: Session) -> CurrencyOut:
+        """Return the currency's wire form."""
+        return CurrencyOut.model_validate(currency)
+
+    @route(Route.LIST)
+    def rows(self, session: Session, trip: Trip) -> list[TripCurrency]:
+        """List a trip's currencies, in sort order."""
+        return trip.currencies
+
+    @route(Route.CREATE, field="code")
+    def create(self, session: Session, trip: Trip, body: CurrencyCreate) -> TripCurrency:
         """Add a new currency to a trip."""
         return roster.create_currency(session, trip, body.code, body.symbol, body.is_primary)
 
-    @classmethod
-    def update(cls, session, currency, body):
+    @route(Route.UPDATE, field="code")
+    def update(
+        self, session: Session, currency: TripCurrency, body: CurrencyUpdate
+    ) -> TripCurrency:
         """Update a trip currency's fields."""
         return roster.update_currency(
             session, currency, body.symbol, body.is_primary, body.sort_order
         )
 
-    @classmethod
-    def delete_row(cls, session, currency):
-        """Delete a currency, raising if any item or transfer still uses it."""
+    @route(Route.DELETE)
+    def delete_row(self, session: Session, currency: TripCurrency) -> None:
+        """Delete a currency from a trip."""
         roster.delete_currency(session, currency)
 
 
-router = CurrencyRoutes.router()
+router = CurrencyRoutes().router()

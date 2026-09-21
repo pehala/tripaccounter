@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 
 from app.db_views import share_owed_view
 from app.models.items import LineItem
-from app.models.roster import Person, TripCurrency
+from app.models.roster import TripCurrency
 from app.models.wallets import WalletTransfer
 from app.schemas.responses import ITEM_LOAD_OPTIONS, TRANSFER_LOAD_OPTIONS
 
@@ -49,11 +49,6 @@ def currencies_for_trip(trip_id: int):
         .where(TripCurrency.trip_id == trip_id)
         .order_by(TripCurrency.sort_order)
     )
-
-
-def people_for_trip(trip_id: int):
-    """Select a trip's roster in sort order."""
-    return select(Person).where(Person.trip_id == trip_id).order_by(Person.sort_order)
 
 
 def spend_total(trip_id: int, currency_id: int):

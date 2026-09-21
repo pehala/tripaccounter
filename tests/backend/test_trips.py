@@ -150,3 +150,18 @@ def test_list_trips_orders_by_end_date_desc_undated_last(client):
 
     slugs = [row["slug"] for row in client.get("/api/v1/trips").json()["trips"]]
     assert [s for s in slugs if s in {early, undated, late}] == [late, early, undated]
+
+
+def test_trip_payload_orders_people_and_wallets_by_sort_order(client, trip, people):
+    """The trip payload follows the roster's sort_order, and each wallet follows its owner."""
+    for position, person in enumerate(reversed(people)):
+        response = client.patch(
+            f"/api/v1/trips/{trip['slug']}/people/{person['id']}", json={"sort_order": position}
+        )
+        assert response.status_code == 200, response.text
+
+    body = client.get(f"/api/v1/trips/{trip['slug']}").json()["trip"]
+    assert [person["name"] for person in body["people"]] == ["Eva", "Bob", "Ann", "Petr"]
+    assert [wallet["person_id"] for wallet in body["wallets"]] == [
+        person["id"] for person in body["people"]
+    ]

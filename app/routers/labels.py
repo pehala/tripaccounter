@@ -1,7 +1,10 @@
-"""Label routes: create, update, delete."""
+"""Label routes: list, create, update, delete."""
+
+from sqlalchemy.orm import Session
 
 from app.models.labels import Label
-from app.routers.crud import TripChildRoutes
+from app.models.trip import Trip
+from app.routers.crud import Route, TripChildRoutes, route
 from app.schemas.envelopes import LabelEnvelope, LabelListEnvelope
 from app.schemas.requests import LabelCreate, LabelUpdate
 from app.schemas.responses import LabelOut
@@ -14,31 +17,32 @@ class LabelRoutes(TripChildRoutes):
     model = Label
     resource = "label"
     collection = "labels"
-    out = LabelOut
-    create_body = LabelCreate
-    update_body = LabelUpdate
     envelope = LabelEnvelope
     list_envelope = LabelListEnvelope
-    delete_statuses = (404,)
-    list_doc = "List a trip's labels, most used first."
-    create_doc = "Create a new label on a trip."
-    update_doc = "Rename a label."
-    delete_doc = "Delete a label from a trip."
 
-    @classmethod
-    def rows(cls, trip, session):
-        """Return the trip's labels, most used first."""
-        return sorted(trip.labels, key=lambda label: (-label.use_count, label.name))
+    def serialize(self, label: Label, session: Session) -> LabelOut:
+        """Return the label's wire form."""
+        return LabelOut.model_validate(label)
 
-    @classmethod
-    def create(cls, session, trip, body):
+    @route(Route.LIST)
+    def rows(self, session: Session, trip: Trip) -> list[Label]:
+        """List a trip's labels, most used first."""
+        return trip.labels
+
+    @route(Route.CREATE)
+    def create(self, session: Session, trip: Trip, body: LabelCreate) -> Label:
         """Create a new label on a trip."""
         return labels_service.create_label(session, trip.id, body.name)
 
-    @classmethod
-    def update(cls, session, label, body):
+    @route(Route.UPDATE)
+    def update(self, session: Session, label: Label, body: LabelUpdate) -> Label:
         """Rename a label."""
         return labels_service.update_label(session, label, body.name)
 
+    @route(Route.DELETE, statuses=(404,))
+    def delete_row(self, session: Session, label: Label) -> None:
+        """Delete a label from a trip."""
+        labels_service.delete_label(session, label)
 
-router = LabelRoutes.router()
+
+router = LabelRoutes().router()
