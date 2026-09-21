@@ -1,7 +1,7 @@
 """Line item routes: create, update, delete, and preview splits."""
 
 from fastapi import APIRouter, Response
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 
 from app.clock import ClockDep
 from app.deps import SessionDep, TripDep
@@ -57,9 +57,16 @@ def list_items(trip: TripDep, session: SessionDep):
     items = session.execute(queries.items_for_trip(trip.id)).scalars().all()
     roster_ids = active_roster_ids(trip.people)
 
+    # Items dated before the trip started bucket into one "before" group instead
+    # of one per day, so the feed's "Before the trip" section gets a real
+    # server-summed total too, same as every other day - reported separately
+    # below, in before_trip_totals, so day_totals stays real dates only.
+    day = func.date(LineItem.occurred_at)
+    day_key = case((day < trip.start_date, "before"), else_=day) if trip.start_date else day
+
     day_rows = session.execute(
         select(
-            func.date(LineItem.occurred_at),
+            day_key,
             TripCurrency.code,
             TripCurrency.id,
             func.sum(LineItem.amount_minor),
@@ -67,28 +74,26 @@ def list_items(trip: TripDep, session: SessionDep):
         .select_from(LineItem)
         .join(TripCurrency, TripCurrency.id == LineItem.currency_id)
         .where(LineItem.trip_id == trip.id)
-        .group_by(func.date(LineItem.occurred_at), TripCurrency.id)
-        .order_by(
-            func.date(LineItem.occurred_at).desc(),
-            TripCurrency.is_primary.desc(),
-            TripCurrency.code,
-        )
+        .group_by(day_key, TripCurrency.id)
+        .order_by(day_key.desc(), TripCurrency.is_primary.desc(), TripCurrency.code)
     ).all()
     day_totals: dict[str, list[DayCurrencyTotalOut]] = {}
+    before_trip_totals: list[DayCurrencyTotalOut] = []
     for day, code, currency_id, amount_minor in day_rows:
-        day_totals.setdefault(day, []).append(
-            DayCurrencyTotalOut(
-                currency_code=code,
-                currency_id=currency_id,
-                amount=to_wire(amount_minor, AMOUNT_SCALE),
-            )
+        total = DayCurrencyTotalOut(
+            currency_code=code, currency_id=currency_id, amount=to_wire(amount_minor, AMOUNT_SCALE)
         )
+        if day == "before":
+            before_trip_totals.append(total)
+        else:
+            day_totals.setdefault(day, []).append(total)
 
     transfer_rows = session.execute(queries.transfers_for_trip(trip.id)).scalars().all()
 
     return {
         "items": [ItemOut.from_item(item, roster_ids) for item in items],
         "day_totals": [DayTotalOut(date=day, totals=totals) for day, totals in day_totals.items()],
+        "before_trip_totals": before_trip_totals,
         "transfers": [TransferOut.from_transfer(row) for row in transfer_rows],
     }
 

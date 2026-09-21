@@ -4,7 +4,9 @@ One row per fixture item, in order; one owed chip per participating person, in
 roster order, and a person with no share (`owed: null`) gets no chip at all;
 `owed: 0` is a chip with a literal 0; labels as badges; country flag shown;
 `empty.json` shows the empty state and the FAB; the day separator shows
-`items.day_totals`, one chip per currency, hidden while a filter is active.
+`items.day_totals`, one chip per currency, hidden while a filter is active;
+items dated before the trip's start date merge into one "Before the trip"
+group, its total chip from the separate `items.before_trip_totals`.
 """
 
 import re
@@ -60,6 +62,32 @@ def zero_share_page(stub, open_trip):
         "**/api/v1/trips/*/items",
         lambda request: (
             (200, {"items": [ZERO_SHARE_ITEM], "day_totals": []})
+            if request.method == "GET"
+            else None
+        ),
+    )
+    return open_trip()
+
+
+@pytest.fixture
+def before_trip_page(stub, open_trip):
+    """Return the Items tab with GET items answering two items from before the 2026-09-12 start."""
+    stub(
+        "**/api/v1/trips/*/items",
+        lambda request: (
+            (
+                200,
+                {
+                    "items": [
+                        {**ZERO_SHARE_ITEM, "id": 9998, "occurred_at": "2026-09-10T08:00:00Z"},
+                        {**ZERO_SHARE_ITEM, "id": 9997, "occurred_at": "2026-09-11T20:00:00Z"},
+                    ],
+                    "day_totals": [],
+                    "before_trip_totals": [
+                        {"currency_code": "ISK", "currency_id": 1, "amount": 2000}
+                    ],
+                },
+            )
             if request.method == "GET"
             else None
         ),
@@ -141,6 +169,18 @@ def test_day_totals_hidden_while_filtering(items_page):
     items_page.get_by_placeholder("filter by name or label").fill("Dinner")
 
     expect(items_page.locator(".day-sep .num span")).to_have_count(0)
+
+
+def test_items_before_trip_start_share_one_before_trip_group(before_trip_page):
+    """Two items from before the trip's start date merge into a single "Before the trip" group."""
+    expect(before_trip_page.locator(".day-sep small").first).to_have_text("Before the trip")
+    expect(before_trip_page.locator(".day-sep")).to_have_count(1)
+    expect(before_trip_page.locator(ROW)).to_have_count(2)
+
+
+def test_before_trip_group_shows_its_own_total_chip(before_trip_page):
+    """The merged "before the trip" group renders `before_trip_totals`, the server-summed total."""
+    expect(before_trip_page.locator(".day-sep .num span")).to_have_text(["2,000 ISK"])
 
 
 # --- wallets and transfers -------------------------------------------------

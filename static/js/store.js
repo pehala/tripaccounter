@@ -10,6 +10,7 @@ const state = {
   labels: null,
   items: null,
   dayTotals: null,
+  beforeTripTotals: null,
   transfers: null,
   balances: null,
   wallets: null,
@@ -36,6 +37,7 @@ const LOADERS = {
   items: (slug) => api.get(`/trips/${slug}/items`).then((r) => {
     state.items = r.items;
     state.dayTotals = r.day_totals;
+    state.beforeTripTotals = r.before_trip_totals;
     state.transfers = r.transfers;
   }),
   balances: (slug) => api.get(`/trips/${slug}/balances`).then((r) => { state.balances = r.balances; }),
@@ -59,7 +61,7 @@ export function invalidateMoneyViews() {
 
 export async function load(slug) {
   state.slug = slug;
-  state.trip = state.labels = state.items = state.dayTotals = null;
+  state.trip = state.labels = state.items = state.dayTotals = state.beforeTripTotals = null;
   state.transfers = state.balances = state.wallets = state.stats = null;
   state.error = null;
   notify();

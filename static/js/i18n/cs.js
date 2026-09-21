@@ -41,6 +41,7 @@ export default {
   'notfound.body': 'Na tomto odkazu není žádný výlet.',
 
   'items.empty': 'Zatím žádné výdaje.',
+  'items.before_trip': 'Před výletem',
   'items.filter_placeholder': 'filtrovat podle jména nebo štítku',
   'items.paid_by': 'zaplatil/a {name}',
   'items.map': 'mapa',

@@ -287,7 +287,10 @@ paginate. Filters and `limit` are a future additive change.
 The item list also carries `day_totals`: one entry per day with items, newest first,
 each holding one `{currency_code, currency_id, amount}` per currency that day —
 summed server-side in the same query, so the feed's per-day total is never a
-client-side accumulation (`design/FRONTEND.md` §4 rule 1).
+client-side accumulation (`design/FRONTEND.md` §4 rule 1). Items dated before the
+trip's `start_date` are excluded from `day_totals` and summed the same way into
+`before_trip_totals`, a flat `[{currency_code, currency_id, amount}]` list — its own
+key rather than a sentinel `date`, since `date` elsewhere is always a real day.
 
 ### Writing an item
 A `PATCH` leaves omitted fields untouched, but sending `shares` **replaces the whole
