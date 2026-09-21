@@ -33,7 +33,7 @@ export function Shell({ children }) {
 
   return html`
     <nav class="navbar navbar-expand bg-body border-bottom shell-bar py-1 small">
-      <div class="container" style="max-width:48rem">
+      <div class="container">
         <!-- alt="" keeps the mark decorative: the brand text beside it already names the link. -->
         <a class="navbar-brand fw-semibold fs-6 me-3" href="/">
           <img src="/favicon.svg" alt="" width="18" height="18" class="d-inline-block align-text-bottom me-1" />

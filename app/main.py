@@ -32,8 +32,8 @@ from app.services.errors.fields import RequiredError
 
 logger = logging.getLogger("app")
 
-# index.html's own assets are the only root-relative references in it; the four CDN
-# tags are absolute `https://` URLs and do not match.
+# index.html's own assets are the only root-relative references in it; the CDN tags
+# and the import map's URLs are absolute `https://` and do not match.
 LOCAL_ASSET_REF = re.compile(r'\b(href|src)="/')
 
 ROUTERS = (
