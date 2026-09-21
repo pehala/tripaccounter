@@ -7,12 +7,12 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     DateTime,
-    ForeignKeyConstraint,
     UniqueConstraint,
     func,
 )
 from sqlmodel import Field, Relationship, SQLModel
 
+from app.models.constraints import trip_scoped_fk
 from app.models.labels import ItemLabel, Label
 from app.models.roster import Person, TripCountry, TripCurrency
 from app.models.trip import Trip
@@ -26,26 +26,10 @@ class LineItem(SQLModel, table=True):
     __table_args__ = (
         # Cross-trip refs (a currency/payer/country from another trip) are
         # rejected at the DB, not just by services/items.py's validate_write.
-        ForeignKeyConstraint(
-            ["currency_id", "trip_id"],
-            ["trip_currency.id", "trip_currency.trip_id"],
-            name="fk_item_currency_trip",
-        ),
-        ForeignKeyConstraint(
-            ["payer_id", "trip_id"],
-            ["person.id", "person.trip_id"],
-            name="fk_item_payer_trip",
-        ),
-        ForeignKeyConstraint(
-            ["country_id", "trip_id"],
-            ["trip_country.id", "trip_country.trip_id"],
-            name="fk_item_country_trip",
-        ),
-        ForeignKeyConstraint(
-            ["wallet_id", "trip_id"],
-            ["wallet.id", "wallet.trip_id"],
-            name="fk_item_wallet_trip",
-        ),
+        trip_scoped_fk("currency_id", "trip_currency", "fk_item_currency_trip"),
+        trip_scoped_fk("payer_id", "person", "fk_item_payer_trip"),
+        trip_scoped_fk("country_id", "trip_country", "fk_item_country_trip"),
+        trip_scoped_fk("wallet_id", "wallet", "fk_item_wallet_trip"),
     )
 
     id: int | None = Field(default=None, primary_key=True)

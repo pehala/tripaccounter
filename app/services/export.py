@@ -3,19 +3,13 @@
 import csv
 import io
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.items import LineItem
+from app.models.roster import active_roster_ids
 from app.models.trip import Trip
-from app.models.wallets import WalletTransfer
-from app.schemas.responses import (
-    ITEM_LOAD_OPTIONS,
-    TRANSFER_LOAD_OPTIONS,
-    ItemOut,
-    TransferOut,
-    TripOut,
-)
+from app.schemas.responses import ItemOut, TransferOut, TripOut
+from app.services import queries
 from app.services.roster import country_item_counts
 
 # Every column but the trailing share triple comes straight off `ItemOut` — the same
@@ -46,23 +40,12 @@ CSV_HEADER = [
 
 
 def _items(session: Session, trip_id: int) -> list[LineItem]:
-    return (
-        session.execute(
-            select(LineItem)
-            .where(LineItem.trip_id == trip_id)
-            .options(*ITEM_LOAD_OPTIONS)
-            .order_by(LineItem.occurred_at, LineItem.id)
-        )
-        .scalars()
-        .all()
-    )
+    return session.execute(queries.items_for_trip(trip_id, newest_first=False)).scalars().all()
 
 
 def _export_rows(session: Session, trip: Trip) -> list[dict]:
     """One flat dict per resolved share: the row shape CSV and JSON export share."""
-    roster_ids = [
-        person.id for person in sorted(trip.people, key=lambda p: p.sort_order) if person.active
-    ]
+    roster_ids = active_roster_ids(trip.people)
     person_names = {person.id: person.name for person in trip.people}
     rows = []
     for item in _items(session, trip.id):
@@ -121,16 +104,7 @@ def export_csv(session: Session, trip: Trip) -> str:
 
 def export_json(session: Session, trip: Trip) -> dict:
     """Return the whole trip as the wire JSON envelope, items share-grained like the CSV."""
-    transfers = (
-        session.execute(
-            select(WalletTransfer)
-            .where(WalletTransfer.trip_id == trip.id)
-            .options(*TRANSFER_LOAD_OPTIONS)
-            .order_by(WalletTransfer.occurred_at.desc(), WalletTransfer.id.desc())
-        )
-        .scalars()
-        .all()
-    )
+    transfers = session.execute(queries.transfers_for_trip(trip.id)).scalars().all()
     return {
         "trip": TripOut.from_trip(trip, country_item_counts(session, trip.id)),
         "items": _export_rows(session, trip),

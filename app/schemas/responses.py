@@ -16,7 +16,7 @@ from app.models.wallets import WalletTransfer
 from app.schemas.fields import iso_z
 from app.services.countries import flag_from_code
 from app.services.money import AMOUNT_SCALE, to_wire
-from app.services.splits import format_weight, resolve_shares_wire
+from app.services.splits import format_weight, resolve_shares_wire, rows_from_shares
 
 Number = float | int
 
@@ -258,15 +258,7 @@ class ItemOut(BaseModel):
     @classmethod
     def from_item(cls, item: LineItem, roster_ids_sorted: list[int]) -> "ItemOut":
         """Build an ItemOut from a LineItem model instance and the trip roster."""
-        rows = [
-            {
-                "person_id": share.person_id,
-                "weight_scaled": share.weight_scaled,
-                "owed_minor": share.owed_minor,
-                "exact": share.split_mode_exact,
-            }
-            for share in item.shares
-        ]
+        rows = rows_from_shares(item.shares)
         resolved = resolve_shares_wire(roster_ids_sorted, rows, item.amount_minor)
         return cls(
             id=item.id,

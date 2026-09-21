@@ -10,25 +10,12 @@ from app.schemas.error_shapes import error_responses
 from app.schemas.requests import WalletCreate, WalletUpdate
 from app.schemas.responses import WalletOut
 from app.services import roster
-from app.services.errors.api import NotFoundError, ValidationError, run_field
+from app.services.errors.api import ValidationError, run_field
 from app.services.errors.fields import NotInTripError
+from app.services.scope import in_trip, require_in_trip
 from app.services.wallets import wallet_balances
 
 router = APIRouter(tags=["wallets"])
-
-
-def _get_wallet(trip, wallet_id: int, session: SessionDep) -> Wallet:
-    wallet = session.get(Wallet, wallet_id)
-    if wallet is None or wallet.trip_id != trip.id:
-        raise NotFoundError("wallet")
-    return wallet
-
-
-def _get_person(trip, person_id: int, session: SessionDep) -> Person | None:
-    person = session.get(Person, person_id)
-    if person is None or person.trip_id != trip.id:
-        return None
-    return person
 
 
 @router.get(
@@ -47,7 +34,7 @@ def list_wallets(trip: TripDep, session: SessionDep):
 )
 def create_wallet(body: WalletCreate, trip: TripDep, session: SessionDep):
     """Add a new wallet, owned by one of the trip's people."""
-    person = _get_person(trip, body.person_id, session)
+    person = in_trip(session, Person, body.person_id, trip.id)
     if person is None:
         raise ValidationError({"person_id": NotInTripError()})
     wallet = run_field("name", roster.create_wallet, session, trip, person, body.name, body.tracked)
@@ -61,7 +48,7 @@ def create_wallet(body: WalletCreate, trip: TripDep, session: SessionDep):
 )
 def update_wallet(wallet_id: int, body: WalletUpdate, trip: TripDep, session: SessionDep):
     """Update a wallet's fields."""
-    wallet = _get_wallet(trip, wallet_id, session)
+    wallet = require_in_trip(session, Wallet, wallet_id, trip.id, "wallet")
     wallet = run_field(
         "name",
         roster.update_wallet,
@@ -80,6 +67,6 @@ def update_wallet(wallet_id: int, body: WalletUpdate, trip: TripDep, session: Se
 )
 def delete_wallet(wallet_id: int, trip: TripDep, session: SessionDep):
     """Delete a wallet from a trip."""
-    wallet = _get_wallet(trip, wallet_id, session)
+    wallet = require_in_trip(session, Wallet, wallet_id, trip.id, "wallet")
     run_field("id", roster.delete_wallet, session, wallet)
     return Response(status_code=204)

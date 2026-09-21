@@ -9,17 +9,11 @@ from app.schemas.error_shapes import error_responses
 from app.schemas.requests import CountryCreate, CountryUpdate
 from app.schemas.responses import CountryOut
 from app.services import roster
-from app.services.errors.api import NotFoundError, run_field
+from app.services.errors.api import run_field
 from app.services.roster import country_item_counts
+from app.services.scope import require_in_trip
 
 router = APIRouter(tags=["countries"])
-
-
-def _get_country(trip, country_id: int, session: SessionDep) -> TripCountry:
-    country = session.get(TripCountry, country_id)
-    if country is None or country.trip_id != trip.id:
-        raise NotFoundError("country")
-    return country
 
 
 @router.get(
@@ -57,7 +51,7 @@ def create_country(body: CountryCreate, trip: TripDep, session: SessionDep):
 )
 def update_country(country_id: int, body: CountryUpdate, trip: TripDep, session: SessionDep):
     """Update a trip country's fields."""
-    country = _get_country(trip, country_id, session)
+    country = require_in_trip(session, TripCountry, country_id, trip.id, "country")
     country = run_field(
         "name",
         roster.update_country,
@@ -77,6 +71,6 @@ def update_country(country_id: int, body: CountryUpdate, trip: TripDep, session:
 )
 def delete_country(country_id: int, trip: TripDep, session: SessionDep):
     """Delete a country from a trip."""
-    country = _get_country(trip, country_id, session)
+    country = require_in_trip(session, TripCountry, country_id, trip.id, "country")
     run_field("id", roster.delete_country, session, country)
     return Response(status_code=204)
