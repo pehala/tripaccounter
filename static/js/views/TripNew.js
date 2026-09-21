@@ -84,7 +84,7 @@ export function TripNew() {
   }
 
   return html`
-    <div class="container py-4" style="max-width:40rem">
+    <div class="container py-4">
       <h1 class="h4 mb-3">${t('tripnew.title')}</h1>
       <form onSubmit=${submit}>
         <div class="mb-3">
