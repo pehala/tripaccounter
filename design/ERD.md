@@ -320,19 +320,23 @@ from a suggestion, though — a suggestion is never recorded, a transfer always 
 
 ## Indexes
 ```
-trip(slug) UNIQUE
-person(trip_id, name) UNIQUE            person(trip_id, sort_order)
-trip_currency(trip_id, code) UNIQUE
-trip_country(trip_id, name) UNIQUE      trip_country(trip_id, sort_order)
-label(trip_id, name_norm) UNIQUE        label(trip_id, use_count DESC)
-item_label(item_id, label_id) PK        item_label(label_id)
-line_item(trip_id, occurred_at DESC)    line_item(payer_id)   line_item(currency_id)
-line_item(country_id)                   line_item(wallet_id)
-item_share(item_id)                     item_share(person_id)
-item_share(item_id, person_id) UNIQUE
-wallet(person_id)                       wallet(person_id, name) UNIQUE
-wallet(id, trip_id) UNIQUE
+trip(slug) UNIQUE                       trip(slug)
+person(trip_id, name) UNIQUE            person(id, trip_id) UNIQUE
+trip_currency(trip_id, code) UNIQUE     trip_currency(id, trip_id) UNIQUE
+trip_country(trip_id, name) UNIQUE      trip_country(id, trip_id) UNIQUE
+label(trip_id, name_norm) UNIQUE        label(name_norm)
+item_label(item_id, label_id) PK
+line_item(trip_id)                      line_item(occurred_at)  line_item(payer_id)
+line_item(currency_id)                  line_item(country_id)   line_item(wallet_id)
+item_share(item_id, person_id) UNIQUE   item_share(item_id)     item_share(person_id)
+wallet(person_id, name) UNIQUE          wallet(id, trip_id) UNIQUE
+wallet(person_id)                       wallet(trip_id)
 wallet_transfer(trip_id, occurred_at)   wallet_transfer(from_wallet_id)
 wallet_transfer(to_wallet_id)
 share_owed                              VIEW — not a table, no index of its own
 ```
+
+The roster's `sort_order` carries no index. `Trip.people`, `Trip.currencies`,
+`Trip.countries` and `Person.wallets` declare `order_by` on the relationship, so
+every load of one sorts on it — over the handful of rows a trip holds, which is why
+the column is left unindexed.

@@ -19,11 +19,9 @@ hand-written routers.
 One entity is one subclass of `TripChildRoutes` and one module under `app/routers/`.
 A handful of class attributes name the entity; a decorated method declares each route.
 
+`app/routers/countries.py`, in full but for its imports:
+
 ```python
-from app.models.trip import Trip
-from app.routers.crud import Route, TripChildRoutes, route
-
-
 class CountryRoutes(TripChildRoutes):
     """The countries visited on a trip, each carrying its item count."""
 
@@ -37,6 +35,15 @@ class CountryRoutes(TripChildRoutes):
         """Return the country with the number of items recorded in it."""
         counts = country_item_counts(session, country.trip_id)
         return CountryOut.from_country(country, counts.get(country.id, 0))
+
+    def serialize_list(
+        self, countries: list[TripCountry], session: Session, trip: Trip
+    ) -> list[CountryOut]:
+        """Read the whole trip's item counts once, rather than one aggregate per country."""
+        counts = country_item_counts(session, trip.id)
+        return [
+            CountryOut.from_country(country, counts.get(country.id, 0)) for country in countries
+        ]
 
     @route(Route.LIST)
     def rows(self, session: Session, trip: Trip) -> list[TripCountry]:
@@ -71,7 +78,7 @@ top to bottom tells you which routes exist, what each one takes and what each on
 
 | Attribute | What it fixes |
 |---|---|
-| `model` | the SQLAlchemy model `fetch` scopes an id against |
+| `model` | the SQLAlchemy model a path id is scoped against |
 | `resource` | the singular path and envelope word — `{country_id}`, `{"country": …}` |
 | `collection` | the plural path and envelope word — `/countries`, `{"countries": […]}` |
 | `envelope` | the response model of create and update |
@@ -94,6 +101,14 @@ def serialize(self, label: Label, session: Session) -> LabelOut:
 
 Countries and people build a derived field; wallets returns the report row that
 `wallet_balances` already produced.
+
+### `serialize_list`
+
+Concrete, and the one the collection's GET calls. The base serializes row by row, so
+an entity that writes only `serialize` gets the list for free. A row carrying a
+trip-wide aggregate overrides it to read that aggregate once - `countries.py` does,
+because `serialize` alone would run its `GROUP BY` over the trip's items once per
+country.
 
 ### What the base annotates
 
@@ -220,7 +235,7 @@ knows which request field a service argument came from.
 |---|---|
 | `people.py` | `serialize` adds the derived initial and weight |
 | `currencies.py` | `field="code"` on create and update |
-| `countries.py` | `serialize` adds the item count, re-querying the counts per row |
+| `countries.py` | `serialize` adds the item count; `serialize_list` reads the counts once for the collection |
 | `labels.py` | `rows` orders by use count, not sort order; `statuses=(404,)` — a label is never in use |
 | `wallets.py` | `rows` returns the balances report; `serialize` passes it through; create resolves the owning person first |
 
@@ -238,39 +253,15 @@ transfer write it drops its cached wallets and refetches the report.
 
 ---
 
-## 5. What this replaced
+## 5. Where to look
 
-Five hand-written routers, then a base class carrying twelve to fourteen class
-attributes per subclass. The attributes that were really per-route — the request
-bodies, the four route descriptions, the conflict field, the delete statuses — sat in
-one block at the top of the class where nothing said which route each served. They are
-now arguments to the route they serve, and `out` is gone entirely because `serialize`
-is written out.
+| Question | File |
+|---|---|
+| what a route answers with | `app/schemas/envelopes.py`, `app/schemas/responses.py` |
+| what a route accepts | `app/schemas/requests.py` |
+| what a write does | `app/services/roster.py`, `app/services/labels.py` |
+| what an error means | `app/services/errors/fields.py`, `design/API.md` §4 |
+| the published shapes | `openapi.json`, or `/docs` on a running server |
 
-The generated `openapi.json` is unchanged by the move. The four route descriptions come
-from docstrings that repeat the previous `*_doc` strings verbatim.
-
----
-
-## 6. Implementation plan
-
-Two commits, in order.
-
-**1. `refactor(errors): replace run_field with a field_errors context manager.`**
-Independent of everything below. Add `field_errors` beside `wrap_field_error` in
-`app/services/errors/api.py`, convert the nine call sites in `crud.py`, `items.py` and
-`trips.py`, delete `run_field`. In `trips.py` the three loops move inside a single
-`with` each rather than wrapping every iteration. No spec change, no test change.
-
-**2. `refactor(routers): declare trip-scoped CRUD routes per route.`**
-
-1. `crud.py`: add `Route`, `RouteSpec`, `route()`, `__init_subclass__`; make
-   `serialize` abstract and the class instance-based; keep `endpoint()` as is; turn the
-   base defaults into the `remove` helper.
-2. Convert the five subclasses. Each ends with `router = XRoutes().router()`.
-3. `make openapi-check` must pass untouched. If it does not, a docstring drifted from
-   the `*_doc` string it replaced — fix the docstring, not the snapshot.
-4. `make lint test_backend`.
-
-No test changes. The suite drives the routes over HTTP and never imports these classes,
-so a green run is the evidence that the declaration format did not move the contract.
+A change to any route here changes `openapi.json`. Regenerate it with `make openapi`
+in the same commit; `make openapi-check` is the CI job that fails on a stale one.
