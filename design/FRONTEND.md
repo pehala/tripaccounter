@@ -13,7 +13,8 @@ and the split phrase ("equally, 4 ways", "shares 1·1·1·0.5").
 ## 1. Stack
 
 Preact + htm as ES modules through an import map. No build step, no Node, no npm.
-Pinned versions with SRI hashes. Bootstrap 5 CSS plus `bootstrap.bundle.min.js` for
+Pinned versions with SRI hashes. Page width is Bootstrap's `.container` at its own
+breakpoints, with no cap of ours on top. Bootstrap 5 CSS plus `bootstrap.bundle.min.js` for
 the modal and tabs — Preact renders the markup, Bootstrap animates it. Bootstrap
 Icons for glyphs. Roughly 500 lines of own JS.
 

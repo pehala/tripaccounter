@@ -64,7 +64,7 @@ export function Trip({ slug, tab }) {
   return html`
     <${Flash} />
     <header class="bg-body border-bottom sticky-top" ref=${headerRef}>
-      <div class="container" style="max-width:48rem">
+      <div class="container">
         <div class="d-flex align-items-baseline gap-2 flex-wrap pt-3">
           <h1 class="h5 mb-0">${trip.name}</h1>
           <small class="text-body-secondary">${subtitle}</small>
@@ -85,7 +85,7 @@ export function Trip({ slug, tab }) {
       </div>
     </header>
 
-    <main class="container py-3" style="max-width:48rem">
+    <main class="container py-3">
       ${tab === 'items' && html`<${Items} />`}
       ${tab === 'balances' && html`<${Balances} />`}
       ${tab === 'wallets' && html`<${Wallets} />`}
