@@ -37,7 +37,8 @@ def build_shares(
     `FieldError` for every rule in API.md §4 that applies to `shares`.
     `shares_in` is never None here — "omitted means equal over all active
     people" is resolved by the caller, which knows the roster; this function
-    only validates.
+    only validates. `mode` is `equal`, `shares` or `exact`: the `Literal` both
+    write schemas validate, so `exact` is the remaining case.
     """
     if len(shares_in) == 0:
         raise EmptyError()
@@ -73,7 +74,7 @@ def build_shares(
                     "exact": False,
                 }
             )
-        elif mode == "exact":
+        else:
             share_amount = parse_amount(raw.get("amount"), allow_zero=True)
             rows.append(
                 {
@@ -83,8 +84,6 @@ def build_shares(
                     "exact": True,
                 }
             )
-        else:
-            raise EmptyError()
 
     if mode == "exact":
         total = sum(row["owed_minor"] for row in rows)
