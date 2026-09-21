@@ -36,7 +36,7 @@ def upgrade() -> None:
         sa.Column(
             "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name="pk_trip"),
         sa.UniqueConstraint("slug", name="uq_trip_slug"),
     )
     op.create_index(op.f("ix_trip_slug"), "trip", ["slug"], unique=False)
@@ -54,8 +54,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["trip_id"],
             ["trip.id"],
+            name="fk_label_trip_id_trip",
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name="pk_label"),
         sa.UniqueConstraint("trip_id", "name_norm", name="uq_label_trip_norm"),
     )
     op.create_index(op.f("ix_label_name_norm"), "label", ["name_norm"], unique=False)
@@ -74,8 +75,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["trip_id"],
             ["trip.id"],
+            name="fk_person_trip_id_trip",
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name="pk_person"),
         sa.UniqueConstraint("id", "trip_id", name="uq_person_id_trip"),
         sa.UniqueConstraint("trip_id", "name", name="uq_person_trip_name"),
     )
@@ -92,8 +94,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["trip_id"],
             ["trip.id"],
+            name="fk_trip_country_trip_id_trip",
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name="pk_trip_country"),
         sa.UniqueConstraint("id", "trip_id", name="uq_country_id_trip"),
         sa.UniqueConstraint("trip_id", "name", name="uq_country_trip_name"),
     )
@@ -107,8 +110,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["trip_id"],
             ["trip.id"],
+            name="fk_trip_currency_trip_id_trip",
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name="pk_trip_currency"),
         sa.UniqueConstraint("id", "trip_id", name="uq_currency_id_trip"),
         sa.UniqueConstraint("trip_id", "code", name="uq_currency_trip_code"),
     )
@@ -129,8 +133,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["trip_id"],
             ["trip.id"],
+            name="fk_wallet_trip_id_trip",
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name="pk_wallet"),
         sa.UniqueConstraint("id", "trip_id", name="uq_wallet_id_trip"),
         sa.UniqueConstraint("person_id", "name", name="uq_wallet_person_name"),
     )
@@ -174,11 +179,12 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["trip_id"],
             ["trip.id"],
+            name="fk_line_item_trip_id_trip",
         ),
         sa.ForeignKeyConstraint(
             ["wallet_id", "trip_id"], ["wallet.id", "wallet.trip_id"], name="fk_item_wallet_trip"
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name="pk_line_item"),
     )
     op.create_index(op.f("ix_line_item_country_id"), "line_item", ["country_id"], unique=False)
     op.create_index(op.f("ix_line_item_currency_id"), "line_item", ["currency_id"], unique=False)
@@ -231,8 +237,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["trip_id"],
             ["trip.id"],
+            name="fk_wallet_transfer_trip_id_trip",
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name="pk_wallet_transfer"),
     )
     op.create_index(
         op.f("ix_wallet_transfer_from_wallet_id"),
@@ -256,12 +263,14 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["item_id"],
             ["line_item.id"],
+            name="fk_item_label_item_id_line_item",
         ),
         sa.ForeignKeyConstraint(
             ["label_id"],
             ["label.id"],
+            name="fk_item_label_label_id_label",
         ),
-        sa.PrimaryKeyConstraint("item_id", "label_id"),
+        sa.PrimaryKeyConstraint("item_id", "label_id", name="pk_item_label"),
     )
     op.create_table(
         "item_share",
@@ -279,12 +288,14 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["item_id"],
             ["line_item.id"],
+            name="fk_item_share_item_id_line_item",
         ),
         sa.ForeignKeyConstraint(
             ["person_id"],
             ["person.id"],
+            name="fk_item_share_person_id_person",
         ),
-        sa.PrimaryKeyConstraint("id"),
+        sa.PrimaryKeyConstraint("id", name="pk_item_share"),
         sa.UniqueConstraint("item_id", "person_id", name="uq_share_item_person"),
     )
     op.create_index(op.f("ix_item_share_item_id"), "item_share", ["item_id"], unique=False)
