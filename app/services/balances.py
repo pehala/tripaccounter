@@ -10,12 +10,11 @@ adds equal and opposite hundredths and never needs a conversion to balance.
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, aliased
 
-from app.db_views import share_owed_view
 from app.models.items import LineItem
-from app.models.roster import Person, TripCurrency
+from app.models.roster import Person
 from app.models.wallets import Wallet, WalletTransfer
 from app.schemas.responses import BalanceBlockOut, BalancePersonOut, SuggestionOut
-from app.services import settle
+from app.services import queries, settle
 from app.services.money import AMOUNT_SCALE, MICRO_PER_MINOR, MICRO_SCALE, to_wire
 
 
@@ -59,15 +58,7 @@ def _cross_owner_by_person(session: Session, trip_id: int, currency_id: int) -> 
 
 def compute_balances(session: Session, trip_id: int) -> list[BalanceBlockOut]:
     """Return each currency's total spend, per-person balance fields, and settle-up suggestions."""
-    currencies = (
-        session.execute(
-            select(TripCurrency)
-            .where(TripCurrency.trip_id == trip_id)
-            .order_by(TripCurrency.sort_order)
-        )
-        .scalars()
-        .all()
-    )
+    currencies = session.execute(queries.currencies_for_trip(trip_id)).scalars().all()
     people = (
         session.execute(select(Person).where(Person.trip_id == trip_id).order_by(Person.sort_order))
         .scalars()
@@ -77,11 +68,7 @@ def compute_balances(session: Session, trip_id: int) -> list[BalanceBlockOut]:
 
     blocks = []
     for currency in currencies:
-        total_spent_minor = session.execute(
-            select(func.coalesce(func.sum(LineItem.amount_minor), 0)).where(
-                LineItem.trip_id == trip_id, LineItem.currency_id == currency.id
-            )
-        ).scalar_one()
+        total_spent_minor = session.execute(queries.spend_total(trip_id, currency.id)).scalar_one()
         sent_minor, received_minor = _cross_owner_by_person(session, trip_id, currency.id)
         if not total_spent_minor and not sent_minor and not received_minor:
             continue
@@ -93,16 +80,7 @@ def compute_balances(session: Session, trip_id: int) -> list[BalanceBlockOut]:
                 .group_by(LineItem.payer_id)
             ).all()
         )
-        owed_micro = dict(
-            session.execute(
-                select(share_owed_view.c.person_id, func.sum(share_owed_view.c.owed_micro))
-                .where(
-                    share_owed_view.c.trip_id == trip_id,
-                    share_owed_view.c.currency_id == currency.id,
-                )
-                .group_by(share_owed_view.c.person_id)
-            ).all()
-        )
+        owed_micro = dict(session.execute(queries.owed_by_person(trip_id, currency.id)).all())
 
         net_micro: dict[int, int] = {}
         person_blocks = []

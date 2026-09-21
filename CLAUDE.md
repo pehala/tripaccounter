@@ -13,6 +13,7 @@ layers, how money moves, and where the two halves meet.
 | [`design/API.md`](design/API.md) | the contract. Shared; changing it is a joint decision |
 | [`design/ERD.md`](design/ERD.md) | entities, invariants, indexes |
 | [`design/BACKEND.md`](design/BACKEND.md) | `app/` — what belongs in which layer, `tests/backend/` |
+| [`design/CRUD_ROUTES.md`](design/CRUD_ROUTES.md) | `app/routers/crud.py` — how the five roster entities declare their four routes |
 | [`design/FRONTEND.md`](design/FRONTEND.md) | `static/` — the seven rules, `tests/frontend/` |
 | [`DEPLOY.md`](DEPLOY.md) | the runbook: quadlets, host nginx, TLS, upgrades, backups |
 | [`design/MOCKAPI.md`](design/MOCKAPI.md) | the mock API behind the Playwright suite — fixture grammar, what the engine does with it |

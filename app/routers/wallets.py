@@ -1,85 +1,63 @@
 """Wallet routes: CRUD, and the per-currency balances report on the same collection."""
 
-from fastapi import APIRouter, Response
+from sqlalchemy.orm import Session
 
-from app.deps import SessionDep, TripDep
 from app.models.roster import Person
+from app.models.trip import Trip
 from app.models.wallets import Wallet
+from app.routers.crud import Route, TripChildRoutes, route
 from app.schemas.envelopes import WalletEnvelope, WalletListEnvelope
-from app.schemas.error_shapes import error_responses
 from app.schemas.requests import WalletCreate, WalletUpdate
-from app.schemas.responses import WalletOut
+from app.schemas.responses import WalletReportOut
 from app.services import roster
-from app.services.errors.api import NotFoundError, ValidationError, run_field
+from app.services.errors.api import ValidationError
 from app.services.errors.fields import NotInTripError
+from app.services.scope import in_trip
 from app.services.wallets import wallet_balances
 
-router = APIRouter(tags=["wallets"])
+
+class WalletRoutes(TripChildRoutes):
+    """A trip's wallets; the collection answers with balances, a single wallet without."""
+
+    model = Wallet
+    resource = "wallet"
+    collection = "wallets"
+    envelope = WalletEnvelope
+    list_envelope = WalletListEnvelope
+
+    def serialize(
+        self, wallet: Wallet | WalletReportOut, session: Session
+    ) -> WalletReportOut | Wallet:
+        """Return the row as it stands: a report row from `rows`, a `Wallet` from a write.
+
+        Both reach the wire through the route's response model.
+        """
+        return wallet
+
+    @route(Route.LIST)
+    def rows(self, session: Session, trip: Trip) -> list[WalletReportOut]:
+        """Get every wallet on the trip with its per-currency balances."""
+        return wallet_balances(session, trip.id)
+
+    @route(Route.CREATE)
+    def create(self, session: Session, trip: Trip, body: WalletCreate) -> Wallet:
+        """Add a new wallet, owned by one of the trip's people."""
+        person = in_trip(session, Person, body.person_id, trip.id)
+        if person is None:
+            raise ValidationError({"person_id": NotInTripError()})
+        return roster.create_wallet(session, trip, person, body.name, body.tracked)
+
+    @route(Route.UPDATE)
+    def update(self, session: Session, wallet: Wallet, body: WalletUpdate) -> Wallet:
+        """Update a wallet's fields."""
+        return roster.update_wallet(
+            session, wallet, body.name, body.tracked, body.is_default, body.sort_order
+        )
+
+    @route(Route.DELETE)
+    def delete_row(self, session: Session, wallet: Wallet) -> None:
+        """Delete a wallet from a trip."""
+        roster.delete_wallet(session, wallet)
 
 
-def _get_wallet(trip, wallet_id: int, session: SessionDep) -> Wallet:
-    wallet = session.get(Wallet, wallet_id)
-    if wallet is None or wallet.trip_id != trip.id:
-        raise NotFoundError("wallet")
-    return wallet
-
-
-def _get_person(trip, person_id: int, session: SessionDep) -> Person | None:
-    person = session.get(Person, person_id)
-    if person is None or person.trip_id != trip.id:
-        return None
-    return person
-
-
-@router.get(
-    "/trips/{slug}/wallets", response_model=WalletListEnvelope, responses=error_responses(404)
-)
-def list_wallets(trip: TripDep, session: SessionDep):
-    """Get every wallet on the trip with its per-currency balances."""
-    return {"wallets": wallet_balances(session, trip.id)}
-
-
-@router.post(
-    "/trips/{slug}/wallets",
-    status_code=201,
-    response_model=WalletEnvelope,
-    responses=error_responses(400, 404, 409, 422),
-)
-def create_wallet(body: WalletCreate, trip: TripDep, session: SessionDep):
-    """Add a new wallet, owned by one of the trip's people."""
-    person = _get_person(trip, body.person_id, session)
-    if person is None:
-        raise ValidationError({"person_id": NotInTripError()})
-    wallet = run_field("name", roster.create_wallet, session, trip, person, body.name, body.tracked)
-    return {"wallet": WalletOut.from_wallet(wallet)}
-
-
-@router.patch(
-    "/trips/{slug}/wallets/{wallet_id}",
-    response_model=WalletEnvelope,
-    responses=error_responses(400, 404, 409, 422),
-)
-def update_wallet(wallet_id: int, body: WalletUpdate, trip: TripDep, session: SessionDep):
-    """Update a wallet's fields."""
-    wallet = _get_wallet(trip, wallet_id, session)
-    wallet = run_field(
-        "name",
-        roster.update_wallet,
-        session,
-        wallet,
-        body.name,
-        body.tracked,
-        body.is_default,
-        body.sort_order,
-    )
-    return {"wallet": WalletOut.from_wallet(wallet)}
-
-
-@router.delete(
-    "/trips/{slug}/wallets/{wallet_id}", status_code=204, responses=error_responses(404, 409)
-)
-def delete_wallet(wallet_id: int, trip: TripDep, session: SessionDep):
-    """Delete a wallet from a trip."""
-    wallet = _get_wallet(trip, wallet_id, session)
-    run_field("id", roster.delete_wallet, session, wallet)
-    return Response(status_code=204)
+router = WalletRoutes().router()

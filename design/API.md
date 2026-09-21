@@ -368,13 +368,15 @@ Total.
 `?format=csv|json`, both `Content-Disposition: attachment`, and **both identical
 except for the format** — this is a file for a human or another app to read, not a
 shape meant to rebuild the database. Both are **share-grained**: one row per
-resolved share, so a four-person item is four rows, not one. `items` carries that
-flat row, not `ItemOut` nested under a `split` — every field but the trailing
-`person_name, weight, owed` triple is an `ItemOut` field verbatim, so a field added
-there can't go stale here without a deliberate header change. `currency_id` and a
-share's `person_id` are dropped in favor of the roster names a reader would
-otherwise have to look up: no `currency_id` (`currency_code` already says it), and
-`person_name` instead of `person_id`.
+resolved share, so a four-person item is four rows, not one. A sharer deactivated
+since keeps their row, so the `owed` column sums to the item's amount whatever the
+roster looks like now. `items` carries that flat row, not `ItemOut` nested under a
+`split` — every field but the trailing `person_name, weight, owed` triple is an
+`ItemOut` field verbatim, so a field added there can't go stale here without a
+deliberate header change. `currency_id` and a share's `person_id` are dropped in
+favor of the roster names a reader would otherwise have to look up: no
+`currency_id` (`currency_code` already says it), and `person_name` instead of
+`person_id`.
 
 The CSV header row is part of the contract, because something parses it: `item_id,
 name, note, occurred_at, currency_code, amount, payer_id, wallet_id, country_id,

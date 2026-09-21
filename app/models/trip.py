@@ -52,7 +52,11 @@ class Trip(SQLModel, table=True):
         },
     )
     labels: list["Label"] = Relationship(
-        back_populates="trip", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+        back_populates="trip",
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "order_by": "(Label.use_count.desc(), Label.name)",
+        },
     )
     items: list["LineItem"] = Relationship(
         back_populates="trip", sa_relationship_kwargs={"cascade": "all, delete-orphan"}

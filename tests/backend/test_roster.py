@@ -116,11 +116,51 @@ def test_country_flag_derived_from_code(client, trip):
     assert response.json()["country"]["flag"] is None
 
 
-def test_list_orders_are_sort_order(client, trip, people):
-    """People, currencies and countries list in sort_order."""
-    response = client.get(f"/api/v1/trips/{trip['slug']}/people").json()["people"]
-    assert [p["sort_order"] for p in response] == [0, 1, 2, 3]
-    assert [p["name"] for p in response] == [p["name"] for p in people]
+def test_people_list_follows_sort_order_not_row_age(client, trip, people):
+    """Reversing the roster's sort_order reverses the list, which row age alone would not."""
+    for position, person in enumerate(reversed(people)):
+        response = client.patch(
+            f"/api/v1/trips/{trip['slug']}/people/{person['id']}", json={"sort_order": position}
+        )
+        assert response.status_code == 200, response.text
+
+    listed = client.get(f"/api/v1/trips/{trip['slug']}/people").json()["people"]
+    assert [person["name"] for person in listed] == ["Eva", "Bob", "Ann", "Petr"]
+    assert [person["sort_order"] for person in listed] == [0, 1, 2, 3]
+
+
+def test_currencies_list_follows_sort_order_not_code(client, trip, currencies):
+    """The currency list holds sort_order, which is neither alphabetical by code nor row age."""
+    listed = client.get(f"/api/v1/trips/{trip['slug']}/currencies").json()["currencies"]
+    assert [currency["code"] for currency in listed] == ["ISK", "EUR"]
+
+    for position, currency in enumerate(reversed(currencies)):
+        response = client.patch(
+            f"/api/v1/trips/{trip['slug']}/currencies/{currency['id']}",
+            json={"sort_order": position},
+        )
+        assert response.status_code == 200, response.text
+
+    listed = client.get(f"/api/v1/trips/{trip['slug']}/currencies").json()["currencies"]
+    assert [currency["code"] for currency in listed] == ["EUR", "ISK"]
+
+
+def test_countries_list_follows_sort_order_not_name(client, trip):
+    """The country list holds sort_order, which is neither alphabetical by name nor row age."""
+    added = client.post(
+        f"/api/v1/trips/{trip['slug']}/countries", json={"name": "Denmark", "code": "DK"}
+    ).json()["country"]
+
+    listed = client.get(f"/api/v1/trips/{trip['slug']}/countries").json()["countries"]
+    assert [entry["name"] for entry in listed] == ["Iceland", "Denmark"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/countries/{added['id']}", json={"sort_order": -1}
+    )
+    assert response.status_code == 200, response.text
+
+    listed = client.get(f"/api/v1/trips/{trip['slug']}/countries").json()["countries"]
+    assert [entry["name"] for entry in listed] == ["Denmark", "Iceland"]
 
 
 def test_create_person_gets_a_default_card_wallet(client, trip):

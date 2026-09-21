@@ -7,33 +7,24 @@ from app.clock import ClockDep
 from app.deps import SessionDep, TripDep
 from app.models.items import LineItem
 from app.models.roster import TripCurrency, active_roster_ids
-from app.models.wallets import WalletTransfer
 from app.schemas.envelopes import DayCurrencyTotalOut, DayTotalOut, ItemEnvelope, ItemListEnvelope
 from app.schemas.error_shapes import error_responses
 from app.schemas.requests import ItemWrite, PreviewSplitRequest
 from app.schemas.responses import (
     ITEM_LOAD_OPTIONS,
-    TRANSFER_LOAD_OPTIONS,
     ItemOut,
     PreviewSplitOut,
     TransferOut,
 )
 from app.services import items as item_service
-from app.services import splits
-from app.services.errors.api import NotFoundError, ValidationError, run_field
+from app.services import queries, splits
+from app.services.errors.api import ValidationError, field_errors
 from app.services.errors.fields import NotInTripError
 from app.services.labels import release_item_labels, set_item_labels
 from app.services.money import AMOUNT_SCALE, to_hundredths, to_wire
+from app.services.scope import in_trip, require_in_trip
 
 router = APIRouter(tags=["items"])
-
-
-def load_item(trip, item_id: int, session: SessionDep) -> LineItem:
-    """Load a trip's item by id, or answer 404."""
-    item = session.get(LineItem, item_id, options=ITEM_LOAD_OPTIONS)
-    if item is None or item.trip_id != trip.id:
-        raise NotFoundError("item")
-    return item
 
 
 @router.post(
@@ -43,19 +34,14 @@ def load_item(trip, item_id: int, session: SessionDep) -> LineItem:
 )
 def preview_split(body: PreviewSplitRequest, trip: TripDep, session: SessionDep):
     """Preview how an amount would split without creating an item."""
-    currency = item_service.in_trip(session, TripCurrency, body.currency_id, trip.id)
+    currency = in_trip(session, TripCurrency, body.currency_id, trip.id)
     if currency is None:
         raise ValidationError({"currency_id": NotInTripError()})
 
-    rows = run_field(
-        "shares",
-        item_service.build_shares,
-        trip,
-        body.split_mode,
-        body.shares,
-        body.amount,
-        currency.code,
-    )
+    with field_errors("shares"):
+        rows = item_service.build_shares(
+            trip, body.split_mode, body.shares, body.amount, currency.code
+        )
 
     amount_minor = to_hundredths(body.amount)
     resolved = splits.resolve_shares_wire(active_roster_ids(trip.people), rows, amount_minor)
@@ -68,16 +54,7 @@ def preview_split(body: PreviewSplitRequest, trip: TripDep, session: SessionDep)
 @router.get("/trips/{slug}/items", response_model=ItemListEnvelope, responses=error_responses(404))
 def list_items(trip: TripDep, session: SessionDep):
     """List items for a trip."""
-    items = (
-        session.execute(
-            select(LineItem)
-            .where(LineItem.trip_id == trip.id)
-            .options(*ITEM_LOAD_OPTIONS)
-            .order_by(LineItem.occurred_at.desc(), LineItem.id.desc())
-        )
-        .scalars()
-        .all()
-    )
+    items = session.execute(queries.items_for_trip(trip.id)).scalars().all()
     roster_ids = active_roster_ids(trip.people)
 
     day_rows = session.execute(
@@ -103,16 +80,7 @@ def list_items(trip: TripDep, session: SessionDep):
             )
         )
 
-    transfer_rows = (
-        session.execute(
-            select(WalletTransfer)
-            .where(WalletTransfer.trip_id == trip.id)
-            .options(*TRANSFER_LOAD_OPTIONS)
-            .order_by(WalletTransfer.occurred_at.desc(), WalletTransfer.id.desc())
-        )
-        .scalars()
-        .all()
-    )
+    transfer_rows = session.execute(queries.transfers_for_trip(trip.id)).scalars().all()
 
     return {
         "items": [ItemOut.from_item(item, roster_ids) for item in items],
@@ -126,7 +94,7 @@ def list_items(trip: TripDep, session: SessionDep):
 )
 def get_item(item_id: int, trip: TripDep, session: SessionDep):
     """Get a single item by id."""
-    item = load_item(trip, item_id, session)
+    item = require_in_trip(session, LineItem, item_id, trip.id, "item", options=ITEM_LOAD_OPTIONS)
     return {"item": ItemOut.from_item(item, active_roster_ids(trip.people))}
 
 
@@ -142,14 +110,12 @@ def create_item(body: ItemWrite, trip: TripDep, session: SessionDep, clock: Cloc
     if fields:
         raise ValidationError(fields)
 
-    wallet_id = run_field(
-        "wallet_id", item_service.resolve_wallet_id, session, body.wallet_id, body.payer_id
-    )
+    with field_errors("wallet_id"):
+        wallet_id = item_service.resolve_wallet_id(session, body.wallet_id, body.payer_id)
     mode = item_service.split_mode(body, None)
     currency = session.get(TripCurrency, body.currency_id)
-    rows = run_field(
-        "shares", item_service.build_shares, trip, mode, body.shares, body.amount, currency.code
-    )
+    with field_errors("shares"):
+        rows = item_service.build_shares(trip, mode, body.shares, body.amount, currency.code)
 
     item = LineItem(trip_id=trip.id, occurred_at=clock, wallet_id=wallet_id, split_mode=mode)
     item_service.apply_write(item, body)
@@ -171,15 +137,17 @@ def create_item(body: ItemWrite, trip: TripDep, session: SessionDep, clock: Cloc
 )
 def update_item(item_id: int, body: ItemWrite, trip: TripDep, session: SessionDep):
     """Update an item's fields, and its shares if the split changed."""
-    item = load_item(trip, item_id, session)
+    item = require_in_trip(session, LineItem, item_id, trip.id, "item", options=ITEM_LOAD_OPTIONS)
 
     fields = item_service.validate_write(session, trip, body, creating=False)
     if fields:
         raise ValidationError(fields)
 
-    run_field("wallet_id", item_service.rewrite_wallet, session, item, body)
+    with field_errors("wallet_id"):
+        item_service.rewrite_wallet(session, item, body)
     item_service.apply_write(item, body)
-    run_field("shares", item_service.rewrite_shares, session, trip, item, body)
+    with field_errors("shares"):
+        item_service.rewrite_shares(session, trip, item, body)
 
     if body.labels is not None:
         set_item_labels(session, item, body.labels)
@@ -192,7 +160,7 @@ def update_item(item_id: int, body: ItemWrite, trip: TripDep, session: SessionDe
 @router.delete("/trips/{slug}/items/{item_id}", status_code=204, responses=error_responses(404))
 def delete_item(item_id: int, trip: TripDep, session: SessionDep):
     """Delete an item from a trip."""
-    item = load_item(trip, item_id, session)
+    item = require_in_trip(session, LineItem, item_id, trip.id, "item", options=ITEM_LOAD_OPTIONS)
     release_item_labels(item)
     session.delete(item)
     session.flush()

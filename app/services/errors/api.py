@@ -1,5 +1,8 @@
 """The top-level error envelopes and the helpers that address a `FieldError` to a field."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 from app.services.errors.base import ApiError, ConflictFieldError, FieldError
 
 
@@ -62,12 +65,10 @@ def wrap_field_error(field: str, err: FieldError) -> ApiError:
     return ValidationError({field: err})
 
 
-def run_field(field: str, fn, *args, **kwargs):
-    """Call a service function, translating a `FieldError` it raises.
-
-    Turns it into the right `ApiError` addressed to `field`.
-    """
+@contextmanager
+def field_errors(field: str) -> Iterator[None]:
+    """Translate a `FieldError` raised inside the block into an `ApiError` for `field`."""
     try:
-        return fn(*args, **kwargs)
+        yield
     except FieldError as err:
         raise wrap_field_error(field, err) from err

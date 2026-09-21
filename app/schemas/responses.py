@@ -6,18 +6,17 @@ integers to plain JSON numbers via `money.to_wire` (design/BACKEND.md).
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.items import LineItem
-from app.models.labels import Label
-from app.models.roster import Person, TripCountry, TripCurrency
+from app.models.roster import Person, TripCountry
 from app.models.trip import Trip
-from app.models.wallets import Wallet, WalletTransfer
+from app.models.wallets import WalletTransfer
 from app.schemas.fields import iso_z
 from app.services.countries import flag_from_code
 from app.services.money import AMOUNT_SCALE, to_wire
-from app.services.splits import format_weight, resolve_shares_wire
+from app.services.splits import format_weight, resolve_shares_wire, rows_from_shares
 
 Number = float | int
 
@@ -50,24 +49,14 @@ class PersonOut(BaseModel):
 class WalletOut(BaseModel):
     """Wire representation of a wallet, roster form: no balances."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     person_id: int
     name: str
     tracked: bool
     is_default: bool
     sort_order: int
-
-    @classmethod
-    def from_wallet(cls, wallet: Wallet) -> "WalletOut":
-        """Build a WalletOut from a Wallet model instance."""
-        return cls(
-            id=wallet.id,
-            person_id=wallet.person_id,
-            name=wallet.name,
-            tracked=wallet.tracked,
-            is_default=wallet.is_default,
-            sort_order=wallet.sort_order,
-        )
 
 
 class WalletBalanceOut(BaseModel):
@@ -90,22 +79,13 @@ class WalletReportOut(WalletOut):
 class CurrencyOut(BaseModel):
     """Wire representation of a trip currency."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     code: str
     symbol: str | None
     is_primary: bool
     sort_order: int
-
-    @classmethod
-    def from_currency(cls, currency: TripCurrency) -> "CurrencyOut":
-        """Build a CurrencyOut from a TripCurrency model instance."""
-        return cls(
-            id=currency.id,
-            code=currency.code,
-            symbol=currency.symbol,
-            is_primary=currency.is_primary,
-            sort_order=currency.sort_order,
-        )
 
 
 class CountryOut(BaseModel):
@@ -136,15 +116,12 @@ class CountryOut(BaseModel):
 class LabelOut(BaseModel):
     """Wire representation of a label."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     color: str
     use_count: int
-
-    @classmethod
-    def from_label(cls, label: Label) -> "LabelOut":
-        """Build a LabelOut from a Label model instance."""
-        return cls(id=label.id, name=label.name, color=label.color, use_count=label.use_count)
 
 
 class TripOut(BaseModel):
@@ -167,7 +144,6 @@ class TripOut(BaseModel):
     @classmethod
     def from_trip(cls, trip: Trip, country_item_counts: dict[int, int]) -> "TripOut":
         """Build a TripOut from a Trip model instance and its country item counts."""
-        people = sorted(trip.people, key=lambda p: p.sort_order)
         return cls(
             id=trip.id,
             slug=trip.slug,
@@ -176,16 +152,12 @@ class TripOut(BaseModel):
             end_date=trip.end_date,
             note=trip.note,
             archived=trip.archived,
-            people=[PersonOut.from_person(p) for p in people],
-            currencies=[CurrencyOut.from_currency(c) for c in trip.currencies],
+            people=[PersonOut.from_person(p) for p in trip.people],
+            currencies=[CurrencyOut.model_validate(c) for c in trip.currencies],
             countries=[
                 CountryOut.from_country(c, country_item_counts.get(c.id, 0)) for c in trip.countries
             ],
-            wallets=[
-                WalletOut.from_wallet(w)
-                for p in people
-                for w in sorted(p.wallets, key=lambda w: w.sort_order)
-            ],
+            wallets=[WalletOut.model_validate(w) for p in trip.people for w in p.wallets],
             created_at=iso_z(trip.created_at),
             updated_at=iso_z(trip.updated_at),
         )
@@ -281,15 +253,7 @@ class ItemOut(BaseModel):
     @classmethod
     def from_item(cls, item: LineItem, roster_ids_sorted: list[int]) -> "ItemOut":
         """Build an ItemOut from a LineItem model instance and the trip roster."""
-        rows = [
-            {
-                "person_id": share.person_id,
-                "weight_scaled": share.weight_scaled,
-                "owed_minor": share.owed_minor,
-                "exact": share.split_mode_exact,
-            }
-            for share in item.shares
-        ]
+        rows = rows_from_shares(item.shares)
         resolved = resolve_shares_wire(roster_ids_sorted, rows, item.amount_minor)
         return cls(
             id=item.id,
