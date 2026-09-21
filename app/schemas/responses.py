@@ -231,6 +231,7 @@ class ItemOut(BaseModel):
     id: int
     name: str
     note: str | None
+    city: str | None
     occurred_at: str
     currency_code: str
     currency_id: int
@@ -255,6 +256,7 @@ class ItemOut(BaseModel):
             id=item.id,
             name=item.name,
             note=item.note,
+            city=item.city,
             occurred_at=iso_z(item.occurred_at),
             currency_code=item.currency.code,
             currency_id=item.currency_id,

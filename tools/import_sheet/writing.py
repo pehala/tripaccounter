@@ -52,6 +52,7 @@ def apply(session, plan, trip):
         body = ItemWrite(
             name=planned.name,
             note=planned.note,
+            city=planned.city,
             amount=planned.amount,
             occurred_at=planned.occurred_at,
             labels=list(planned.item_labels),
@@ -67,6 +68,7 @@ def apply(session, plan, trip):
             trip_id=trip.id,
             name=body.name,
             note=body.note,
+            city=body.city,
             occurred_at=body.occurred_at,
             currency_id=currency.id,
             amount_minor=to_hundredths(body.amount),

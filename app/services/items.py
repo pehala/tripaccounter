@@ -108,6 +108,8 @@ def apply_write(item: LineItem, body: ItemWrite) -> None:
         item.name = body.name
     if body.note is not None:
         item.note = body.note
+    if body.city is not None:
+        item.city = body.city
     if body.currency_id is not None:
         item.currency_id = body.currency_id
     if body.payer_id is not None:

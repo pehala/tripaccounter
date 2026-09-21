@@ -20,6 +20,7 @@ CSV_HEADER = [
     "item_id",
     "name",
     "note",
+    "city",
     "occurred_at",
     "currency_code",
     "amount",

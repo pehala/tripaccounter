@@ -17,6 +17,36 @@ def test_create_item_read_back_equal(client, trip, item_body):
     assert read_back == item
 
 
+def test_create_item_with_city_read_back(client, trip, item_body):
+    """A freeform city is stored and echoed back as given."""
+    response = client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(city="Reykjavík"))
+    assert response.status_code == 201, response.text
+    assert response.json()["item"]["city"] == "Reykjavík"
+
+
+def test_create_item_omitted_city_is_null(client, trip, item_body):
+    """An item written without a city reads back with `city: null`, not an error."""
+    response = client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body())
+    assert response.status_code == 201, response.text
+    assert response.json()["item"]["city"] is None
+
+
+def test_patch_item_city_leaves_other_fields_untouched(client, trip, item_body):
+    """PATCH with only `city` leaves name, amount and split untouched."""
+    created = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(name="Dinner")
+    ).json()["item"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{created['id']}", json={"city": "Vík"}
+    )
+    assert response.status_code == 200
+    updated = response.json()["item"]
+    assert updated["name"] == "Dinner"
+    assert updated["city"] == "Vík"
+    assert updated["split"] == created["split"]
+
+
 def test_list_items_orders_by_occurred_at_desc_then_id_desc(
     client, trip, items_two_same_day_one_earlier, currencies
 ):

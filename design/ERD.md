@@ -95,6 +95,7 @@ erDiagram
         datetime occurred_at "tz-aware, stored/echoed as UTC; naive input assumed UTC"
         string   name
         string   note "nullable"
+        string   city "nullable, freeform"
         int      currency_id FK
         bigint   amount_minor "total, in hundredths — every currency"
         int      payer_id FK "-> PERSON"

@@ -133,6 +133,7 @@ class ItemWrite(Strict):
 
     name: str | None = None
     note: str | None = None
+    city: str | None = None
     amount: Amount | None = None
     currency_id: int | None = None
     payer_id: int | None = None

@@ -33,6 +33,7 @@ def test_save_posts_the_built_body_and_the_row_appears(items_page, new_item_moda
         "country_id": 1,
         "occurred_at": body["occurred_at"],
         "labels": [],
+        "city": None,
         "map_url": None,
         "lat": None,
         "lon": None,
@@ -40,6 +41,24 @@ def test_save_posts_the_built_body_and_the_row_appears(items_page, new_item_moda
         "shares": [{"person_id": 1}, {"person_id": 2}, {"person_id": 3}, {"person_id": 4}],
     }
     expect(items_page.get_by_text("Sushi night")).to_be_visible()
+
+
+def test_save_with_city_posts_it_trimmed_and_the_row_shows_it(
+    items_page, new_item_modal, count_requests
+):
+    """A typed city is trimmed onto the POST body, and the new row names it."""
+    new_item_modal.locator('input[name="name"]').fill("Street food")
+    new_item_modal.locator('input[name="amount"]').fill("2000")
+    new_item_modal.locator('input[name="city"]').fill("  Bangkok  ")
+    posted = count_requests("*/items", method="POST")
+
+    new_item_modal.get_by_role("button", name="Save", exact=True).click()
+
+    new_item_modal.wait_for(state="hidden")
+    assert posted[0].post_data_json["city"] == "Bangkok"
+    expect(items_page.locator("a.list-group-item-action", has_text="Street food")).to_contain_text(
+        "Bangkok"
+    )
 
 
 def test_edit_mode_shows_amber_header_and_delete(open_edit_modal):
@@ -61,6 +80,9 @@ def test_edit_mode_shows_amber_header_and_delete(open_edit_modal):
             "Dinner at Messinn", 'input[name="amount"]', "value", "18400", id="equal-amount"
         ),
         pytest.param("Dinner at Messinn", "#pay-1", "checked", True, id="equal-radio"),
+        pytest.param(
+            "Dinner at Messinn", 'input[name="city"]', "value", "Reykjavík", id="equal-city"
+        ),
         pytest.param(
             "Guesthouse Vík, 2 nights",
             'button:text-is("Shares")',
@@ -106,6 +128,7 @@ def test_patch_sends_the_built_body_on_save(open_edit_modal, count_requests):
         "country_id": 1,
         "occurred_at": body["occurred_at"],
         "labels": ["food", "restaurant"],
+        "city": "Reykjavík",
         "map_url": "https://maps.app.goo.gl/Kx9mNq2",
         "lat": "64.14930",
         "lon": "-21.94030",

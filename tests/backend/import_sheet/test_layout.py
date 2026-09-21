@@ -9,8 +9,8 @@ from tools.import_sheet import Layout, build_plan
 @pytest.mark.parametrize(
     ("names", "owed", "note"),
     [
-        pytest.param(["Ann", "Bob"], (9, 11), 13, id="two-people"),
-        pytest.param(["Ann", "Bob", "Cal"], (9, 11, 13), 15, id="three-people"),
+        pytest.param(["Ann", "Bob"], (10, 12), 14, id="two-people"),
+        pytest.param(["Ann", "Bob", "Cal"], (10, 12, 14), 16, id="three-people"),
     ],
 )
 def test_layout_places_owed_columns_two_apart_with_the_note_after(names, owed, note):
@@ -46,6 +46,7 @@ def test_build_plan_reads_columns_by_index_not_by_header(sheet, row):
         "Kdo platil",
         "Kolik",
         "Měna",
+        "Město",
         "Stát",
         "Kurz CZK",
         "Kurz EUR",
@@ -79,8 +80,8 @@ def test_build_plan_reports_a_payer_who_is_not_in_the_roster(sheet, row):
         pytest.param("2", "two words", "label_whitespace", id="category-with-a-space"),
         pytest.param("4", "0,00", "bad_amount", id="amount-zero"),
         pytest.param("5", "EURO", "bad_currency", id="currency-not-three-letters"),
-        pytest.param("6", "", "bad_country", id="country-blank"),
-        pytest.param("11", "?", "bad_share", id="owed-cell-not-a-number"),
+        pytest.param("7", "", "bad_country", id="country-blank"),
+        pytest.param("12", "?", "bad_share", id="owed-cell-not-a-number"),
     ],
 )
 def test_build_plan_reports_unusable_cells(sheet, row, column, value, code):
