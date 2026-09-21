@@ -126,7 +126,7 @@ function StatSection({ id, code, badgeLabel = code, index, dims, trip, locale, e
   const nodes = showRows ? buildNodes(index, dims, 0, {}) : [];
 
   return html`
-    <section id="cur-${id}" class="mb-4">
+    <section id="cur-${id}" class="mb-4 scroll-anchor">
       <h2 class="h6 d-flex align-items-center gap-2 pt-2">
         <span class="badge text-bg-primary">${badgeLabel}</span>
         ${total !== null && html`<b class="num">${t('stats.total', { amount: money(total, locale) })} ${code}</b>`}

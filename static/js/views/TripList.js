@@ -14,7 +14,7 @@ export function TripList() {
   }, []);
 
   return html`
-    <div class="container py-4" style="max-width:48rem">
+    <div class="container py-4">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h4 mb-0">${t('trips.title')}</h1>
         <a href="/trips/new" class="btn btn-primary btn-sm">${t('trips.new')}</a>

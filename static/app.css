@@ -1,4 +1,9 @@
 /* On top of Bootstrap only. Keep this file under ~80 lines. */
+:root {
+  --header-h: 6.6rem; /* Trip.js overwrites this once its own header mounts and measures itself */
+  --z-sticky: 5;       /* sticky bars below page chrome (Bootstrap dropdowns, modals), above content */
+  --z-chrome: 1030;    /* clears Bootstrap's own sticky-top header (z-index 1020) */
+}
 body { padding-bottom: 5rem; }
 .num { font-variant-numeric: tabular-nums; }
 
@@ -9,64 +14,40 @@ body { padding-bottom: 5rem; }
 }
 .av-lg { width: 1.75rem; height: 1.75rem; font-size: .8rem; }
 
-/* person toggle = native radio/checkbox + label, zero JS */
-.who input { position: absolute; opacity: 0; pointer-events: none; }
-.who label {
-  display: inline-flex; align-items: center; gap: .35rem; cursor: pointer; margin: 0;
-  border: 1px solid var(--bs-border-color); border-radius: 999px; padding: .25rem .6rem; font-size: .875rem;
-}
-.who input:checked + label {
-  border-color: var(--bs-primary); background: rgba(var(--bs-primary-rgb), .1);
-  color: var(--bs-primary); font-weight: 600;
-}
-.who input:focus-visible + label { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
-
-.bal-bar { position: relative; height: .55rem; background: var(--bs-tertiary-bg); border-radius: 999px; }
-.bal-bar i { position: absolute; top: 0; bottom: 0; border-radius: 999px; }
-.bal-bar i.p { left: 50%; background: var(--bs-success); }
-.bal-bar i.n { right: 50%; background: var(--bs-danger); }
+.bal-bar { height: .55rem; }
 .bal-bar::before {
   content: ""; position: absolute; left: 50%; top: -.2rem; bottom: -.2rem; width: 1px;
   background: var(--bs-border-color);
 }
 
-.day-sep { position: sticky; top: var(--header-h, 6.6rem); z-index: 5; }
+.day-sep { position: sticky; top: var(--header-h); z-index: var(--z-sticky); }
 .owed span { display: inline-flex; align-items: center; gap: .2rem; margin-right: .6rem; white-space: nowrap; }
 .owed .av { width: 1.05rem; height: 1.05rem; font-size: .55rem; }
-
-.item-list .list-group-item { padding: .55rem .75rem; }
-.item-line { line-height: 1.2; }
-.item-line.owed { line-height: 1.4; }
 
 .tag-input { min-height: calc(1.5em + .75rem + 2px); }
 .tag-input:focus-within {
   border-color: var(--bs-primary); box-shadow: 0 0 0 .25rem rgba(var(--bs-primary-rgb), .25);
 }
 
-.fab { position: fixed; right: 1rem; bottom: 1rem; z-index: 1030; box-shadow: 0 .5rem 1.5rem rgba(var(--bs-primary-rgb), .45); }
+.fab { position: fixed; right: 1rem; bottom: 1rem; z-index: var(--z-chrome); box-shadow: 0 .5rem 1.5rem rgba(var(--bs-primary-rgb), .45); }
 @media (min-width: 768px) { .fab { display: none; } }
 
-/* Sits before a view's own sticky-top header (z-index 1020) in DOM order, so its
-   open dropdown needs a higher stacking context or that header paints over it. */
-.shell-bar { position: relative; z-index: 1030; }
+/* Sits before a view's own sticky-top header in DOM order, so its open dropdown
+   needs a higher stacking context or that header paints over it. */
+.shell-bar { position: relative; z-index: var(--z-chrome); }
 
-.side-nav { position: sticky; top: var(--header-h, 6.6rem); }
-.side-nav-mobile { z-index: 5; }
-[id^="cur-"], [id^="sec-"] { scroll-margin-top: var(--header-h, 6.6rem); }
+.side-nav { position: sticky; top: var(--header-h); }
+.side-nav-mobile { z-index: var(--z-sticky); }
+.scroll-anchor { scroll-margin-top: var(--header-h); }
 
-/* The flex chain the map's height comes out of: the page is at least a screen tall,
-   #app and main take what the chrome above them leaves, and .map-page hands that on
-   to the canvas — which is why the filters and the selected pin's expenses sit above
-   the map, and why the page-bottom room the FAB needs elsewhere is dropped here. */
-body { min-height: 100dvh; display: flex; flex-direction: column; }
+/* The flex chain the map's height comes out of (display/flex-grow are Bootstrap
+   utility classes on the elements themselves): 100dvh has no utility, and a flex
+   item that is itself a flex container needs min-height:0 or its content floor
+   overflows the chain instead of the canvas resolving to the leftover space. */
+body { min-height: 100dvh; }
+#app, main, .map-page { min-height: 0; }
 body:has(.map-page) { padding-bottom: 0; }
-#app { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
-main { flex: 1 1 auto; min-height: 0; }
-/* Only this tab's main: a stretched flex item keeps height:auto, so a percentage
-   height inside it resolves to nothing - the column has to continue as flex. */
-main:has(.map-page) { display: flex; flex-direction: column; }
-.map-page { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
-.map-canvas { flex: 1 1 auto; min-height: 16rem; z-index: 0; }
+.map-canvas { min-height: 16rem; }
 
 /* Leaflet draws tiles into their own pane, so inverting it turns the standard OSM
    raster dark without touching the pins or the attribution. */

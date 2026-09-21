@@ -87,7 +87,7 @@ export function Trip({ slug, tab }) {
       </div>
     </header>
 
-    <main class="container py-3">
+    <main class="container py-3 d-flex flex-column flex-grow-1">
       ${tab === 'items' && html`<${Items} />`}
       ${tab === 'balances' && html`<${Balances} />`}
       ${tab === 'wallets' && html`<${Wallets} />`}

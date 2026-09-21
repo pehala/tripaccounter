@@ -14,12 +14,12 @@ export function ItemRow({ item, trip, locale, onSelect }) {
   const mapLabel = item.map_url ? t('items.map') : `${item.lat}, ${item.lon}`;
 
   return html`
-    <a href="#" class="list-group-item list-group-item-action d-flex gap-3"
+    <a href="#" class="list-group-item list-group-item-action d-flex gap-3 py-2 px-3"
        onClick=${(e) => { e.preventDefault(); onSelect?.(item); }}>
       <span class="flex-grow-1 min-w-0">
-        <span class="d-block fw-semibold item-line">${item.name}</span>
-        <small class="text-body-secondary d-block item-line">${country ? `${country.flag} ${country.name} · ` : ''}${item.city ? `${item.city} · ` : ''}${time} · <${Avatar} person=${payer} /> ${t('items.paid_by', { name: payer?.name || '' })}${wallet && !walletIsPayerDefault ? ` · ${wallet.name}` : ''}${hasMap ? html` · <i class="bi bi-geo-alt-fill text-primary"></i> ${mapLabel}` : ''}${item.labels.length > 0 ? html` · ${item.labels.map((name) => html`<${LabelBadge} key=${name} name=${name} />`)}` : ''}</small>
-        <small class="owed num d-block item-line">
+        <span class="d-block fw-semibold lh-sm">${item.name}</span>
+        <small class="text-body-secondary d-block lh-sm">${country ? `${country.flag} ${country.name} · ` : ''}${item.city ? `${item.city} · ` : ''}${time} · <${Avatar} person=${payer} /> ${t('items.paid_by', { name: payer?.name || '' })}${wallet && !walletIsPayerDefault ? ` · ${wallet.name}` : ''}${hasMap ? html` · <i class="bi bi-geo-alt-fill text-primary"></i> ${mapLabel}` : ''}${item.labels.length > 0 ? html` · ${item.labels.map((name) => html`<${LabelBadge} key=${name} name=${name} />`)}` : ''}</small>
+        <small class="owed num d-block lh-base">
           ${trip.people.map((person) => {
             const share = item.split.shares.find((s) => s.person_id === person.id);
             if (share?.owed === null || share?.owed === undefined) return '';
