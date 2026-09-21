@@ -36,8 +36,8 @@ function BalanceBlock({ id, badgeLabel, code, totalSpent, people, suggestions, t
               return html`
                 <li key=${p.id} class="list-group-item d-flex align-items-center gap-3">
                   <span style="width:4.5rem">${p.name}</span>
-                  <span class="bal-bar flex-grow-1">
-                    ${net !== 0 && html`<i class=${net > 0 ? 'p' : 'n'} style="width:${width}%"></i>`}
+                  <span class="bal-bar flex-grow-1 position-relative rounded-pill bg-body-tertiary">
+                    ${net !== 0 && html`<i class="position-absolute top-0 bottom-0 rounded-pill ${net > 0 ? 'start-50 bg-success' : 'end-50 bg-danger'}" style="width:${width}%"></i>`}
                   </span>
                   <span class="num ${cls} fw-semibold text-end" style="width:6rem">${signed(net, locale)}</span>
                 </li>

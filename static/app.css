@@ -9,10 +9,7 @@ body { padding-bottom: 5rem; }
 }
 .av-lg { width: 1.75rem; height: 1.75rem; font-size: .8rem; }
 
-.bal-bar { position: relative; height: .55rem; background: var(--bs-tertiary-bg); border-radius: 999px; }
-.bal-bar i { position: absolute; top: 0; bottom: 0; border-radius: 999px; }
-.bal-bar i.p { left: 50%; background: var(--bs-success); }
-.bal-bar i.n { right: 50%; background: var(--bs-danger); }
+.bal-bar { height: .55rem; }
 .bal-bar::before {
   content: ""; position: absolute; left: 50%; top: -.2rem; bottom: -.2rem; width: 1px;
   background: var(--bs-border-color);
