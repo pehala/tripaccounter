@@ -1,4 +1,9 @@
 /* On top of Bootstrap only. Keep this file under ~80 lines. */
+:root {
+  --header-h: 6.6rem; /* Trip.js overwrites this once its own header mounts and measures itself */
+  --z-sticky: 5;       /* sticky bars below page chrome (Bootstrap dropdowns, modals), above content */
+  --z-chrome: 1030;    /* clears Bootstrap's own sticky-top header (z-index 1020) */
+}
 body { padding-bottom: 5rem; }
 .num { font-variant-numeric: tabular-nums; }
 
@@ -15,7 +20,7 @@ body { padding-bottom: 5rem; }
   background: var(--bs-border-color);
 }
 
-.day-sep { position: sticky; top: var(--header-h, 6.6rem); z-index: 5; }
+.day-sep { position: sticky; top: var(--header-h); z-index: var(--z-sticky); }
 .owed span { display: inline-flex; align-items: center; gap: .2rem; margin-right: .6rem; white-space: nowrap; }
 .owed .av { width: 1.05rem; height: 1.05rem; font-size: .55rem; }
 
@@ -24,16 +29,16 @@ body { padding-bottom: 5rem; }
   border-color: var(--bs-primary); box-shadow: 0 0 0 .25rem rgba(var(--bs-primary-rgb), .25);
 }
 
-.fab { position: fixed; right: 1rem; bottom: 1rem; z-index: 1030; box-shadow: 0 .5rem 1.5rem rgba(var(--bs-primary-rgb), .45); }
+.fab { position: fixed; right: 1rem; bottom: 1rem; z-index: var(--z-chrome); box-shadow: 0 .5rem 1.5rem rgba(var(--bs-primary-rgb), .45); }
 @media (min-width: 768px) { .fab { display: none; } }
 
-/* Sits before a view's own sticky-top header (z-index 1020) in DOM order, so its
-   open dropdown needs a higher stacking context or that header paints over it. */
-.shell-bar { position: relative; z-index: 1030; }
+/* Sits before a view's own sticky-top header in DOM order, so its open dropdown
+   needs a higher stacking context or that header paints over it. */
+.shell-bar { position: relative; z-index: var(--z-chrome); }
 
-.side-nav { position: sticky; top: var(--header-h, 6.6rem); }
-.side-nav-mobile { z-index: 5; }
-.scroll-anchor { scroll-margin-top: var(--header-h, 6.6rem); }
+.side-nav { position: sticky; top: var(--header-h); }
+.side-nav-mobile { z-index: var(--z-sticky); }
+.scroll-anchor { scroll-margin-top: var(--header-h); }
 
 /* The flex chain the map's height comes out of (display/flex-grow are Bootstrap
    utility classes on the elements themselves): 100dvh has no utility, and a flex
