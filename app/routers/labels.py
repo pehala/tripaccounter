@@ -27,7 +27,7 @@ def _get_label(trip, label_id: int, session: SessionDep) -> Label:
 def list_labels(trip: TripDep):
     """List a trip's labels, most used first."""
     ordered = sorted(trip.labels, key=lambda label: (-label.use_count, label.name))
-    return {"labels": [LabelOut.from_label(label) for label in ordered]}
+    return {"labels": [LabelOut.model_validate(label) for label in ordered]}
 
 
 @router.post(
@@ -39,7 +39,7 @@ def list_labels(trip: TripDep):
 def create_label(body: LabelCreate, trip: TripDep, session: SessionDep):
     """Create a new label on a trip."""
     label = run_field("name", labels_service.create_label, session, trip.id, body.name)
-    return {"label": LabelOut.from_label(label)}
+    return {"label": LabelOut.model_validate(label)}
 
 
 @router.patch(
@@ -51,7 +51,7 @@ def update_label(label_id: int, body: LabelUpdate, trip: TripDep, session: Sessi
     """Rename a label."""
     label = _get_label(trip, label_id, session)
     label = run_field("name", labels_service.update_label, session, label, body.name)
-    return {"label": LabelOut.from_label(label)}
+    return {"label": LabelOut.model_validate(label)}
 
 
 @router.delete("/trips/{slug}/labels/{label_id}", status_code=204, responses=error_responses(404))

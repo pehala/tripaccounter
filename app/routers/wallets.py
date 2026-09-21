@@ -51,7 +51,7 @@ def create_wallet(body: WalletCreate, trip: TripDep, session: SessionDep):
     if person is None:
         raise ValidationError({"person_id": NotInTripError()})
     wallet = run_field("name", roster.create_wallet, session, trip, person, body.name, body.tracked)
-    return {"wallet": WalletOut.from_wallet(wallet)}
+    return {"wallet": WalletOut.model_validate(wallet)}
 
 
 @router.patch(
@@ -72,7 +72,7 @@ def update_wallet(wallet_id: int, body: WalletUpdate, trip: TripDep, session: Se
         body.is_default,
         body.sort_order,
     )
-    return {"wallet": WalletOut.from_wallet(wallet)}
+    return {"wallet": WalletOut.model_validate(wallet)}
 
 
 @router.delete(

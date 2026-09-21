@@ -28,7 +28,7 @@ def list_currencies(trip: TripDep):
     """List a trip's currencies, in sort order."""
     return {
         "currencies": [
-            CurrencyOut.from_currency(c)
+            CurrencyOut.model_validate(c)
             for c in sorted(trip.currencies, key=lambda c: c.sort_order)
         ]
     }
@@ -45,7 +45,7 @@ def create_currency(body: CurrencyCreate, trip: TripDep, session: SessionDep):
     currency = run_field(
         "code", roster.create_currency, session, trip, body.code, body.symbol, body.is_primary
     )
-    return {"currency": CurrencyOut.from_currency(currency)}
+    return {"currency": CurrencyOut.model_validate(currency)}
 
 
 @router.patch(
@@ -65,7 +65,7 @@ def update_currency(currency_id: int, body: CurrencyUpdate, trip: TripDep, sessi
         body.is_primary,
         body.sort_order,
     )
-    return {"currency": CurrencyOut.from_currency(currency)}
+    return {"currency": CurrencyOut.model_validate(currency)}
 
 
 @router.delete(
