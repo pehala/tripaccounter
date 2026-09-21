@@ -158,3 +158,27 @@ def test_suggestions_apply_to_zero_every_net(client, trip, people, scenario_item
     for value in nets.values():
         assert abs(value) < 0.01
     assert len(block["suggestions"]) <= len(people) - 1
+
+
+def test_suggestion_rounding_correction_goes_to_the_first_person_in_roster_order(
+    client, trip, people, item_body
+):
+    """When the rounded nets fall a minor unit short, the missing cent lands on the earliest person.
+
+    Two 10.00 items split three ways round every net down, so the corrections
+    are all equal and the roster order alone decides who is nudged.
+    """
+    three = [{"person_id": person["id"]} for person in people[:3]]
+    for payer in people[:2]:
+        client.post(
+            f"/api/v1/trips/{trip['slug']}/items",
+            json=item_body(amount="10.00", payer_id=payer["id"], shares=three),
+        )
+
+    balances = client.get(f"/api/v1/trips/{trip['slug']}/balances").json()["balances"]
+    block = next(b for b in balances if b["currency_code"] == "ISK")
+
+    assert block["suggestions"] == [
+        {"from_person_id": people[2]["id"], "to_person_id": people[0]["id"], "amount": 3.34},
+        {"from_person_id": people[2]["id"], "to_person_id": people[1]["id"], "amount": 3.33},
+    ]

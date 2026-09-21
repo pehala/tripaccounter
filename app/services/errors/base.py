@@ -82,10 +82,9 @@ class ApiError(Exception):
     _by_code: ClassVar[dict[str, type["ApiError"]]] = {}
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
-        """Register the subclass in `_by_code` under its `code`, if it declares one."""
+        """Register the subclass in `_by_code` under its `code`."""
         super().__init_subclass__(**kwargs)
-        if "code" in cls.__dict__:
-            ApiError._by_code[cls.code] = cls
+        ApiError._by_code[cls.code] = cls
 
     def __init__(
         self,

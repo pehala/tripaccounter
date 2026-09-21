@@ -37,7 +37,8 @@ def build_shares(
     `FieldError` for every rule in API.md §4 that applies to `shares`.
     `shares_in` is never None here — "omitted means equal over all active
     people" is resolved by the caller, which knows the roster; this function
-    only validates.
+    only validates. `mode` is `equal`, `shares` or `exact`: the `Literal` both
+    write schemas validate, so `exact` is the remaining case.
     """
     if len(shares_in) == 0:
         raise EmptyError()
@@ -73,7 +74,7 @@ def build_shares(
                     "exact": False,
                 }
             )
-        elif mode == "exact":
+        else:
             share_amount = parse_amount(raw.get("amount"), allow_zero=True)
             rows.append(
                 {
@@ -83,8 +84,6 @@ def build_shares(
                     "exact": True,
                 }
             )
-        else:
-            raise EmptyError()
 
     if mode == "exact":
         total = sum(row["owed_minor"] for row in rows)
@@ -118,6 +117,16 @@ def format_weight(weight_scaled: int) -> str:
     if value == value.to_integral_value():
         return str(int(value))
     return format(value, "f")
+
+
+def format_amount(amount_minor: int) -> str:
+    """Return the minor units as the canonical decimal string a write body carries.
+
+    The counterpart of `format_weight` for an `exact` row, and the only way
+    stored money re-enters a write path: `money.to_wire` produces a JSON
+    number, which `parse_amount` rejects.
+    """
+    return format(Decimal(amount_minor) / AMOUNT_SCALE, "f")
 
 
 def resolve_shares_wire(

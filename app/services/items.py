@@ -18,7 +18,7 @@ from app.services.errors.fields import (
     TooLongError,
     WalletOwnerMismatchError,
 )
-from app.services.money import AMOUNT_SCALE, to_hundredths, to_wire
+from app.services.money import AMOUNT_SCALE, to_hundredths
 from app.services.scope import in_trip, ref_error
 
 
@@ -145,7 +145,7 @@ def default_shares(item: LineItem, mode: str) -> list[dict]:
         if mode == "shares":
             row["weight"] = splits.format_weight(share.weight_scaled)
         elif mode == "exact":
-            row["amount"] = to_wire(share.owed_minor or 0, AMOUNT_SCALE)
+            row["amount"] = splits.format_amount(share.owed_minor or 0)
         rows.append(row)
     return rows
 

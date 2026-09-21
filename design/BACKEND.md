@@ -208,6 +208,7 @@ lives, which is rarely where the code that answers it lives.
 | `test_errors.py` | catalog ↔ contract ↔ wire consistency; no `message` key anywhere |
 | `test_http.py` | malformed JSON, unknown fields, `204` bodies, the `500` correlation `ref` |
 | `test_static.py` | `/` and `/t/{slug}` serve `index.html`; nothing under `/api/v1` returns HTML; the versioned asset mount under `TA_BUILD_ID` and the unversioned one without it |
+| `test_seed.py` | the demo seed `make seed` writes: `seed_demo` loads, and every endpoint reads it back |
 | `test_money.py` | **the only file that imports a service** — parsing, `to_wire`, the share expression, settle-up rounding |
 | `import_sheet/` | `tools/import_sheet/` — `test_cells.py` cell grammars and date shapes, `test_splits.py` split inference, `test_layout.py` column layout and reported problems, all called directly; `test_example_sheet.py` imports `fixtures/sheet.csv` through `session`, reads it back over `client`, and drives the CLI |
 

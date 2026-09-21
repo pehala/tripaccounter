@@ -230,3 +230,108 @@ def test_items_envelope_merges_transfers_sorted_newest_first(client, trip, trans
     transfers = client.get(f"/api/v1/trips/{trip['slug']}/items").json()["transfers"]
 
     assert [t["id"] for t in transfers] == [newer["id"], older["id"]]
+
+
+def test_list_transfers_is_newest_first(client, trip, transfer_body):
+    """The transfers collection answers on its own route, ordered occurred_at desc, id desc."""
+    older = client.post(
+        f"/api/v1/trips/{trip['slug']}/transfers",
+        json=transfer_body(occurred_at="2026-09-13T09:00:00"),
+    ).json()["transfer"]
+    newer = client.post(
+        f"/api/v1/trips/{trip['slug']}/transfers",
+        json=transfer_body(occurred_at="2026-09-14T09:00:00"),
+    ).json()["transfer"]
+
+    response = client.get(f"/api/v1/trips/{trip['slug']}/transfers")
+
+    assert response.status_code == 200
+    assert [t["id"] for t in response.json()["transfers"]] == [newer["id"], older["id"]]
+
+
+def test_get_transfer_reads_back_what_was_created(client, trip, transfer_body):
+    """A transfer read by id is the same body the create answered with."""
+    created = client.post(
+        f"/api/v1/trips/{trip['slug']}/transfers", json=transfer_body(from_amount="150.00")
+    ).json()["transfer"]
+
+    read_back = client.get(f"/api/v1/trips/{trip['slug']}/transfers/{created['id']}")
+
+    assert read_back.status_code == 200
+    assert read_back.json()["transfer"] == created
+
+
+def test_update_transfer_note(client, trip, transfer_body):
+    """A PATCH carrying only a note writes it and leaves both amounts alone."""
+    created = client.post(
+        f"/api/v1/trips/{trip['slug']}/transfers", json=transfer_body(from_amount="100")
+    ).json()["transfer"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/transfers/{created['id']}", json={"note": "for petrol"}
+    )
+
+    assert response.status_code == 200
+    updated = response.json()["transfer"]
+    assert updated["note"] == "for petrol"
+    assert updated["from_amount"] == 100
+    assert updated["to_amount"] == 100
+
+
+def test_update_transfer_explicit_to_amount_on_an_exchange(
+    client, trip, default_wallet_of, person_id, transfer_body
+):
+    """A new to_amount on an exchange is written as sent, not mirrored from the from side."""
+    petr = person_id("Petr")
+    wallet_id = default_wallet_of(petr)["id"]
+    created = client.post(
+        f"/api/v1/trips/{trip['slug']}/transfers",
+        json=transfer_body(
+            from_wallet_id=wallet_id,
+            from_amount="20",
+            from_currency_id=trip["currencies"][1]["id"],
+            to_wallet_id=wallet_id,
+            to_amount="2800",
+            to_currency_id=trip["currencies"][0]["id"],
+        ),
+    ).json()["transfer"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/transfers/{created['id']}", json={"to_amount": "2900"}
+    )
+
+    assert response.status_code == 200
+    updated = response.json()["transfer"]
+    assert updated["from_amount"] == 20
+    assert updated["to_amount"] == 2900
+
+
+def test_create_transfer_missing_amount_is_required(client, trip, transfer_body):
+    """`from_amount` is required on create; there is nothing on file to default it from."""
+    body = transfer_body()
+    del body["from_amount"]
+
+    response = client.post(f"/api/v1/trips/{trip['slug']}/transfers", json=body)
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "error": {
+            "code": "validation_error",
+            "params": {},
+            "fields": {"from_amount": {"code": "required", "params": {}}},
+        }
+    }
+
+
+def test_create_transfer_to_currency_not_in_trip_is_not_in_trip(client, trip, transfer_body):
+    """A to-side currency from outside this trip is rejected on its own field."""
+    response = client.post(
+        f"/api/v1/trips/{trip['slug']}/transfers",
+        json=transfer_body(to_currency_id=999999, to_amount="20"),
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"]["to_currency_id"] == {
+        "code": "not_in_trip",
+        "params": {},
+    }

@@ -275,3 +275,103 @@ def test_item_id_from_another_trip_is_404(client, trip, item_body):
     response = client.get(f"/api/v1/trips/{trip['slug']}/items/{foreign_item['id']}")
     assert response.status_code == 404
     assert response.json() == {"error": {"code": "not_found", "params": {"resource": "item"}}}
+
+
+def test_patch_item_amount_resplits_the_saved_roster(client, trip, item_body):
+    """A PATCH carrying only a new amount re-splits it over the people already on the item."""
+    created = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(amount="100.00")
+    ).json()["item"]
+
+    updated = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{created['id']}", json={"amount": "200.00"}
+    ).json()["item"]
+
+    assert [share["owed"] for share in updated["split"]["shares"]] == [50, 50, 50, 50]
+
+
+def test_patch_item_amount_keeps_the_saved_weights(client, trip, people, item_body):
+    """A weighted item re-split by a new amount keeps each person's weight."""
+    created = client.post(
+        f"/api/v1/trips/{trip['slug']}/items",
+        json=item_body(
+            amount="96000",
+            split_mode="shares",
+            shares=[
+                {"person_id": people[0]["id"], "weight": "1"},
+                {"person_id": people[1]["id"], "weight": "1"},
+                {"person_id": people[2]["id"], "weight": "1"},
+                {"person_id": people[3]["id"], "weight": "0.5"},
+            ],
+        ),
+    ).json()["item"]
+
+    updated = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{created['id']}", json={"amount": "48000"}
+    ).json()["item"]
+
+    shares = updated["split"]["shares"]
+    assert [share["weight"] for share in shares] == ["1", "1", "1", "0.5"]
+    assert [share["owed"] for share in shares] == [
+        13714.285714,
+        13714.285714,
+        13714.285714,
+        6857.142857,
+    ]
+
+
+def test_occurred_at_sent_as_null_defaults_to_clock(client, trip, item_body, frozen_clock):
+    """An explicit `occurred_at: null` falls back to the clock, as an absent key does."""
+    frozen_clock(datetime(2026, 8, 1, 10, 30, tzinfo=UTC))
+
+    response = client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(occurred_at=None))
+
+    assert response.status_code == 201
+    assert response.json()["item"]["occurred_at"] == "2026-08-01T10:30:00Z"
+
+
+def test_patch_item_amount_on_an_exact_item_is_sum_mismatch(client, trip, people, item_body):
+    """An exact item keeps its saved rows on a re-amount, so a new total no longer adds up."""
+    created = client.post(
+        f"/api/v1/trips/{trip['slug']}/items",
+        json=item_body(
+            amount="184.00",
+            split_mode="exact",
+            shares=[
+                {"person_id": people[0]["id"], "amount": "92.00"},
+                {"person_id": people[1]["id"], "amount": "92.00"},
+            ],
+        ),
+    ).json()["item"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{created['id']}", json={"amount": "200.00"}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"]["shares"] == {
+        "code": "sum_mismatch",
+        "params": {"diff": 1600, "currency_code": "ISK"},
+    }
+
+
+def test_patch_item_split_mode_on_an_exact_item_keeps_its_rows(client, trip, people, item_body):
+    """An exact item's saved amounts survive a write that omits `shares`, unrounded."""
+    created = client.post(
+        f"/api/v1/trips/{trip['slug']}/items",
+        json=item_body(
+            amount="184.05",
+            split_mode="exact",
+            shares=[
+                {"person_id": people[0]["id"], "amount": "92.05"},
+                {"person_id": people[1]["id"], "amount": "92.00"},
+            ],
+        ),
+    ).json()["item"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{created['id']}", json={"split_mode": "exact"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["item"]["split"] == created["split"]

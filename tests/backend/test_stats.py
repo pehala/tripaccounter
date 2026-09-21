@@ -196,3 +196,37 @@ def test_day_count_spans_trip_start_end(client, trip):
     """day_count spans the trip's start_date/end_date, inclusive."""
     stats = client.get(f"/api/v1/trips/{trip['slug']}/stats").json()
     assert stats["day_count"] == 10
+
+
+def test_day_count_is_null_without_trip_dates(client):
+    """A trip with no start or end date reports day_count null, not zero."""
+    slug = client.post(
+        "/api/v1/trips",
+        json={
+            "name": "Undated trip",
+            "people": [{"name": "Petr"}],
+            "currencies": [{"code": "ISK"}],
+            "countries": [{"name": "Iceland"}],
+        },
+    ).json()["trip"]["slug"]
+
+    stats = client.get(f"/api/v1/trips/{slug}/stats").json()
+
+    assert stats["day_count"] is None
+
+
+def test_label_rows_have_no_null_key_when_every_item_is_labelled(client, trip, item_body):
+    """The unlabelled bucket is absent, not zero, when nothing is unlabelled."""
+    item = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(labels=["food"])
+    ).json()["item"]
+
+    groups = get_stats(client, trip["slug"], "label")
+
+    assert groups[("currency", "label")] == [
+        {
+            "keys": {"currency_id": item["currency_id"], "label": "food"},
+            "amount": item["amount"],
+            "item_count": 1,
+        }
+    ]

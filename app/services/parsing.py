@@ -10,7 +10,7 @@ boundary differs.
 """
 
 import re
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from app.services.errors.fields import (
     InvalidAmountError,
@@ -20,7 +20,7 @@ from app.services.errors.fields import (
 )
 
 AMOUNT_RE = re.compile(r"^-?[0-9]+(\.[0-9]{1,2})?$")
-WEIGHT_RE = re.compile(r"^[0-9]+(\.[0-9]{1,4})?$")
+WEIGHT_RE = re.compile(r"^[0-9]+(\.[0-9]+)?$")
 COORD_RE = re.compile(r"^-?[0-9]+(\.[0-9]{1,6})?$")
 
 
@@ -43,14 +43,10 @@ def parse_weight(raw: object) -> Decimal:
     """> 0, ≤ 4 fraction digits."""
     if not isinstance(raw, str) or not WEIGHT_RE.match(raw):
         raise NotPositiveError()
-    try:
-        value = Decimal(raw)
-    except InvalidOperation as exc:
-        raise NotPositiveError() from exc
+    value = Decimal(raw)
     if value <= 0:
         raise NotPositiveError()
-    exponent = value.as_tuple().exponent
-    if isinstance(exponent, int) and exponent < -4:
+    if value.as_tuple().exponent < -4:
         raise TooPreciseError(max=4)
     return value
 

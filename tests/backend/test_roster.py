@@ -1,5 +1,7 @@
 """Functional tests for the people/currencies/countries roster endpoints."""
 
+import pytest
+
 
 def test_duplicate_person_name_is_409(client, trip, people):
     """A duplicate person name within a trip is a conflict."""
@@ -235,3 +237,119 @@ def test_delete_currency_referenced_by_transfer_is_409_in_use(
     response = client.delete(f"/api/v1/trips/{trip['slug']}/currencies/{eur}")
     assert response.status_code == 409
     assert response.json()["error"]["fields"]["id"]["code"] == "in_use"
+
+
+def test_patch_person_renames_and_reweights(client, trip, person_id):
+    """A PATCH carrying a new name and default weight writes both."""
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/people/{person_id('Petr')}",
+        json={"name": "Petra", "default_weight": "1.5"},
+    )
+
+    assert response.status_code == 200
+    person = response.json()["person"]
+    assert person["name"] == "Petra"
+    assert person["initial"] == "P"
+    assert person["default_weight"] == "1.5"
+
+
+def test_patch_person_onto_another_persons_name_is_409(client, trip, people, person_id):
+    """Renaming someone to a name already on the roster conflicts; their own name does not."""
+    petr = person_id("Petr")
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/people/{petr}", json={"name": people[1]["name"]}
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "error": {
+            "code": "conflict",
+            "params": {},
+            "fields": {"name": {"code": "duplicate", "params": {"name": people[1]["name"]}}},
+        }
+    }
+    unchanged = client.patch(f"/api/v1/trips/{trip['slug']}/people/{petr}", json={"name": "Petr"})
+    assert unchanged.status_code == 200
+
+
+def test_patch_currency_symbol(client, trip, currency):
+    """A PATCH carrying a symbol writes it, leaving the code alone."""
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/currencies/{currency['id']}", json={"symbol": "kr"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["currency"] == {
+        "id": currency["id"],
+        "code": "ISK",
+        "symbol": "kr",
+        "is_primary": True,
+    }
+
+
+def test_patch_country_renames_and_uppercases_the_code(client, trip, country):
+    """A PATCH writes the new name and upper-cases the ISO code, which drives the flag."""
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/countries/{country['id']}",
+        json={"name": "Danmark", "code": "dk"},
+    )
+
+    assert response.status_code == 200
+    updated = response.json()["country"]
+    assert updated["name"] == "Danmark"
+    assert updated["code"] == "DK"
+    assert updated["flag"] == "🇩🇰"
+
+
+def test_patch_country_onto_another_countrys_name_is_409(client, trip, country):
+    """Renaming a country to one the trip already has conflicts."""
+    added = client.post(f"/api/v1/trips/{trip['slug']}/countries", json={"name": "Denmark"}).json()[
+        "country"
+    ]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/countries/{added['id']}", json={"name": country["name"]}
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["fields"]["name"] == {
+        "code": "duplicate",
+        "params": {"name": country["name"]},
+    }
+
+
+@pytest.mark.parametrize(
+    ("collection", "resource", "body"),
+    [
+        pytest.param("people", "person", {"name": "Frank"}, id="person"),
+        pytest.param("currencies", "currency", {"code": "DKK"}, id="currency"),
+        pytest.param("countries", "country", {"name": "Denmark"}, id="country"),
+    ],
+)
+def test_delete_unreferenced_roster_row_removes_it(client, trip, collection, resource, body):
+    """A roster row nothing references deletes with 204, and its id stops resolving."""
+    created = client.post(f"/api/v1/trips/{trip['slug']}/{collection}", json=body).json()[resource]
+
+    response = client.delete(f"/api/v1/trips/{trip['slug']}/{collection}/{created['id']}")
+
+    assert response.status_code == 204
+    assert response.content == b""
+    gone = client.delete(f"/api/v1/trips/{trip['slug']}/{collection}/{created['id']}")
+    assert gone.status_code == 404
+    assert gone.json() == {"error": {"code": "not_found", "params": {"resource": resource}}}
+
+
+def test_create_country_as_default_moves_the_flag(client, trip, country):
+    """A country created with `is_default` takes the flag off the one that held it."""
+    client.post(
+        f"/api/v1/trips/{trip['slug']}/countries",
+        json={"name": "Denmark", "code": "DK", "is_default": True},
+    )
+
+    listed = client.get(f"/api/v1/trips/{trip['slug']}/countries").json()["countries"]
+
+    assert [(entry["name"], entry["is_default"]) for entry in listed] == [
+        ("Denmark", True),
+        (country["name"], False),
+    ]
