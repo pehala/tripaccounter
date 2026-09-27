@@ -4,12 +4,12 @@ Each returns a `Select` the caller executes, so a router can add its own
 options and a service can wrap it in an aggregate.
 """
 
-from sqlalchemy import BigInteger, String, cast, func, select
+from sqlalchemy import BigInteger, String, cast, func, literal, select, union_all
 
 from app.db_views import share_owed_view
 from app.models.items import LineItem
 from app.models.roster import TripCurrency
-from app.models.wallets import WalletTransfer
+from app.models.wallets import Wallet, WalletTransfer
 from app.schemas.responses import ITEM_LOAD_OPTIONS, TRANSFER_LOAD_OPTIONS
 
 
@@ -78,4 +78,63 @@ def owed_by_person(trip_id: int, currency_id: int):
         )
         .group_by(share_owed_view.c.person_id)
         .order_by(share_owed_view.c.person_id)
+    )
+
+
+def wallet_flows(trip_id: int):
+    """Select `(wallet_id, person_id, tracked, currency_id, received, sent, spent)`.
+
+    One row per wallet and currency any transfer or item touched, summed in
+    minor units: transfers in, transfers out and items each fill one column.
+    Grouped on the wallet's primary key, so its other columns stay selectable.
+    """
+    zero = literal(0)
+
+    def grouped(wallet_id, currency_id, amounts, where):
+        """Sum one source's `(received, sent, spent)` per (wallet, currency) before the union."""
+        received, sent, spent = amounts
+        return (
+            select(
+                wallet_id.label("wallet_id"),
+                currency_id.label("currency_id"),
+                func.sum(received).label("received"),
+                func.sum(sent).label("sent"),
+                func.sum(spent).label("spent"),
+            )
+            .where(where)
+            .group_by(wallet_id, currency_id)
+        )
+
+    movements = union_all(
+        grouped(
+            WalletTransfer.to_wallet_id,
+            WalletTransfer.to_currency_id,
+            (WalletTransfer.to_amount_minor, zero, zero),
+            WalletTransfer.trip_id == trip_id,
+        ),
+        grouped(
+            WalletTransfer.from_wallet_id,
+            WalletTransfer.from_currency_id,
+            (zero, WalletTransfer.from_amount_minor, zero),
+            WalletTransfer.trip_id == trip_id,
+        ),
+        grouped(
+            LineItem.wallet_id,
+            LineItem.currency_id,
+            (zero, zero, LineItem.amount_minor),
+            LineItem.trip_id == trip_id,
+        ),
+    ).subquery("movements")
+    return (
+        select(
+            Wallet.id.label("wallet_id"),
+            Wallet.person_id,
+            Wallet.tracked,
+            movements.c.currency_id,
+            int_sum(movements.c.received).label("received"),
+            int_sum(movements.c.sent).label("sent"),
+            int_sum(movements.c.spent).label("spent"),
+        )
+        .join(Wallet, Wallet.id == movements.c.wallet_id)
+        .group_by(Wallet.id, movements.c.currency_id)
     )

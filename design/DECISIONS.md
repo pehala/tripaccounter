@@ -41,7 +41,7 @@ flowchart TD
 | **Statistics** | **One `GROUP BY` engine over a dimension registry**, not a fixed set of breakdowns. `?group_by=` takes any chain of `label`/`country`/`person`/`day`/`city`/`payer`/`wallet`, at any depth; `currency` is prepended to every chain and is never a choice. A chain is answered with its own prefixes, which is where a nested view's subtotals come from — `ROLLUP`/`GROUPING SETS` would do it in one query but SQLite has neither, and the client may not sum a column. |
 | **Splits** | Equal by default; override to weighted shares or exact amounts. Computed server-side only; `preview-split` gives the form live numbers from the same expression that will be saved. |
 | **Paybacks** | **A settle-up suggestion is never recorded as paid** — no "Mark paid". A wallet transfer is different: it is a real, typed movement of money, and one between two people's wallets is exactly the amendment this row used to reserve for later (§2, "Why paybacks are not recorded"). |
-| **Wallets** | Every person gets one untracked, default wallet (`Card`) on creation, server-assigned. A wallet is either untracked (unlimited, no balance) or tracked (`received − sent − spent` per currency). Transfers between wallets have no stored exchange rate — both typed sides — and an exchange is same-owner only. |
+| **Wallets** | Every person gets one untracked, default wallet (`Card`) on creation, server-assigned. A wallet is either untracked (unlimited, no balance) or tracked (`received − sent − spent` per currency). Transfers between wallets have no stored exchange rate — both typed sides — and an exchange is same-owner only. A person's average rate per pair is derived on read by `GET /exchange-rates`, first in first out: what was spent took the oldest exchanges, what is still held the newest, and each gets its own rate. The spent rate is offered as a one-click prefill for a Total rate; neither is stored or applied on its own. |
 | **Map** | **Leaflet 1.9.4 as one ESM module, OpenStreetMap's standard raster tiles, no key.** The map tab reads the coordinates the item feed already carries, filters them client-side, and never totals what a pin holds. Dark mode inverts the tile pane in CSS; there is no second tile provider and no geocoding. |
 | **Charts** | **Chart.js 4.5.1 as ESM, imported when the statistics chart mounts, coloured from Bootstrap's `--bs-*` variables.** It draws the grouping rows the list renders and sums nothing. Beat a hand-drawn SVG: more chart types, tooltips, legends and plugins for free, at the cost of a canvas the Playwright suite can only inspect through `Chart.getChart()`. |
 | **Viewer** | **No "current user" anywhere.** An item states who paid and what each person owes. Nothing is rendered relative to a viewer. |
@@ -89,7 +89,10 @@ make every historical balance depend on when it was computed. Per-currency balan
 are always true; the Total section's figures are explicitly the user's own arithmetic,
 in their own browser, never sent back — and it shows nothing at all until every
 currency has a rate, rather than a partial sum that silently drops the ones missing
-one.
+one. The average exchange rate the server derives from a person's own typed exchanges
+does not change this: it is a ratio of two typed sums, not a conversion, and it only
+reaches a Total when the user clicks it into the rate form, where it is typed like any
+other.
 
 ### Why no "current user"
 There are no accounts, and a trip is shared by URL. Any "you owe" framing would have

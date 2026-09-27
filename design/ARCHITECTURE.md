@@ -180,7 +180,9 @@ statistics are per currency, full stop. The only conversion anywhere is each pag
 own Total section — on both balances and statistics — a switch alongside the
 currencies that multiplies by rates the user typed into their own browser (shared
 between the two pages, one rate set per trip) and only computes once every
-currency has one — those rates are never sent here and never stored.
+currency has one — those rates are never sent here and never stored. The rate form
+may offer each person's average exchange rate (`GET /exchange-rates`, derived from
+their typed exchanges) as a link; a click makes it one more typed rate.
 
 ## 5. The contract seam
 

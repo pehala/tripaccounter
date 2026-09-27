@@ -10,6 +10,7 @@ from app.schemas.responses import (
     BalanceBlockOut,
     CountryOut,
     CurrencyOut,
+    ExchangeRateOut,
     ItemOut,
     LabelOut,
     Number,
@@ -121,6 +122,12 @@ class BalancesEnvelope(BaseModel):
     """`{ "balances": [BalanceBlock] }`, one block per currency with any activity."""
 
     balances: list[BalanceBlockOut]
+
+
+class ExchangeRatesEnvelope(BaseModel):
+    """`{ "exchange_rates": [ExchangeRate] }`, one row per person and exchanged currency pair."""
+
+    exchange_rates: list[ExchangeRateOut]
 
 
 class WalletEnvelope(BaseModel):

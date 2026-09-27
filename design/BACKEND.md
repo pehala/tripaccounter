@@ -35,7 +35,7 @@ app/
 │                       The OpenAPI schema is generated from here.
 ├── seed.py             the demo trip `make seed` writes to the dev database
 ├── services/
-│   ├── money.py        to_hundredths(Decimal), to_wire(int, scale) -> JSON number,
+│   ├── money.py        to_hundredths(Decimal), to_wire(int, scale) -> JSON number, the scales,
 │   │                   scale_weight(Decimal) -> int. No parsing, no formatting.
 │   ├── parsing.py      the canonical grammars: amount, weight, coordinate
 │   ├── items.py        item write rules: refs, wallet and coordinate resolution,
@@ -49,6 +49,8 @@ app/
 │   ├── roster.py       people / currencies / countries / wallets CRUD + the
 │   │                   in-use guards; `create_person` also seeds the default `Card`
 │   ├── wallets.py       wallet_balances(): received/sent/spent per tracked wallet
+│   ├── exchange_rates.py  spent and leftover rate per person and exchanged pair,
+│   │                   first in first out: sums in SQL, the lot queue in Python
 │   ├── transfers.py     the plain/exchange resolve + validate rules for a transfer
 │   ├── labels.py       normalize, get-or-create, use_count
 │   ├── countries.py    flag from ISO code
@@ -105,8 +107,9 @@ Money is integers, and there is exactly one rounding step.
 | stored | `bigint` hundredths (`amount_minor`, `owed_minor`), weights ×10⁴ | `models/` |
 | computed share | `bigint` micro-units, floored, **a view** | `db_views.share_owed` |
 | aggregated | SQL `GROUP BY` over both | `services/balances.py`, `services/stats.py` |
+| exchange rate | exact `Fraction` per lot, floored once at ×10⁹ — a ratio, never stored | `services/exchange_rates.py` |
 | **rounded** | **hundredths, zero-sum corrected** | **`services/settle.py` — the only one** |
-| wire | plain JSON number, 2 places typed / 6 computed | `money.to_wire` in `schemas/responses.py` |
+| wire | plain JSON number, 2 places typed / 6 computed / 9 for a rate | `money.to_wire` in `schemas/responses.py` |
 
 Consequences that are easy to trip over:
 
@@ -201,6 +204,7 @@ lives, which is rarely where the code that answers it lives.
 | `test_labels.py` | auto-create, case-folding, the whitespace rejection, `use_count`, suggestion order |
 | `test_balances.py` | `net == paid − owed + sent − received`, the zero-sum bound, suggestions replayed to prove they settle |
 | `test_wallets.py` | the wallet balances report — `received/sent/spent`, the overcharge sign, untracked `[]`, currency order |
+| `test_exchange_rates.py` | spent and leftover rates — FIFO lot order, a lot split between parts, change-backs, the held cap, `null` rates, per-person rows |
 | `test_transfers.py` | transfer CRUD, the plain/exchange mirroring rule, `same_wallet`/`cross_owner_exchange`, exclusion from spend |
 | `test_stats.py` | prefix expansion, nested rows against their parent, each dimension's own column, the deliberate `label` overlap, `person` as owed |
 | `test_export.py` | both formats, the pinned CSV header, an empty trip |

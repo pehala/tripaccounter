@@ -216,12 +216,12 @@ TRANSFERS = (
         to_currency_key=1,
         to_amount_minor=500_000,
     ),
-    # Petr funds Cash from Card, lands between the fuel stop and the dinner.
+    # Petr withdraws ISK into Cash on his EUR Card, lands between the fuel stop and the dinner.
     SeedTransfer(
         occurred_at=datetime(2026, 9, 14, 12, 0, tzinfo=UTC),
         from_wallet_key=1,
-        from_currency_key=1,
-        from_amount_minor=2_000_000,
+        from_currency_key=2,
+        from_amount_minor=14_000,
         to_wallet_key=5,
         to_currency_key=1,
         to_amount_minor=2_000_000,

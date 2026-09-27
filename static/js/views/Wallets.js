@@ -2,9 +2,31 @@ import { useEffect } from 'preact/hooks';
 import { html } from '../h.js';
 import { useStore, reload } from '../store.js';
 import { t, getLocale } from '../i18n/index.js';
-import { money } from '../fmt.js';
+import { money, rate } from '../fmt.js';
 import { Avatar } from '../components/Avatar.js';
 import { Loading } from '../components/Loading.js';
+
+function RatesFooter({ rows, locale }) {
+  if (rows.length === 0) return null;
+  return html`
+    <div class="card-footer small">
+      <div class="text-body-secondary">${t('wallets.rates')}</div>
+      ${rows.map((row) => html`
+        <div key=${`${row.from_currency_code}-${row.to_currency_code}`} class="exchange-rate num">
+          ${row.rate === null
+            ? t('wallets.no_rate', { from: row.from_currency_code, to: row.to_currency_code })
+            : `1 ${row.to_currency_code} = ${rate(row.rate, locale)} ${row.from_currency_code}`}
+          ${row.leftover_rate !== null && html`
+            <span class="exchange-leftover text-body-secondary"> · ${t('wallets.leftover', {
+              amount: `${money(row.leftover, locale)} ${row.to_currency_code}`,
+              rate: `1 ${row.to_currency_code} = ${rate(row.leftover_rate, locale)} ${row.from_currency_code}`,
+            })}</span>
+          `}
+        </div>
+      `)}
+    </div>
+  `;
+}
 
 function WalletRow({ wallet, locale }) {
   return html`
@@ -45,9 +67,10 @@ export function Wallets() {
 
   useEffect(() => {
     if (!store.wallets) reload('wallets');
+    if (!store.exchangeRates) reload('exchangeRates');
   }, [store.slug]);
 
-  if (!store.wallets) return html`<${Loading} />`;
+  if (!store.wallets || !store.exchangeRates) return html`<${Loading} />`;
 
   const byPerson = new Map();
   for (const wallet of store.wallets) {
@@ -67,6 +90,7 @@ export function Wallets() {
           <ul class="list-group list-group-flush">
             ${wallets.map((w) => html`<${WalletRow} key=${w.id} wallet=${w} locale=${locale} />`)}
           </ul>
+          <${RatesFooter} rows=${store.exchangeRates.filter((row) => row.person_id === person.id)} locale=${locale} />
         </div>
       `;
     })}

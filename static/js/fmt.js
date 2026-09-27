@@ -15,6 +15,17 @@ function numberFmt(locale) {
   return numberFmts[locale] ??= new Intl.NumberFormat(locale, { maximumFractionDigits: 2 });
 }
 
+const rateFmts = {};
+function rateFmt(locale) {
+  return rateFmts[locale] ??= new Intl.NumberFormat(locale, { maximumSignificantDigits: 6, useGrouping: false });
+}
+
+// An exchange rate: six significant digits, no grouping, so parse() reads it back
+// as the typed value it becomes in the Total's rate form.
+export function rate(value, locale) {
+  return rateFmt(locale).format(value);
+}
+
 // Grouping, separators and 0-2 fraction digits. Nothing else — never called on
 // a value the client itself computed except the stats rate product (rule 1).
 export function money(value, locale) {

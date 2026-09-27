@@ -118,6 +118,46 @@ def test_wallets_report_exchange_debits_one_currency_credits_another(
     assert by_currency[isk]["balance"] == 2800
 
 
+def test_wallets_report_one_currency_sums_received_sent_and_spent(
+    client, trip, person_id, default_wallet_of, item_body
+):
+    """A wallet funded, sending some on and spending in one currency reports all three sums."""
+    petr = person_id("Petr")
+    card = default_wallet_of(petr)["id"]
+    cash = client.post(
+        f"/api/v1/trips/{trip['slug']}/wallets",
+        json={"person_id": petr, "name": "Cash", "tracked": True},
+    ).json()["wallet"]
+    isk = trip["currencies"][0]["id"]
+    for from_wallet, to_wallet, amount in ((card, cash["id"], "20000"), (cash["id"], card, "3000")):
+        client.post(
+            f"/api/v1/trips/{trip['slug']}/transfers",
+            json={
+                "from_wallet_id": from_wallet,
+                "from_amount": amount,
+                "from_currency_id": isk,
+                "to_wallet_id": to_wallet,
+            },
+        )
+    client.post(
+        f"/api/v1/trips/{trip['slug']}/items",
+        json=item_body(amount="12500", payer_id=petr, wallet_id=cash["id"]),
+    )
+
+    report = client.get(f"/api/v1/trips/{trip['slug']}/wallets").json()["wallets"]
+    cash_report = next(w for w in report if w["id"] == cash["id"])
+    assert cash_report["balances"] == [
+        {
+            "currency_code": "ISK",
+            "currency_id": isk,
+            "received": 20000,
+            "sent": 3000,
+            "spent": 12500,
+            "balance": 4500,
+        }
+    ]
+
+
 def test_wallets_report_currency_order_is_primary_then_code(
     client, trip, person_id, default_wallet_of
 ):

@@ -41,6 +41,7 @@
   },
   "labels": {"labels": []},
   "items": {"items": [], "day_totals": [], "before_trip_totals": [], "transfers": []},
+  "exchange_rates": {"exchange_rates": []},
   "balances": {"balances": []},
   "stats": {"groups": [], "day_count": 0},
   "trips": {

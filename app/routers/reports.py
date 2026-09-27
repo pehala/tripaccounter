@@ -1,15 +1,16 @@
-"""Report routes: balances and statistics."""
+"""Report routes: balances, statistics and exchange rates."""
 
 from typing import Annotated
 
 from fastapi import APIRouter, Query
 
 from app.deps import SessionDep, TripDep
-from app.schemas.envelopes import BalancesEnvelope
+from app.schemas.envelopes import BalancesEnvelope, ExchangeRatesEnvelope
 from app.schemas.error_shapes import error_responses
 from app.schemas.responses import StatsOut
 from app.services.balances import compute_balances
 from app.services.errors.api import field_errors
+from app.services.exchange_rates import exchange_rates
 from app.services.stats import compute_stats, expand_groupings
 
 router = APIRouter(tags=["reports"])
@@ -39,3 +40,13 @@ def get_stats(
     with field_errors("group_by"):
         chains = expand_groupings(group_by)
     return compute_stats(session, trip, chains)
+
+
+@router.get(
+    "/trips/{slug}/exchange-rates",
+    response_model=ExchangeRatesEnvelope,
+    responses=error_responses(404),
+)
+def get_exchange_rates(trip: TripDep, session: SessionDep):
+    """Get each person's spent and leftover exchange rates per currency pair they exchanged."""
+    return {"exchange_rates": exchange_rates(session, trip.id)}

@@ -120,6 +120,9 @@ export default {
   'wallets.overcharge': 'Spent more than this wallet ever received.',
   'wallets.no_activity': 'No activity yet.',
   'wallets.empty': 'No wallets yet.',
+  'wallets.rates': 'Average exchange rate of what was spent',
+  'wallets.leftover': '{amount} left, bought at {rate}',
+  'wallets.no_rate': '{from} → {to}: nothing spent yet',
 
   'stats.breakdown': 'Breakdown',
   'stats.showing': 'Showing',
@@ -151,6 +154,7 @@ export default {
   'rates.scope': '— this browser only',
   'rates.convert_to': 'Convert to',
   'rates.note': "Typed here, kept in localStorage, never sent to the server, never stored with the trip. Affects this section only — balances, settle-up and each currency's own stats stay untouched. Changing the target currency clears any rates you've typed for the previous one.",
+  'rates.use_average': 'Use this average exchange rate',
   'rates.missing': 'Add a rate for every currency to see the total.',
   'rates.total_note': "Figures below use the rates above — nobody's official exchange rate.",
 

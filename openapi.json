@@ -533,6 +533,89 @@
         "title": "ErrorEnvelope",
         "type": "object"
       },
+      "ExchangeRateOut": {
+        "description": "One person's rates for one currency pair: 1 `to` cost `rate` of `from`.\n\n`rate` prices what was spent, `leftover_rate` the `leftover` still held.",
+        "properties": {
+          "from_currency_code": {
+            "title": "From Currency Code",
+            "type": "string"
+          },
+          "leftover": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Leftover"
+          },
+          "leftover_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leftover Rate"
+          },
+          "person_id": {
+            "title": "Person Id",
+            "type": "integer"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          },
+          "to_currency_code": {
+            "title": "To Currency Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "person_id",
+          "from_currency_code",
+          "to_currency_code",
+          "rate",
+          "leftover",
+          "leftover_rate"
+        ],
+        "title": "ExchangeRateOut",
+        "type": "object"
+      },
+      "ExchangeRatesEnvelope": {
+        "description": "`{ \"exchange_rates\": [ExchangeRate] }`, one row per person and exchanged currency pair.",
+        "properties": {
+          "exchange_rates": {
+            "items": {
+              "$ref": "#/components/schemas/ExchangeRateOut"
+            },
+            "title": "Exchange Rates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "exchange_rates"
+        ],
+        "title": "ExchangeRatesEnvelope",
+        "type": "object"
+      },
       "FieldErrorOut": {
         "description": "One field's `{code, params}` failure.",
         "properties": {
@@ -3284,6 +3367,59 @@
         "summary": "Update Currency",
         "tags": [
           "currencies"
+        ]
+      }
+    },
+    "/api/v1/trips/{slug}/exchange-rates": {
+      "get": {
+        "description": "Get each person's spent and leftover exchange rates per currency pair they exchanged.",
+        "operationId": "get_exchange_rates_api_v1_trips__slug__exchange_rates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExchangeRatesEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Get Exchange Rates",
+        "tags": [
+          "reports"
         ]
       }
     },

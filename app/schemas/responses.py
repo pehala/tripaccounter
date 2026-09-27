@@ -75,6 +75,20 @@ class WalletReportOut(WalletOut):
     balances: list[WalletBalanceOut]
 
 
+class ExchangeRateOut(BaseModel):
+    """One person's rates for one currency pair: 1 `to` cost `rate` of `from`.
+
+    `rate` prices what was spent, `leftover_rate` the `leftover` still held.
+    """
+
+    person_id: int
+    from_currency_code: str
+    to_currency_code: str
+    rate: Number | None
+    leftover: Number
+    leftover_rate: Number | None
+
+
 class CurrencyOut(BaseModel):
     """Wire representation of a trip currency."""
 
