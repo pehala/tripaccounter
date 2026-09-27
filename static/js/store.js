@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { api } from './api.js';
-import { getDims } from './breakdown.js';
+import { getDims, requestChains } from './breakdown.js';
 
 // Per-trip state: trip, labels, items, transfers, balances, wallets, stats. Plain
 // object + subscribers, so any component can read it with useStore() and re-render
@@ -44,11 +44,11 @@ const LOADERS = {
   }),
   balances: (slug) => api.get(`/trips/${slug}/balances`).then((r) => { state.balances = r.balances; }),
   wallets: (slug) => api.get(`/trips/${slug}/wallets`).then((r) => { state.wallets = r.wallets; }),
-  // The dimension chain is asked for as its own group_by; the server answers
-  // it together with its prefixes, which is where the nested subtotals come from.
+  // Each chain is asked for as its own group_by; the server answers it together
+  // with its prefixes, which is where the nested subtotals come from.
   stats: (slug) => {
-    const query = state.statsDims.length ? `?group_by=${state.statsDims.join(',')}` : '';
-    return api.get(`/trips/${slug}/stats${query}`).then((r) => { state.stats = r.groups; });
+    const query = requestChains(state.statsDims).map((chain) => `group_by=${chain.join(',')}`).join('&');
+    return api.get(`/trips/${slug}/stats?${query}`).then((r) => { state.stats = r.groups; });
   },
 };
 

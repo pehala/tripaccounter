@@ -42,8 +42,10 @@ static/
     │                     attempt() runs a write and hands back that error
     ├── store.js          per-trip state: trip, labels, items, balances, stats;
     │                     load(), reload(kind), setStatsDims(dims)
-    ├── breakdown.js      the statistics dimension chain, the currency on screen and
-    │                     list-or-chart, one set per trip — localStorage only, never sent
+    ├── breakdown.js      the statistics dimension chain, the currency on screen,
+    │                     list-or-chart and the date range, one set per trip —
+    │                     localStorage only; requestChains() turns the chain into
+    │                     the group_by list, each level with day appended
     ├── chartTheme.js     Bootstrap's --bs-* colours and font, resolved for Chart.js
     ├── fmt.js            money(), signed(), parse(), date() — one cached
     │                     Intl.NumberFormat per locale
@@ -157,10 +159,14 @@ Note the dashed arrow: **a write is followed by a re-read, never by a local muta
    of their values, stacked unless one of them is `label`, whose overlapping rows
    stand side by side.
 
-   Days before the trip's `start_date` fold into one "Before the trip" row on the
-   statistics page, list and chart alike, as they do in the item feed. The server
-   groups `day` by real date only, so the page sums those rows itself — the one
-   addition outside the Total, confined to that bucket.
+   Two more additions live on the statistics page, both summing over `day` alone —
+   days partition a trip's items, so neither can count an item twice:
+   - days before the trip's `start_date` fold into one "Before the trip" row, list
+     and chart alike, as they do in the item feed;
+   - every level is also requested grouped by day, in the tab's one request, and with
+     a date range picked the page keeps the days inside it and sums each level over
+     them. A level is never summed from the one below it, so overlapping labels stay
+     exact.
 
    The exception is each page's own Total — on both statistics and balances: a switch
    alongside the currencies that multiplies each grouped total (statistics) or each
@@ -249,6 +255,7 @@ it opens; landing straight on a tab via a direct link or a hard refresh pays for
 | Stats tab, first open | 1 | `GET /stats?group_by=…` — `trip` is already in the store |
 | Changing the breakdown | 1 | the chain is a new `group_by`, so the answer is refetched |
 | Changing the shown currency | 0 | every grouping already carries every currency |
+| Changing the date range | 0 | every level already came grouped by day; the days are filtered |
 | Map tab, any open | 0 | it reads `store.items`, which the feed already loaded |
 | Setup tab, first open | 0 or 1 | `GET /labels`, unless Items already loaded them |
 | Balances/Wallets/Stats/Setup, cold (direct link) | 2 | `GET /trips/{slug}` plus that tab's own endpoint |
@@ -320,6 +327,10 @@ line instead of a backend state that has to be manufactured.
 **`preview-split` is always canned.** This suite asserts *"renders what the server
 returned"*. Whether 18 400 ISK across four people is 4 600 each is a backend question,
 asked in exactly one backend file. That is rule 2 as a test-layout rule.
+
+**Two numbers are the page's own, and only those are asserted here**: a statistics
+row's percentage of its parent, and a date range's sum of the day rows inside it
+(`mergeRows` in `Stats.js`). No endpoint returns either, so no backend test can.
 
 **Fixture values are copied from what the backend actually produced**, and a fixture
 is updated in the same commit as the contract change that moves it. The browsable

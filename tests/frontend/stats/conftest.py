@@ -53,7 +53,7 @@ def show(page, label):
 
 def set_chain(page, *dimensions):
     """Replace the whole chain, so the request asks for exactly these dimensions."""
-    for chip in picker(page).locator(".card-body button").all_inner_texts():
+    for chip in picker(page).locator("#stats-chain button").all_inner_texts():
         drop(page, chip.strip())
     for dimension in dimensions:
         pick(page, dimension)

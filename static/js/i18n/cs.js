@@ -145,6 +145,11 @@ export default {
   'stats.view.chart': 'Graf',
   'stats.chart': 'Graf rozdělení',
   'stats.chart_failed': 'Graf se nepodařilo načíst. Zkuste stránku načíst znovu.',
+  'stats.from': 'Od',
+  'stats.to': 'Do',
+  'stats.trip_start': 'Začátek výletu',
+  'stats.reset': 'Resetovat',
+  'stats.no_spend': 'V těchto dnech se nic neutratilo.',
 
   'rates.your_rates': 'Vaše kurzy',
   'rates.scope': '— jen v tomto prohlížeči',

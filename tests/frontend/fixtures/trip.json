@@ -748,6 +748,26 @@
         ]
       },
       {
+        "by": ["currency", "person", "day"],
+        "rows": [
+        {"keys": {"currency_id": 3, "person_id": 1, "date": "2026-09-12"}, "amount": 120, "item_count": 1},
+        {"keys": {"currency_id": 3, "person_id": 2, "date": "2026-09-12"}, "amount": 120, "item_count": 1},
+        {"keys": {"currency_id": 3, "person_id": 3, "date": "2026-09-12"}, "amount": 120, "item_count": 1},
+        {"keys": {"currency_id": 3, "person_id": 4, "date": "2026-09-12"}, "amount": 120, "item_count": 1},
+        {"keys": {"currency_id": 1, "person_id": 1, "date": "2026-09-13"}, "amount": 27428.571428, "item_count": 1},
+        {"keys": {"currency_id": 1, "person_id": 2, "date": "2026-09-13"}, "amount": 27428.571428, "item_count": 1},
+        {"keys": {"currency_id": 1, "person_id": 3, "date": "2026-09-13"}, "amount": 27428.571428, "item_count": 1},
+        {"keys": {"currency_id": 1, "person_id": 4, "date": "2026-09-13"}, "amount": 13714.285714, "item_count": 1},
+        {"keys": {"currency_id": 1, "person_id": 1, "date": "2026-09-14"}, "amount": 6575, "item_count": 2},
+        {"keys": {"currency_id": 1, "person_id": 2, "date": "2026-09-14"}, "amount": 6575, "item_count": 2},
+        {"keys": {"currency_id": 1, "person_id": 3, "date": "2026-09-14"}, "amount": 6575, "item_count": 2},
+        {"keys": {"currency_id": 1, "person_id": 4, "date": "2026-09-14"}, "amount": 6575, "item_count": 2},
+        {"keys": {"currency_id": 2, "person_id": 1, "date": "2026-09-14"}, "amount": 13.333333, "item_count": 1},
+        {"keys": {"currency_id": 2, "person_id": 2, "date": "2026-09-14"}, "amount": 13.333333, "item_count": 1},
+        {"keys": {"currency_id": 2, "person_id": 4, "date": "2026-09-14"}, "amount": 13.333333, "item_count": 1}
+        ]
+      },
+      {
         "by": ["currency", "country", "label"],
         "rows": [
         {"keys": {"currency_id": 1, "country_id": 1, "label": "lodging"}, "amount": 96000, "item_count": 1},

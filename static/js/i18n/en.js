@@ -141,6 +141,11 @@ export default {
   'stats.view.chart': 'Chart',
   'stats.chart': 'Breakdown chart',
   'stats.chart_failed': 'The chart could not load. Reload the page to try again.',
+  'stats.from': 'From',
+  'stats.to': 'To',
+  'stats.trip_start': 'Trip start',
+  'stats.reset': 'Reset',
+  'stats.no_spend': 'Nothing was spent in these dates.',
 
   'rates.your_rates': 'Your rates',
   'rates.scope': '— this browser only',

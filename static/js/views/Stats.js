@@ -4,7 +4,10 @@ import { useStore, reload, setStatsDims } from '../store.js';
 import { t, getLocale } from '../i18n/index.js';
 import { money, date as fmtDate } from '../fmt.js';
 import { getRatesState, setTargetCurrency, setRateValue } from '../rates.js';
-import { getDims, setDims, getShownCurrency, setShownCurrency, getView, setView } from '../breakdown.js';
+import {
+  setDims, getShownCurrency, setShownCurrency, getView, setView, getRange, setRange, isDated,
+  prefixes, mergeRows,
+} from '../breakdown.js';
 import { rateFor, convert, combineRows } from '../convert.js';
 import { isBeforeTrip } from '../days.js';
 import { LabelBadge } from '../components/LabelBadge.js';
@@ -37,19 +40,30 @@ function chainOf(group) {
 
 // Every day before the trip folds into one `date: null` row per remaining key set,
 // the item feed's "Before the trip" group. The server groups by real day only, so
-// this is the one place the page adds amounts outside the Total — the rows it merges
-// sit where the first of them did, which keeps the bucket ahead of the trip's days.
+// the page sums that bucket itself; the first merged row keeps it ahead of the trip.
 function foldBeforeTrip(rows, startDate) {
-  const merged = new Map();
-  for (const row of rows) {
-    const keys = isBeforeTrip(row.keys.date, startDate) ? { ...row.keys, date: null } : row.keys;
-    const id = JSON.stringify(keys);
-    const previous = merged.get(id);
-    merged.set(id, previous
-      ? { keys, amount: previous.amount + row.amount, item_count: previous.item_count + row.item_count }
-      : { ...row, keys });
-  }
-  return [...merged.values()];
+  return mergeRows(rows, (keys) => (isBeforeTrip(keys.date, startDate) ? { ...keys, date: null } : keys));
+}
+
+function inside(day, range) {
+  return (!range.from || day >= range.from) && (!range.to || day <= range.to);
+}
+
+// With a date range, each level of the chain is rebuilt from its day-grouped twin
+// (breakdown.js requestChains): the days inside the range are kept and, for a level
+// the user did not group by day, summed over the day and ranked by amount as the
+// server ranks it. The result has the server's own shape, one grouping per level.
+function withinRange(groups, dims, range) {
+  const byChain = new Map(groups.map((group) => [group.by.join('|'), group.rows]));
+  return prefixes(dims).map((prefix) => {
+    const by = ['currency', ...prefix];
+    const dated = by.includes('day');
+    const source = dated ? by : [...by, 'day'];
+    const rows = (byChain.get(source.join('|')) ?? []).filter((row) => inside(row.keys.date, range));
+    if (dated) return { by, rows };
+    const summed = mergeRows(rows, ({ date, ...keys }) => keys);
+    return { by, rows: summed.sort((a, b) => b.amount - a.amount) };
+  });
 }
 
 // Index one page section's rows by chain: a currency's own (filtered to it, its
@@ -125,17 +139,18 @@ function keyColor(dim, value, trip) {
   return trip.people.find((p) => p.id === value)?.color ?? null;
 }
 
-// The before-trip bucket (`date: null`) if any row has it, then every trip day up
-// to the last day with spend, plus any row's day after the trip, so a day with no
-// spend is an empty slot on the axis rather than missing from it — and a trip still
-// under way ends at its last expense, not its end date.
-function axisDays(trip, rows) {
+// The before-trip bucket (`date: null`) if any row has it, then every trip day
+// inside the picked range up to the last day with spend, plus any row's day after
+// the trip, so a day with no spend is an empty slot on the axis rather than missing
+// from it — and a trip still under way ends at its last expense, not its end date.
+function axisDays(trip, rows, range) {
   const days = new Set(rows.map((row) => row.keys.date).filter((day) => day !== null));
   const spent = [...days].sort().at(-1);
+  const first = [trip.start_date, range.from].filter(Boolean).sort().at(-1);
   const final = [trip.end_date, spent].filter(Boolean).sort()[0];
   if (trip.start_date && spent) {
     const last = new Date(`${final}T00:00:00Z`);
-    for (const day = new Date(`${trip.start_date}T00:00:00Z`); day <= last; day.setUTCDate(day.getUTCDate() + 1)) {
+    for (const day = new Date(`${first}T00:00:00Z`); day <= last; day.setUTCDate(day.getUTCDate() + 1)) {
       days.add(day.toISOString().slice(0, 10));
     }
   }
@@ -148,11 +163,11 @@ function axisDays(trip, rows) {
 // bars otherwise — and every later one splits each bar into a series per combination
 // of their values, read off the deepest grouping; stacked unless one of them is
 // `label`, whose overlapping rows stand side by side.
-function chartSpec(index, dims, trip, locale) {
+function chartSpec(index, dims, trip, locale, range) {
   const [first, ...later] = dims;
   const field = DIMENSIONS[first];
   const top = index.get(first) ?? [];
-  const categories = first === 'day' ? axisDays(trip, top) : top.map((row) => row.keys[field]);
+  const categories = first === 'day' ? axisDays(trip, top, range) : top.map((row) => row.keys[field]);
   const amountsOf = (rows) => categories.map(
     (category) => rows.find((row) => row.keys[field] === category)?.amount ?? null);
   const leaves = later.length ? index.get(dims.join('|')) ?? [] : [];
@@ -201,7 +216,7 @@ function BreakdownNode({ node, parentTotal, code, trip, locale }) {
 // Shared renderer for a currency's own breakdown *or* the Total's converted
 // one — both normalize to the same index before calling in, so the tree isn't
 // written once per currency and again for the Total.
-function StatSection({ id, code, badgeLabel = code, index, dims, trip, locale, view, extra, showRows = true }) {
+function StatSection({ id, code, badgeLabel = code, index, dims, trip, locale, view, range, extra, showRows = true }) {
   const total = (index.get('') ?? [])[0]?.amount ?? null;
   const chart = showRows && view === 'chart' && dims.length > 0;
   const nodes = showRows && !chart ? buildNodes(index, dims, 0, {}) : [];
@@ -215,11 +230,12 @@ function StatSection({ id, code, badgeLabel = code, index, dims, trip, locale, v
 
       ${extra}
 
-      ${showRows && html`
+      ${showRows && total === null && html`<p class="text-body-secondary small">${t('stats.no_spend')}</p>`}
+      ${showRows && total !== null && html`
         <div id="breakdown-${id}">
           ${dims.includes('person') && html`<div class="small text-body-secondary mb-1">${t('stats.by_person_note')}</div>`}
           ${chart
-            ? html`<${StatsChart} spec=${chartSpec(index, dims, trip, locale)} code=${code} locale=${locale} />`
+            ? html`<${StatsChart} spec=${chartSpec(index, dims, trip, locale, range)} code=${code} locale=${locale} />`
             : html`
               <ul class="list-group list-group-flush">
                 ${nodes.map((node) => html`
@@ -238,7 +254,9 @@ function StatSection({ id, code, badgeLabel = code, index, dims, trip, locale, v
 // Which currency's section is on screen, and the chain it is grouped by. The
 // currency is a filter over rows already in the store — every grouping carries
 // every currency — so changing it costs no request, unlike changing the chain.
-function StatsPicker({ shown, options, onShownChange, dims, onDimsChange, view, onViewChange }) {
+function StatsPicker({
+  shown, options, onShownChange, dims, onDimsChange, view, onViewChange, range, onRangeChange, startDate,
+}) {
   const available = Object.keys(DIMENSIONS).filter((dim) => !dims.includes(dim));
 
   return html`
@@ -267,7 +285,27 @@ function StatsPicker({ shown, options, onShownChange, dims, onDimsChange, view, 
             </div>
           </div>
         `}
-        <div class="d-flex flex-wrap align-items-center gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+          <label class="col-form-label col-form-label-sm" for="stats-from">${t('stats.from')}</label>
+          <input id="stats-from" type="date" class="form-control form-control-sm w-auto" value=${range.from ?? ''}
+                 max=${range.to ?? ''} onChange=${(e) => onRangeChange({ ...range, from: e.target.value || null })} />
+          <label class="col-form-label col-form-label-sm" for="stats-to">${t('stats.to')}</label>
+          <input id="stats-to" type="date" class="form-control form-control-sm w-auto" value=${range.to ?? ''}
+                 min=${range.from ?? ''} onChange=${(e) => onRangeChange({ ...range, to: e.target.value || null })} />
+          ${startDate && range.from !== startDate && html`
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    onClick=${() => onRangeChange({ ...range, from: startDate })}>
+              ${t('stats.trip_start')}
+            </button>
+          `}
+          ${isDated(range) && html`
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    onClick=${() => onRangeChange({ from: null, to: null })}>
+              ${t('stats.reset')}
+            </button>
+          `}
+        </div>
+        <div id="stats-chain" class="d-flex flex-wrap align-items-center gap-2">
           ${dims.map((dim, index) => html`
             <button key=${dim} type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-1"
                     onClick=${() => onDimsChange(dims.filter((_, i) => i !== index))}>
@@ -289,7 +327,7 @@ function StatsPicker({ shown, options, onShownChange, dims, onDimsChange, view, 
 
 // Only renders rows once every currency has a confirmed rate (`allRatesSet`) —
 // never a partial or misleading sum, just the rates form or the whole answer.
-function TotalSection({ groups, dims, trip, ratesState, onTargetChange, onRateChange, locale, view }) {
+function TotalSection({ groups, dims, trip, ratesState, onTargetChange, onRateChange, locale, view, range }) {
   const primary = trip.currencies.find((c) => c.is_primary) || trip.currencies[0];
   const target = trip.currencies.find((c) => c.id === ratesState.target) || primary;
   const values = ratesState.values;
@@ -306,7 +344,7 @@ function TotalSection({ groups, dims, trip, ratesState, onTargetChange, onRateCh
 
   return html`
     <${StatSection} id="total" badgeLabel=${t('nav.total')} code=${target.code} index=${index}
-                    dims=${dims} trip=${trip} locale=${locale} view=${view} extra=${extra} showRows=${allRatesSet} />
+                    dims=${dims} trip=${trip} locale=${locale} view=${view} range=${range} extra=${extra} showRows=${allRatesSet} />
   `;
 }
 
@@ -316,6 +354,7 @@ export function Stats() {
   const [ratesState, setRatesState] = useState(() => getRatesState(store.slug));
   const [shown, setShown] = useState(() => getShownCurrency(store.slug));
   const [view, setViewState] = useState(() => getView(store.slug));
+  const [range, setRangeState] = useState(() => getRange(store.slug));
   const dims = store.statsDims;
 
   useEffect(() => {
@@ -326,6 +365,7 @@ export function Stats() {
 
   const trip = store.trip;
   const multiCurrency = trip.currencies.length > 1;
+  const groups = isDated(range) ? withinRange(store.stats, dims, range) : store.stats;
   const totals = store.stats.find((group) => group.by.length === 1)?.rows ?? [];
   const spent = trip.currencies.filter((c) => totals.some((row) => row.keys.currency_id === c.id));
   const primary = spent.find((c) => c.is_primary) || spent[0];
@@ -357,20 +397,26 @@ export function Stats() {
     setViewState(setView(store.slug, next));
   }
 
+  function onRangeChange(next) {
+    setRangeState(setRange(store.slug, next));
+  }
+
   const currency = spent.find((c) => c.id === picked);
 
   return html`
     <div class="stats-content">
       <${StatsPicker} shown=${picked} options=${options} onShownChange=${onShownChange}
-                      dims=${dims} onDimsChange=${onDimsChange} view=${view} onViewChange=${onViewChange} />
+                      dims=${dims} onDimsChange=${onDimsChange} view=${view} onViewChange=${onViewChange}
+                      range=${range} onRangeChange=${onRangeChange} startDate=${trip.start_date} />
       ${picked === 'total' && html`
-        <${TotalSection} groups=${store.stats} dims=${dims} trip=${trip} ratesState=${ratesState}
-                         onTargetChange=${onTargetChange} onRateChange=${onRateChange} locale=${locale} view=${view} />
+        <${TotalSection} groups=${groups} dims=${dims} trip=${trip} ratesState=${ratesState}
+                         onTargetChange=${onTargetChange} onRateChange=${onRateChange} locale=${locale} view=${view}
+                         range=${range} />
       `}
       ${currency && html`
         <${StatSection} id=${currency.id} code=${currency.code}
-                        index=${indexRows(store.stats, forCurrency(currency.id), trip.start_date)}
-                        dims=${dims} trip=${trip} locale=${locale} view=${view} />
+                        index=${indexRows(groups, forCurrency(currency.id), trip.start_date)}
+                        dims=${dims} trip=${trip} locale=${locale} view=${view} range=${range} />
       `}
     </div>
   `;
