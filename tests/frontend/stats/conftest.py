@@ -1,12 +1,14 @@
 """Helpers and fixtures the statistics tab's suites share.
 
-The picker and section locators, the fixture's groupings as the API answers them,
-the chart's config read back from Chart.js, and one page fixture for the case
-`trip.json` cannot express — spending dated before the trip starts — served as a
-per-test stub rather than by editing the fixture every other suite reads.
+The picker and section locators, the chart's config read back from Chart.js, and
+`serve_stats` for the cases `trip.json` cannot express — spending dated before the
+trip starts, an unlabelled row, a currency with no spend — served as a per-test stub
+rather than by editing the fixture every other suite reads.
 """
 
 import pytest
+
+from tests.frontend.conftest import CURRENCY_ID
 
 CHART_DRAWN = """async (canvas) => {
     const { Chart } = await import('chart.js');
@@ -24,6 +26,12 @@ CHART_CONFIG = """async (canvas) => {
         series: config.data.datasets.map((dataset) => dataset.label ?? null),
     };
 }"""
+
+
+ISK_ID = CURRENCY_ID["ISK"]
+EUR_ID = CURRENCY_ID["EUR"]
+DKK_ID = CURRENCY_ID["DKK"]
+ISK_TOTAL = {"keys": {"currency_id": ISK_ID}, "amount": 122300, "item_count": 3}
 
 
 def rows_of(page, currency_id):
@@ -59,10 +67,10 @@ def set_chain(page, *dimensions):
         pick(page, dimension)
 
 
-def group_for(fixture_data, *dimensions):
-    """Return the fixture's grouping for a dimension chain, as the API answers it."""
-    chain = ["currency", *dimensions]
-    return next(g for g in fixture_data["stats"]["groups"] if g["by"] == chain)
+def reload(page):
+    """Reload the Statistics tab and wait for it to render again."""
+    page.reload()
+    page.locator(".stats-content").wait_for()
 
 
 def chart_view(page):
@@ -78,24 +86,27 @@ def chart_config(page, section_id):
 
 
 @pytest.fixture
-def isk_id(fixture_data):
-    """Return the fixture trip's primary currency id."""
-    return next(c["id"] for c in fixture_data["trip"]["trip"]["currencies"] if c["is_primary"])
+def serve_stats(stub):
+    """Return `serve_stats(groups, day_count=10)`: answer GET stats with those groupings."""
+
+    def install(groups, day_count=10):
+        body = {"groups": groups, "day_count": day_count}
+        stub("**/api/v1/trips/*/stats*", lambda request: (200, body))
+
+    return install
 
 
 @pytest.fixture
-def before_trip_stats_page(stub, fixture_data, open_trip):
+def before_trip_stats_page(serve_stats, open_trip):
     """Return the Statistics tab served a `day` grouping with two ISK days before 2026-09-12."""
-    total = group_for(fixture_data)["rows"][0]
-    currency_id = total["keys"]["currency_id"]
-    stats = {
-        "groups": [
-            {"by": ["currency"], "rows": [total]},
+    serve_stats(
+        [
+            {"by": ["currency"], "rows": [ISK_TOTAL]},
             {
                 "by": ["currency", "day"],
                 "rows": [
                     {
-                        "keys": {"currency_id": currency_id, "date": date},
+                        "keys": {"currency_id": ISK_ID, "date": date},
                         "amount": amount,
                         "item_count": 1,
                     }
@@ -106,8 +117,6 @@ def before_trip_stats_page(stub, fixture_data, open_trip):
                     ]
                 ],
             },
-        ],
-        "day_count": 10,
-    }
-    stub("**/api/v1/trips/*/stats*", lambda request: (200, stats))
+        ]
+    )
     return open_trip("stats")

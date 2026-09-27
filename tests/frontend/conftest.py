@@ -34,6 +34,7 @@ TABS = {
 }
 TAB_PARAMS = [pytest.param(name, id=path) for name, (path, _) in TABS.items()]
 TAB_BY_PATH = {path: name for name, (path, _) in TABS.items()}
+CURRENCY_ID = {"ISK": 1, "EUR": 2, "DKK": 3}
 
 
 # Bootstrap's modal fade and collapse resolve on CSS transition end; waiting for
@@ -144,20 +145,21 @@ def browser_context_args(browser_context_args):
 
 @pytest.fixture
 def stub(page):
-    """Return a helper that fulfils requests matching a URL glob via a callback.
+    """Return `stub(pattern, responder, method=None)`: fulfil matching requests via a callback.
 
     The callback is `responder(request) -> (status, body) | (status, body, content_type)
-    | None`; None lets the request through to the mock. Bodies are JSON-encoded unless
-    a non-JSON `content_type` is given, in which case `body` is sent as text. Fulfilled
+    | None`; None, or a request of another `method`, goes through to the mock. Bodies
+    are JSON-encoded unless a non-JSON `content_type` is given, in which case `body` is
+    sent as text. Fulfilled
     POST/PATCH request bodies are recorded in call order; other methods record None.
     """
 
-    def install(pattern, responder):
+    def install(pattern, responder, method=None):
         calls = []
 
         def handler(route):
             request = route.request
-            result = responder(request)
+            result = responder(request) if method in (None, request.method) else None
             if result is None:
                 route.continue_()
                 return
@@ -337,6 +339,24 @@ def shared_balances_page(shared_trip):
 def shared_stats_page(shared_trip):
     """Return the session's read-only Statistics tab."""
     return shared_trip("stats")
+
+
+# --- currency totals --------------------------------------------------------------
+
+RATES_NEEDED = "Add a rate for every currency to see the total."
+
+
+def rate_input(page, currency_code):
+    """Locate the Total section's rate <input> for one non-target currency."""
+    row = page.locator("#cur-total .row").filter(has=page.locator(".badge", has_text=currency_code))
+    return row.locator("input")
+
+
+def set_rates(page, **rates):
+    """Type and commit each `CODE="rate"` into the Total section's rate form."""
+    for code, rate in rates.items():
+        rate_input(page, code).fill(rate)
+        rate_input(page, code).blur()
 
 
 @pytest.fixture

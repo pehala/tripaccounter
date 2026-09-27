@@ -10,9 +10,10 @@ import pytest
 from playwright.sync_api import expect
 
 from tests.frontend.stats.conftest import (
+    EUR_ID,
+    ISK_ID,
     chart_config,
     chart_view,
-    group_for,
     rows_of,
     set_chain,
     show,
@@ -34,21 +35,21 @@ def person_stats_page(stats_page):
     return stats_page
 
 
-def test_a_range_keeps_only_its_days(stats_page, isk_id):
+def test_a_range_keeps_only_its_days(stats_page):
     """A one-day range leaves that day's row alone, with the section total narrowed to it."""
     pick_range(stats_page, "2026-09-14", "2026-09-14")
 
-    expect(rows_of(stats_page, isk_id)).to_have_count(1)
-    expect(rows_of(stats_page, isk_id).first).to_contain_text("14 Sep")
-    expect(stats_page.locator(f"#cur-{isk_id} h2")).to_contain_text("26,300 total")
+    expect(rows_of(stats_page, ISK_ID)).to_have_count(1)
+    expect(rows_of(stats_page, ISK_ID).first).to_contain_text("14 Sep")
+    expect(stats_page.locator(f"#cur-{ISK_ID} h2")).to_contain_text("26,300 total")
 
 
-def test_no_date_change_costs_a_request(stats_page, count_requests, isk_id):
+def test_no_date_change_costs_a_request(stats_page, count_requests):
     """Setting, moving and resetting a range all filter the rows the tab already holds."""
     stats = count_requests("*/api/v1/trips/*/stats")
 
     pick_range(stats_page, "2026-09-13", "2026-09-13")
-    expect(rows_of(stats_page, isk_id)).to_have_count(1)
+    expect(rows_of(stats_page, ISK_ID)).to_have_count(1)
     pick_range(stats_page, end="2026-09-14")
     stats_page.get_by_role("button", name="Reset").click()
     expect(stats_page.locator("#stats-from")).to_have_value("")
@@ -66,62 +67,50 @@ def test_the_tab_asks_for_each_level_grouped_by_day(page, count_requests, open_t
     assert stats[0].url.endswith("?group_by=day&group_by=person,day")
 
 
-def test_a_level_without_day_is_summed_over_the_range(person_stats_page, isk_id):
+def test_a_level_without_day_is_summed_over_the_range(person_stats_page):
     """By person, each row is that person's days inside the range added together."""
     pick_range(person_stats_page, "2026-09-13", "2026-09-14")
 
-    petr = rows_of(person_stats_page, isk_id).filter(has_text="Petr")
+    petr = rows_of(person_stats_page, ISK_ID).filter(has_text="Petr")
     expect(petr).to_contain_text("34,003.57")  # 27,428.571428 + 6,575
 
 
-def test_a_person_with_no_spend_in_range_drops_out(person_stats_page, fixture_data):
+def test_a_person_with_no_spend_in_range_drops_out(person_stats_page):
     """EUR on 14 Sep has no row for Bob, so Bob is absent from the narrowed list."""
-    eur = next(c for c in fixture_data["trip"]["trip"]["currencies"] if c["code"] == "EUR")
     show(person_stats_page, "EUR")
     pick_range(person_stats_page, "2026-09-14", "2026-09-14")
 
-    expect(rows_of(person_stats_page, eur["id"])).to_have_count(3)
-    expect(rows_of(person_stats_page, eur["id"]).filter(has_text="Bob")).to_have_count(0)
+    expect(rows_of(person_stats_page, EUR_ID)).to_have_count(3)
+    expect(rows_of(person_stats_page, EUR_ID).filter(has_text="Bob")).to_have_count(0)
 
 
-def test_a_range_with_no_spend_says_so(stats_page, isk_id):
+def test_a_range_with_no_spend_says_so(stats_page):
     """A range the currency spent nothing in shows the empty note instead of rows."""
     pick_range(stats_page, "2026-09-18", "2026-09-19")
 
-    expect(stats_page.locator(f"#cur-{isk_id}")).to_contain_text(
+    expect(stats_page.locator(f"#cur-{ISK_ID}")).to_contain_text(
         "Nothing was spent in these dates."
     )
-    expect(stats_page.locator(f"#breakdown-{isk_id}")).to_have_count(0)
+    expect(stats_page.locator(f"#breakdown-{ISK_ID}")).to_have_count(0)
 
 
-def test_the_chart_axis_covers_only_the_range(stats_page, isk_id):
+def test_the_chart_axis_covers_only_the_range(stats_page):
     """A range ending before the last spend ends the axis there, not at the spend."""
     chart_view(stats_page)
     pick_range(stats_page, "2026-09-13", "2026-09-13")
 
-    config = chart_config(stats_page, isk_id)
+    config = chart_config(stats_page, ISK_ID)
 
     assert config["labels"] == ["13 Sep"]
 
 
-def test_the_range_survives_a_reload(stats_page, isk_id):
-    """The range lives in localStorage with the rest of the page's settings."""
-    pick_range(stats_page, "2026-09-14", "2026-09-14")
-    stats_page.reload()
-    stats_page.locator(".stats-content").wait_for()
-
-    expect(stats_page.locator("#stats-from")).to_have_value("2026-09-14")
-    expect(rows_of(stats_page, isk_id)).to_have_count(1)
-
-
-def test_clearing_the_range_brings_every_day_back(stats_page, fixture_data, isk_id):
-    """Reset drops the range, so the list renders the unfiltered answer again."""
-    days = [r for r in group_for(fixture_data, "day")["rows"] if r["keys"]["currency_id"] == isk_id]
+def test_clearing_the_range_brings_every_day_back(stats_page):
+    """Reset drops the range, so the list renders both ISK days again."""
     pick_range(stats_page, "2026-09-14", "2026-09-14")
 
     stats_page.get_by_role("button", name="Reset").click()
 
-    expect(rows_of(stats_page, isk_id)).to_have_count(len(days))
+    expect(rows_of(stats_page, ISK_ID)).to_have_count(2)
     expect(stats_page.locator("#stats-from")).to_have_value("")
 
 

@@ -9,120 +9,103 @@ carries every currency, so switching is a filter, never a fetch.
 import pytest
 from playwright.sync_api import expect
 
-from tests.frontend.stats.conftest import drop, group_for, pick, rows_of, set_chain, show
-
-OVERLAP_CAVEAT = (
-    "An item can carry several labels, so these rows overlap and add up to more than the row"
-    " they sit in."
+from tests.frontend.stats.conftest import (
+    DKK_ID,
+    EUR_ID,
+    ISK_ID,
+    ISK_TOTAL,
+    chart_view,
+    drop,
+    pick,
+    reload,
+    rows_of,
+    set_chain,
+    show,
 )
 
 
 @pytest.fixture
-def unlabelled_stats_page(stub, fixture_data, open_trip):
+def unlabelled_stats_page(serve_stats, open_trip):
     """Return the Statistics tab served a single ISK grouping whose only label row is `null`."""
-    total = group_for(fixture_data)["rows"][0]
-    stub(
-        "**/api/v1/trips/*/stats*",
-        lambda request: (
-            200,
+    serve_stats(
+        [
+            {"by": ["currency"], "rows": [ISK_TOTAL]},
             {
-                "groups": [
-                    {"by": ["currency"], "rows": [total]},
+                "by": ["currency", "label"],
+                "rows": [
                     {
-                        "by": ["currency", "label"],
-                        "rows": [
-                            {
-                                "keys": {
-                                    "currency_id": total["keys"]["currency_id"],
-                                    "label": None,
-                                },
-                                "amount": total["amount"],
-                                "item_count": 2,
-                            }
-                        ],
-                    },
+                        "keys": {"currency_id": ISK_ID, "label": None},
+                        "amount": ISK_TOTAL["amount"],
+                        "item_count": 2,
+                    }
                 ],
-                "day_count": 1,
             },
-        ),
+        ],
+        day_count=1,
     )
-
     return open_trip("stats")
 
 
-def test_the_default_breakdown_is_by_day(shared_stats_page, fixture_data, isk_id):
-    """With nothing picked, the page renders the day chain the store asks for by default."""
-    days = [
-        row["keys"]["date"]
-        for row in group_for(fixture_data, "day")["rows"]
-        if row["keys"]["currency_id"] == isk_id
-    ]
-    assert days  # sanity: the fixture has ISK days to render
+@pytest.fixture
+def no_dkk_stats_page(serve_stats, fixture_data, open_trip):
+    """Return the Statistics tab served the fixture's groupings with every DKK row taken out."""
+    serve_stats(
+        [
+            {**group, "rows": [r for r in group["rows"] if r["keys"]["currency_id"] != DKK_ID]}
+            for group in fixture_data["stats"]["groups"]
+        ]
+    )
+    return open_trip("stats")
 
-    expect(rows_of(shared_stats_page, isk_id)).to_have_count(len(days))
-    expect(rows_of(shared_stats_page, isk_id).first).to_contain_text("13 Sep")
+
+def test_the_default_breakdown_is_by_day(shared_stats_page):
+    """With nothing picked, the page renders the day chain: ISK spent on 13 and 14 Sep."""
+    rows = rows_of(shared_stats_page, ISK_ID)
+
+    expect(rows).to_have_count(2)
+    expect(rows.first).to_contain_text("13 Sep")
 
 
-def test_picking_a_second_dimension_nests_it_under_the_first(stats_page, fixture_data, isk_id):
-    """Day then Person renders each day's people inside that day's own row."""
+def test_picking_a_second_dimension_nests_it_under_the_first(stats_page):
+    """Day then Person renders each day's people inside that day's own row, with their amount."""
     pick(stats_page, "Person")
 
-    first_day = rows_of(stats_page, isk_id).first
-    expect(first_day.locator("ul > li")).to_have_count(
-        len(
-            [
-                row
-                for row in group_for(fixture_data, "day", "person")["rows"]
-                if row["keys"]["currency_id"] == isk_id and row["keys"]["date"] == "2026-09-13"
-            ]
-        )
-    )
-    expect(first_day).to_contain_text("Petr")
+    first_day = rows_of(stats_page, ISK_ID).first
+    expect(first_day.locator("ul > li")).to_have_count(4)
+    expect(first_day.locator("ul > li", has_text="Petr")).to_contain_text("27,428.57")
 
 
-def test_a_nested_row_shows_the_amount_the_api_grouped(stats_page, fixture_data, isk_id):
-    """A leaf renders its own grouping's amount — the page never sums anything itself."""
-    pick(stats_page, "Person")
-
-    owed = next(
-        row
-        for row in group_for(fixture_data, "day", "person")["rows"]
-        if row["keys"]["currency_id"] == isk_id and row["keys"]["date"] == "2026-09-13"
-    )
-    person = next(
-        p for p in fixture_data["trip"]["trip"]["people"] if p["id"] == owed["keys"]["person_id"]
-    )
-
-    leaf = rows_of(stats_page, isk_id).first.locator("ul > li", has_text=person["name"])
-    expect(leaf).to_contain_text("27,428.57")
-
-
-def test_a_nested_percentage_is_of_its_parent_row(stats_page, isk_id):
+def test_a_nested_percentage_is_of_its_parent_row(stats_page):
     """A share reads against the row it sits in: 29% of its day, not 22% of the trip."""
     pick(stats_page, "Person")
 
-    first_day = rows_of(stats_page, isk_id).first
-    expect(first_day).to_contain_text("78%")  # the day itself, against the ISK total
+    first_day = rows_of(stats_page, ISK_ID).first
+    expect(first_day).to_contain_text("78%")
     expect(first_day.locator("ul > li", has_text="Petr")).to_contain_text("29%")
 
 
-def test_dropping_a_dimension_removes_its_level(stats_page, isk_id):
+def test_dropping_a_dimension_removes_its_level(stats_page):
     """Removing Day leaves the chain it was leading, re-rendered without it."""
     pick(stats_page, "Person")
     drop(stats_page, "Day")
 
-    expect(rows_of(stats_page, isk_id).first).to_contain_text("Petr")
-    expect(rows_of(stats_page, isk_id).first.locator("ul > li")).to_have_count(0)
+    expect(rows_of(stats_page, ISK_ID).first).to_contain_text("Petr")
+    expect(rows_of(stats_page, ISK_ID).first.locator("ul > li")).to_have_count(0)
 
 
-def test_the_picked_chain_survives_a_reload(stats_page, isk_id):
-    """The chain lives in localStorage, so the page comes back grouped the same way."""
+def test_page_settings_survive_a_reload(stats_page):
+    """Chain, shown currency, chart view and date range all live in localStorage."""
     set_chain(stats_page, "Country")
-    stats_page.reload()
-    stats_page.locator(".stats-content").wait_for()
+    show(stats_page, "EUR")
+    chart_view(stats_page)
+    stats_page.locator("#stats-from").fill("2026-09-14")
+
+    reload(stats_page)
 
     expect(stats_page.locator(".card", has_text="Breakdown")).to_contain_text("Country")
-    expect(rows_of(stats_page, isk_id).first).to_contain_text("Iceland")
+    expect(stats_page.locator(f"#cur-{EUR_ID}")).to_have_count(1)
+    expect(stats_page.locator(f"#breakdown-{EUR_ID} canvas")).to_be_visible()
+    expect(stats_page.locator("#stats-from")).to_have_value("2026-09-14")
 
 
 def test_currency_is_not_offered_as_a_dimension(shared_stats_page):
@@ -131,32 +114,35 @@ def test_currency_is_not_offered_as_a_dimension(shared_stats_page):
     assert "Currency" not in options.all_inner_texts()
 
 
-def test_country_flags_shown_in_country_rows(stats_page, isk_id):
+def test_country_flags_shown_in_country_rows(stats_page):
     """A country row shows the country's flag next to its name."""
     set_chain(stats_page, "Country")
 
-    expect(stats_page.get_by_text("🇮🇸 Iceland").first).to_be_visible()
+    expect(rows_of(stats_page, ISK_ID).first).to_contain_text("🇮🇸 Iceland")
 
 
-def test_overlap_caveat_shows_only_while_label_is_picked(stats_page, isk_id):
-    """The overlap note belongs to the label dimension, not to the page."""
-    expect(stats_page.get_by_text(OVERLAP_CAVEAT).first).to_be_hidden()
+@pytest.mark.parametrize(
+    ("dimension", "caveat"),
+    [
+        pytest.param(
+            "Label",
+            "An item can carry several labels, so these rows overlap and add up to more than"
+            " the row they sit in.",
+            id="label-overlap",
+        ),
+        pytest.param("Person", "what each owes, not what they paid", id="person-owed-not-paid"),
+    ],
+)
+def test_a_dimension_caveat_shows_only_while_it_is_picked(stats_page, dimension, caveat):
+    """The overlap note belongs to Label and API.md's owed-not-paid note to Person, not the page."""
+    expect(stats_page.get_by_text(caveat).first).to_be_hidden()
 
-    pick(stats_page, "Label")
+    pick(stats_page, dimension)
 
-    expect(stats_page.locator(f"#breakdown-{isk_id}")).to_contain_text(OVERLAP_CAVEAT)
-
-
-def test_owed_not_paid_caveat_shows_only_while_person_is_picked(stats_page):
-    """Per-person figures carry API.md's required caveat wherever they render."""
-    expect(stats_page.get_by_text("what each owes, not what they paid").first).to_be_hidden()
-
-    pick(stats_page, "Person")
-
-    expect(stats_page.get_by_text("what each owes, not what they paid").first).to_be_visible()
+    expect(stats_page.get_by_text(caveat).first).to_be_visible()
 
 
-def test_null_label_row_renders_as_unlabelled(unlabelled_stats_page, isk_id):
+def test_null_label_row_renders_as_unlabelled(unlabelled_stats_page):
     """A label row with `"label": null` renders the catalog's *unlabelled*, not blank."""
     set_chain(unlabelled_stats_page, "Label")
 
@@ -165,52 +151,32 @@ def test_null_label_row_renders_as_unlabelled(unlabelled_stats_page, isk_id):
     assert unlabelled_stats_page.locator(".badge", has_text="None").count() == 0
 
 
-def test_only_the_picked_currency_is_on_screen(shared_stats_page, fixture_data, isk_id):
+def test_only_the_picked_currency_is_on_screen(shared_stats_page):
     """One currency at a time: the others are a dropdown away, not further down the page."""
-    others = [c["id"] for c in fixture_data["trip"]["trip"]["currencies"] if c["id"] != isk_id]
-
-    expect(shared_stats_page.locator(f"#cur-{isk_id}")).to_have_count(1)
-    for currency_id in others:
-        expect(shared_stats_page.locator(f"#cur-{currency_id}")).to_have_count(0)
+    expect(shared_stats_page.locator("[id^=cur-]")).to_have_count(1)
+    expect(shared_stats_page.locator(f"#cur-{ISK_ID}")).to_have_count(1)
 
 
-def test_switching_currency_costs_no_request(stats_page, fixture_data):
+def test_switching_currency_costs_no_request(stats_page, count_requests):
     """The rows for every currency arrived in one answer, so a switch is a filter."""
-    calls = []
-    stats_page.on(
-        "request", lambda request: calls.append(request.url) if "/stats" in request.url else None
+    stats = count_requests("*/stats")
+
+    show(stats_page, "EUR")
+
+    expect(stats_page.locator(f"#cur-{EUR_ID}")).to_have_count(1)
+    assert stats == []
+
+
+def test_a_currency_with_no_rows_is_not_offered(no_dkk_stats_page):
+    """Only the currencies the API returned rows for can be picked: DKK is gone from the list."""
+    expect(no_dkk_stats_page.locator("#stats-currency option")).to_have_text(
+        ["Total", "ISK", "EUR"]
     )
 
-    show(stats_page, "EUR")
 
-    eur = next(c for c in fixture_data["trip"]["trip"]["currencies"] if c["code"] == "EUR")
-    expect(stats_page.locator(f"#cur-{eur['id']}")).to_have_count(1)
-    assert calls == []
-
-
-def test_a_currency_with_no_rows_is_not_offered(stats_page, fixture_data):
-    """Only the currencies the API returned rows for can be picked."""
-    spent = {row["keys"]["currency_id"] for row in group_for(fixture_data)["rows"]}
-    offered = stats_page.locator("#stats-currency option").all_inner_texts()
-
-    for currency in fixture_data["trip"]["trip"]["currencies"]:
-        assert (currency["code"] in offered) is (currency["id"] in spent)
-
-
-def test_the_picked_currency_survives_a_reload(stats_page, fixture_data):
-    """The shown currency lives in localStorage, like the chain and the rates."""
-    eur = next(c for c in fixture_data["trip"]["trip"]["currencies"] if c["code"] == "EUR")
-
-    show(stats_page, "EUR")
-    stats_page.reload()
-    stats_page.locator(".stats-content").wait_for()
-
-    expect(stats_page.locator(f"#cur-{eur['id']}")).to_have_count(1)
-
-
-def test_days_before_the_trip_fold_into_one_leading_row(before_trip_stats_page, isk_id):
+def test_days_before_the_trip_fold_into_one_leading_row(before_trip_stats_page):
     """Days before the start render as one "Before the trip" row, as in the item feed."""
-    rows = rows_of(before_trip_stats_page, isk_id)
+    rows = rows_of(before_trip_stats_page, ISK_ID)
 
     expect(rows).to_have_count(2)
     expect(rows.first).to_contain_text("Before the trip")

@@ -12,6 +12,8 @@ import re
 import pytest
 from playwright.sync_api import expect
 
+from tests.frontend.conftest import CURRENCY_ID
+
 
 def expand(page, currency_id, group):
     """Open one balance section's collapse body, leaving an already-open one open."""
@@ -22,17 +24,13 @@ def expand(page, currency_id, group):
 
 
 @pytest.fixture
-def person_row(shared_balances_page, fixture_data):
+def person_row(shared_balances_page):
     """Return `person_row(currency_code, name)`: that person's <li> in the net section."""
-    currency_id_by_code = {
-        b["currency_code"]: b["currency_id"] for b in fixture_data["balances"]["balances"]
-    }
 
     def find(currency_code, name):
-        expand(shared_balances_page, currency_id_by_code[currency_code], "net")
-        return shared_balances_page.locator(
-            f"#sec-{currency_id_by_code[currency_code]}-net-body li"
-        ).filter(has_text=name)
+        currency_id = CURRENCY_ID[currency_code]
+        expand(shared_balances_page, currency_id, "net")
+        return shared_balances_page.locator(f"#sec-{currency_id}-net-body li").filter(has_text=name)
 
     return find
 
@@ -46,13 +44,10 @@ def person_row(shared_balances_page, fixture_data):
     ],
 )
 def test_one_net_section_and_one_settle_up_section_per_currency(
-    shared_balances_page, fixture_data, currency_code
+    shared_balances_page, currency_code
 ):
     """Every currency in the fixture gets its own net section and settle-up section."""
-    balance = next(
-        b for b in fixture_data["balances"]["balances"] if b["currency_code"] == currency_code
-    )
-    section = shared_balances_page.locator(f"#cur-{balance['currency_id']}")
+    section = shared_balances_page.locator(f"#cur-{CURRENCY_ID[currency_code]}")
 
     titles = section.locator('[data-bs-toggle="collapse"]').all_inner_texts()
     assert "Balance" in titles[0]
@@ -89,19 +84,13 @@ def test_net_value_is_signed_and_trimmed_to_two_places(person_row, currency_code
         pytest.param("DKK", [("Petr", "Ann"), ("Bob", "Ann"), ("Eva", "Ann")], id="dkk"),
     ],
 )
-def test_suggestion_rows_follow_the_api_order(
-    shared_balances_page, fixture_data, currency_code, transfers
-):
+def test_suggestion_rows_follow_the_api_order(shared_balances_page, currency_code, transfers):
     """Settle-up rows render payer then payee in the API's own order, with no extra rows.
 
     Settle-up is open by default (unlike net), so no expand() click is needed.
     """
-    balance = next(
-        b for b in fixture_data["balances"]["balances"] if b["currency_code"] == currency_code
-    )
-
     rows = shared_balances_page.locator(
-        f"#sec-{balance['currency_id']}-settle_up-body ul.list-group-flush li"
+        f"#sec-{CURRENCY_ID[currency_code]}-settle_up-body ul.list-group-flush li"
     )
 
     expect(rows).to_have_text([re.compile(rf"^{payer}\s+{payee}") for payer, payee in transfers])
@@ -127,25 +116,23 @@ def test_bar_width_is_derived_from_the_full_precision_net(
     expect(bar).to_have_attribute("style", expected_style)
 
 
-def test_net_is_collapsed_but_settle_up_is_open_by_default(balances_page, fixture_data):
+def test_net_is_collapsed_but_settle_up_is_open_by_default(balances_page):
     """The net section needs a click; settle-up — the figure worth seeing first — doesn't."""
-    isk = next(b for b in fixture_data["balances"]["balances"] if b["currency_code"] == "ISK")
-
-    net_body = balances_page.locator(f"#sec-{isk['currency_id']}-net-body")
-    settle_up_body = balances_page.locator(f"#sec-{isk['currency_id']}-settle_up-body")
+    isk_id = CURRENCY_ID["ISK"]
+    net_body = balances_page.locator(f"#sec-{isk_id}-net-body")
+    settle_up_body = balances_page.locator(f"#sec-{isk_id}-settle_up-body")
     expect(net_body).to_be_hidden()
     expect(settle_up_body).to_be_visible()
 
-    expand(balances_page, isk["currency_id"], "net")
+    expand(balances_page, isk_id, "net")
     expect(net_body).to_be_visible()
 
 
-def test_sidebar_link_jumps_to_currency_section(balances_page, fixture_data):
+def test_sidebar_link_jumps_to_currency_section(balances_page):
     """Clicking a currency's sidebar link is a real anchor: it scrolls in and updates the hash."""
-    eur = next(b for b in fixture_data["balances"]["balances"] if b["currency_code"] == "EUR")
     base_url = balances_page.url
 
     balances_page.locator(".side-nav a", has_text="EUR").click()
 
-    expect(balances_page).to_have_url(f"{base_url}#cur-{eur['currency_id']}")
-    expect(balances_page.locator(f"#cur-{eur['currency_id']}")).to_be_in_viewport()
+    expect(balances_page).to_have_url(f"{base_url}#cur-{CURRENCY_ID['EUR']}")
+    expect(balances_page.locator(f"#cur-{CURRENCY_ID['EUR']}")).to_be_in_viewport()
