@@ -226,7 +226,7 @@ flowchart LR
     subgraph backend["tests/backend/ — pytest"]
         direction TB
         b1["TestClient against the real app"]
-        b2["in-memory SQLite, per-test transaction"]
+        b2["in-memory SQLite or Postgres, per-test transaction"]
         b3["every computed number"]
     end
 

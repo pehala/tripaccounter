@@ -6,40 +6,84 @@ test overrides one field of. A test therefore holds exactly what a client holds,
 and its setup is itself a check that the write path accepts it.
 """
 
+import os
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, make_url, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from alembic import command
 from app.clock import current_time
-from app.db import get_session
+from app.db import get_session, make_engine
 from app.main import app
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 ALEMBIC_SCRIPT_LOCATION = REPO_ROOT / "alembic"
+TEST_DATABASE_URL = os.environ.get("TA_TEST_DATABASE_URL")
 
 
-@pytest.fixture(scope="session")
-def engine():
-    """Build an in-memory SQLite engine, schema created by the real Alembic migration.
+@contextmanager
+def scratch_database(name):
+    """Yield the URL of an empty database the caller owns, dropped again on exit.
+
+    With `TA_TEST_DATABASE_URL` set to a Postgres server, `name` is created on that
+    server; unset, it is an in-memory SQLite, private to the engine built on it.
+    """
+    if not TEST_DATABASE_URL:
+        yield make_url("sqlite://")
+        return
+    server = make_url(TEST_DATABASE_URL)
+    admin = create_engine(server, isolation_level="AUTOCOMMIT")
+    try:
+        with admin.connect() as connection:
+            # IF EXISTS covers a database left behind by a killed run.
+            connection.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
+            connection.execute(text(f'CREATE DATABASE "{name}"'))
+        yield server.set(database=name)
+        with admin.connect() as connection:
+            connection.execute(text(f'DROP DATABASE "{name}" WITH (FORCE)'))
+    finally:
+        admin.dispose()
+
+
+@contextmanager
+def migrated_engine(name):
+    """Yield an engine on a scratch database, schema created by the real Alembic migration.
 
     Not `metadata.create_all` - so a migration bug fails tests the same way
     it would fail `make migrate`.
     """
-    eng = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
-    alembic_cfg = Config()
-    alembic_cfg.set_main_option("script_location", str(ALEMBIC_SCRIPT_LOCATION))
-    with eng.connect() as connection:
-        alembic_cfg.attributes["connection"] = connection
-        command.upgrade(alembic_cfg, "head")
-    return eng
+    with scratch_database(name) as url:
+        pool = {"poolclass": StaticPool} if url.get_backend_name() == "sqlite" else {}
+        eng = make_engine(url, **pool)
+        try:
+            alembic_cfg = Config()
+            alembic_cfg.set_main_option("script_location", str(ALEMBIC_SCRIPT_LOCATION))
+            with eng.begin() as connection:
+                alembic_cfg.attributes["connection"] = connection
+                command.upgrade(alembic_cfg, "head")
+            yield eng
+        finally:
+            eng.dispose()
+
+
+@pytest.fixture(scope="session")
+def engine(worker_id):
+    """Build the engine every test `session` shares, one database per xdist worker."""
+    with migrated_engine(f"ta_test_{worker_id}") as eng:
+        yield eng
+
+
+@pytest.fixture()
+def scratch_engine(worker_id):
+    """Build an engine on a database of its own, for code that commits instead of rolling back."""
+    with migrated_engine(f"ta_test_{worker_id}_scratch") as eng:
+        yield eng
 
 
 @pytest.fixture()

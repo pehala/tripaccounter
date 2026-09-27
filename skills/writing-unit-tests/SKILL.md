@@ -105,9 +105,11 @@ add nothing in pytest — group with a comment banner instead (see AP-4).
 
 ### Every Test Is Isolated
 
-Each test gets its own database. The `session` fixture creates the schema in an
-in-memory SQLite engine per test and drops it in teardown, so no test sees another
-test's trip, and no test depends on ordering. Never write to `dev.db`, never reuse
+Each test gets its own transaction. The `session` fixture opens one on the migrated
+`engine` and rolls it back in teardown, so no test sees another test's trip, and no
+test depends on ordering. `engine` is in-memory SQLite by default; with
+`TA_TEST_DATABASE_URL` set to a Postgres server it is one database per xdist worker
+there — CI runs the suite both ways, so a test holds on both dialects. Never write to `dev.db`, never reuse
 a module-level `Session`, never let a test depend on the demo seed unless it
 requested the seed fixture.
 
@@ -194,7 +196,8 @@ the reuse rule below is the most-broken one in review.
 
 | Fixture | Scope | Purpose |
 |---|---|---|
-| `engine` | session | In-memory SQLite engine with the models' metadata created |
+| `engine` | session | Engine migrated by Alembic: in-memory SQLite, or a per-worker Postgres database when `TA_TEST_DATABASE_URL` is set |
+| `scratch_engine` | function | A migrated engine on a database of its own, for code that commits (the importer CLI) |
 | `session` | function | A `Session` on a per-test transaction, rolled back in teardown |
 | `client` | function | `TestClient(app)` with the `get_session` dependency overridden to `session` |
 | `trip` | function | **The trip JSON returned by one `POST /trips`** — 4 people, ISK + EUR, one country. A dict, not an ORM object |
