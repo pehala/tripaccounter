@@ -54,6 +54,7 @@ static/
     │                     API wrappers, for a click that must also scroll natively
     ├── filter.js         itemMatches() — the one needle matcher, shared by the
     │                     item feed and the map
+    ├── days.js           isBeforeTrip() — which days fold into "Before the trip"
     ├── tiles.js          the basemap URL, its zoom ceiling and its attribution
     ├── i18n/
     │   ├── index.js      LANGS, current locale, t(key, params), setLocale()
