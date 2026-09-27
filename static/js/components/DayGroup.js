@@ -13,7 +13,7 @@ import { TransferRow } from './TransferRow.js';
 // day to format.
 export function DayGroup({ date, beforeTrip, entries, totals, trip, locale, onSelect }) {
   const label = beforeTrip
-    ? t('items.before_trip')
+    ? t('day.before_trip')
     : `${new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(date))} ${fmtDate(date, locale)}`;
   return html`
     <div class="day-sep d-flex align-items-center gap-2 bg-body-tertiary py-1">

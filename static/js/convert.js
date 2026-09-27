@@ -3,6 +3,7 @@
 // `rates.js` only persists the typed target/values; this is the arithmetic
 // that turns them into a converted, combined figure.
 import { parse } from './fmt.js';
+import { mergeRows } from './breakdown.js';
 
 // Rate a currency converts at, into whichever currency the Total is set to
 // (`targetId` — any trip currency, not necessarily the primary): the target
@@ -42,20 +43,10 @@ export function combineGroup(blocks, groupKey, rowKey, targetId, values, locale,
 // from the key and summing the converted amounts of everything that remains
 // identical. Same exception, same all-or-nothing gate as `combineGroup`.
 export function combineRows(rows, targetId, values, locale) {
-  const totals = new Map();
-  for (const row of rows) {
-    const rate = rateFor(row.keys.currency_id, targetId, values, locale);
-    if (rate === null) continue;
-    const { currency_id, ...keys } = row.keys;
-    const id = JSON.stringify(keys);
-    const previous = totals.get(id);
-    totals.set(id, {
-      keys,
-      amount: (previous?.amount ?? 0) + convert(row.amount, rate),
-      item_count: (previous?.item_count ?? 0) + row.item_count,
-    });
-  }
-  return [...totals.values()];
+  const converted = rows.map((row) => ({
+    ...row, amount: convert(row.amount, rateFor(row.keys.currency_id, targetId, values, locale)),
+  }));
+  return mergeRows(converted, ({ currency_id, ...keys }) => keys);
 }
 
 // Combines each currency's already-computed settle-up suggestions into one

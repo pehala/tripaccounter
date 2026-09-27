@@ -9,55 +9,12 @@ carries every currency, so switching is a filter, never a fetch.
 import pytest
 from playwright.sync_api import expect
 
+from tests.frontend.stats.conftest import drop, group_for, pick, rows_of, set_chain, show
+
 OVERLAP_CAVEAT = (
     "An item can carry several labels, so these rows overlap and add up to more than the row"
     " they sit in."
 )
-
-
-def rows_of(page, currency_id):
-    """Return the top-level breakdown rows of one currency's section."""
-    return page.locator(f"#breakdown-{currency_id} > ul > li")
-
-
-def picker(page):
-    """Return the breakdown picker card."""
-    return page.locator(".card", has_text="Breakdown")
-
-
-def pick(page, dimension):
-    """Append a dimension to the breakdown chain."""
-    picker(page).locator("#stats-dimension").select_option(label=dimension)
-
-
-def drop(page, dimension):
-    """Remove a dimension from the breakdown chain."""
-    picker(page).get_by_role("button", name=dimension).click()
-
-
-def show(page, label):
-    """Switch the page to one currency's section, or to the Total."""
-    picker(page).locator("#stats-currency").select_option(label=label)
-
-
-def set_chain(page, *dimensions):
-    """Replace the whole chain, so the request asks for exactly these dimensions."""
-    for chip in picker(page).locator("button").all_inner_texts():
-        drop(page, chip.strip())
-    for dimension in dimensions:
-        pick(page, dimension)
-
-
-def group_for(fixture_data, *dimensions):
-    """Return the fixture's grouping for a dimension chain, as the API answers it."""
-    chain = ["currency", *dimensions]
-    return next(g for g in fixture_data["stats"]["groups"] if g["by"] == chain)
-
-
-@pytest.fixture
-def isk_id(fixture_data):
-    """Return the fixture trip's primary currency id."""
-    return next(c["id"] for c in fixture_data["trip"]["trip"]["currencies"] if c["is_primary"])
 
 
 @pytest.fixture
@@ -249,3 +206,12 @@ def test_the_picked_currency_survives_a_reload(stats_page, fixture_data):
     stats_page.locator(".stats-content").wait_for()
 
     expect(stats_page.locator(f"#cur-{eur['id']}")).to_have_count(1)
+
+
+def test_days_before_the_trip_fold_into_one_leading_row(before_trip_stats_page, isk_id):
+    """Days before the start render as one "Before the trip" row, as in the item feed."""
+    rows = rows_of(before_trip_stats_page, isk_id)
+
+    expect(rows).to_have_count(2)
+    expect(rows.first).to_contain_text("Before the trip")
+    expect(rows.nth(1)).to_contain_text("13 Sep")

@@ -41,7 +41,7 @@ export default {
   'notfound.body': "There's no trip at this link.",
 
   'items.empty': 'No expenses yet.',
-  'items.before_trip': 'Before the trip',
+  'day.before_trip': 'Before the trip',
   'items.filter_placeholder': 'filter by name or label',
   'items.paid_by': '{name} paid',
   'items.map': 'map',
@@ -59,6 +59,7 @@ export default {
   'map.clear': 'Clear filters',
   'map.close': 'Close',
   'map.zoom': 'Zoom to this place',
+  'map.failed': 'The map could not load. Reload the page to try again.',
 
   'item.kind.expense': 'Expense',
   'item.kind.transfer': 'Transfer',
@@ -136,6 +137,15 @@ export default {
   'stats.unlabelled': 'unlabelled',
   'stats.total': '{amount} total',
   'stats.share': 'share',
+  'stats.view.list': 'List',
+  'stats.view.chart': 'Chart',
+  'stats.chart': 'Breakdown chart',
+  'stats.chart_failed': 'The chart could not load. Reload the page to try again.',
+  'stats.from': 'From',
+  'stats.to': 'To',
+  'stats.trip_start': 'Trip start',
+  'stats.reset': 'Reset',
+  'stats.no_spend': 'Nothing was spent in these dates.',
 
   'rates.your_rates': 'Your rates',
   'rates.scope': '— this browser only',

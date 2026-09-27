@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { html } from '../h.js';
 import { useStore, reload } from '../store.js';
 import { itemMatches } from '../filter.js';
+import { isBeforeTrip } from '../days.js';
 import { t, getLocale } from '../i18n/index.js';
 import { DayGroup } from '../components/DayGroup.js';
 import { ItemModal } from '../components/ItemModal.js';
@@ -34,7 +35,7 @@ function groupByDay(entries, startDate) {
   let current = null;
   for (const entry of entries) {
     const day = entry.row.occurred_at.slice(0, 10);
-    const key = startDate && day < startDate ? 'before' : day;
+    const key = isBeforeTrip(day, startDate) ? 'before' : day;
     if (!current || current.date !== key) {
       current = { date: key, beforeTrip: key === 'before', entries: [] };
       groups.push(current);

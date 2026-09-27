@@ -16,7 +16,9 @@ Preact + htm as ES modules through an import map. No build step, no Node, no npm
 Pinned versions with SRI hashes. Page width is Bootstrap's `.container` at its own
 breakpoints, with no cap of ours on top. Leaflet joins them on the map tab alone, imported
 dynamically when that tab mounts so no other page pays for it — a dynamic import takes
-no `integrity` attribute, so its hash sits in the import map's own `integrity` block. Bootstrap 5 CSS plus `bootstrap.bundle.min.js` for
+no `integrity` attribute, so its hash sits in the import map's own `integrity` block.
+Chart.js joins the same way on the statistics page's chart view alone — its ESM build
+plus its one chunk and `@kurkle/color`, all three hashed in that block. Bootstrap 5 CSS plus `bootstrap.bundle.min.js` for
 the modal and tabs — Preact renders the markup, Bootstrap animates it. Bootstrap
 Icons for glyphs. Roughly 500 lines of own JS.
 
@@ -40,8 +42,11 @@ static/
     │                     attempt() runs a write and hands back that error
     ├── store.js          per-trip state: trip, labels, items, balances, stats;
     │                     load(), reload(kind), setStatsDims(dims)
-    ├── breakdown.js      the statistics dimension chain and the currency on
-    │                     screen, one set per trip — localStorage only, never sent
+    ├── breakdown.js      the statistics dimension chain, the currency on screen,
+    │                     list-or-chart and the date range, one set per trip —
+    │                     localStorage only; requestChains() turns the chain into
+    │                     the group_by list, each level with day appended
+    ├── chartTheme.js     Bootstrap's --bs-* colours and font, resolved for Chart.js
     ├── fmt.js            money(), signed(), parse(), date() — one cached
     │                     Intl.NumberFormat per locale
     ├── h.js              html = htm.bind(h)
@@ -54,6 +59,8 @@ static/
     │                     API wrappers, for a click that must also scroll natively
     ├── filter.js         itemMatches() — the one needle matcher, shared by the
     │                     item feed and the map
+    ├── days.js           isBeforeTrip() — which days fold into "Before the trip",
+    │                     shared by the item feed and the statistics page
     ├── tiles.js          the basemap URL, its zoom ceiling and its attribution
     ├── i18n/
     │   ├── index.js      LANGS, current locale, t(key, params), setLocale()
@@ -88,6 +95,8 @@ static/
         ├── MapCanvas.js    the Leaflet instance: imports leaflet on mount, owns
         │                   every node inside the canvas, draws one pin per point
         ├── MapFilters.js   the map's search box, label chips and date range
+        ├── StatsChart.js   the Chart.js instance: imports chart.js on mount, owns
+        │                   the canvas, rebuilds on data or theme change
         ├── ItemRow.js  TransferRow.js  DayGroup.js
         ├── ItemModal.js  Expense/Transfer switch + two modes, one component
         ├── TransferFields.js  wallet selects, the from/to amount+currency pairs
@@ -143,7 +152,21 @@ Note the dashed arrow: **a write is followed by a re-read, never by a local muta
    sum over the day's rows. The same discipline holds on the statistics page: each
    level of a nested breakdown renders its own grouping's row — the API answers a
    chain's prefixes for exactly that — and no level is ever summed from the one
-   below it.
+   below it. The chart view draws those same rows, each bar or segment one
+   grouping's row, by two rules for any chain: the first dimension is the axis —
+   columns for `day`, empty up to the last day with spend, horizontal bars
+   otherwise — and every later one splits each bar into a series per combination
+   of their values, stacked unless one of them is `label`, whose overlapping rows
+   stand side by side.
+
+   Two more additions live on the statistics page, both summing over `day` alone —
+   days partition a trip's items, so neither can count an item twice:
+   - days before the trip's `start_date` fold into one "Before the trip" row, list
+     and chart alike, as they do in the item feed;
+   - every level is also requested grouped by day, in the tab's one request, and with
+     a date range picked the page keeps the days inside it and sums each level over
+     them. A level is never summed from the one below it, so overlapping labels stay
+     exact.
 
    The exception is each page's own Total — on both statistics and balances: a switch
    alongside the currencies that multiplies each grouped total (statistics) or each
@@ -232,6 +255,7 @@ it opens; landing straight on a tab via a direct link or a hard refresh pays for
 | Stats tab, first open | 1 | `GET /stats?group_by=…` — `trip` is already in the store |
 | Changing the breakdown | 1 | the chain is a new `group_by`, so the answer is refetched |
 | Changing the shown currency | 0 | every grouping already carries every currency |
+| Changing the date range | 0 | every level already came grouped by day; the days are filtered |
 | Map tab, any open | 0 | it reads `store.items`, which the feed already loaded |
 | Setup tab, first open | 0 or 1 | `GET /labels`, unless Items already loaded them |
 | Balances/Wallets/Stats/Setup, cold (direct link) | 2 | `GET /trips/{slug}` plus that tab's own endpoint |
@@ -284,6 +308,9 @@ tests/frontend/
 ├── map/                 the map tab's suites, with the pins, page fixtures and
 │   ├── conftest.py      items-stub helper they share
 │   └── test_*.py
+├── stats/               the statistics tab's suites, with the picker and chart
+│   ├── conftest.py      helpers and the before-trip page fixture they share
+│   └── test_*.py
 └── test_*.py
 ```
 
@@ -300,6 +327,10 @@ line instead of a backend state that has to be manufactured.
 **`preview-split` is always canned.** This suite asserts *"renders what the server
 returned"*. Whether 18 400 ISK across four people is 4 600 each is a backend question,
 asked in exactly one backend file. That is rule 2 as a test-layout rule.
+
+**Two numbers are the page's own, and only those are asserted here**: a statistics
+row's percentage of its parent, and a date range's sum of the day rows inside it
+(`mergeRows` in `Stats.js`). No endpoint returns either, so no backend test can.
 
 **Fixture values are copied from what the backend actually produced**, and a fixture
 is updated in the same commit as the contract change that moves it. The browsable

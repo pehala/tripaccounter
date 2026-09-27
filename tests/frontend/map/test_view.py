@@ -205,3 +205,13 @@ def test_trip_with_no_coordinates_renders_the_empty_state_not_a_blank_map(unchar
 
     expect(empty).to_be_visible()
     expect(uncharted_map_page.locator(".map-canvas")).to_have_count(0)
+
+
+def test_a_map_that_cannot_load_says_so(page, trip_url):
+    """Leaflet failing to load leaves a message where the map would be, not a blank box."""
+    page.route("**/leaflet@*/**", lambda route: route.abort())
+
+    page.goto(f"{trip_url}/map")
+
+    expect(page.get_by_text("The map could not load.", exact=False)).to_be_visible()
+    expect(page.locator(".map-canvas")).to_have_count(0)
