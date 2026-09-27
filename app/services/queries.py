@@ -4,7 +4,7 @@ Each returns a `Select` the caller executes, so a router can add its own
 options and a service can wrap it in an aggregate.
 """
 
-from sqlalchemy import BigInteger, cast, func, select
+from sqlalchemy import BigInteger, String, cast, func, select
 
 from app.db_views import share_owed_view
 from app.models.items import LineItem
@@ -16,6 +16,11 @@ from app.schemas.responses import ITEM_LOAD_OPTIONS, TRANSFER_LOAD_OPTIONS
 def int_sum(column):
     """Sum `column` as a bigint; Postgres widens a bigint `SUM` to numeric otherwise."""
     return cast(func.sum(column), BigInteger)
+
+
+def day_of(column):
+    """Return `column`'s calendar day as a `YYYY-MM-DD` string, on every dialect."""
+    return cast(func.date(column), String)
 
 
 def items_for_trip(trip_id: int, *, newest_first: bool = True):

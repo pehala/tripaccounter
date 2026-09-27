@@ -42,7 +42,7 @@ DIMENSIONS: dict[str, Dimension] = {
     "city": Dimension("city", LineItem.city),
     "payer": Dimension("payer_id", LineItem.payer_id),
     "wallet": Dimension("wallet_id", LineItem.wallet_id),
-    "day": Dimension("date", func.date(LineItem.occurred_at), ordinal=True),
+    "day": Dimension("date", queries.day_of(LineItem.occurred_at), ordinal=True),
     "person": Dimension("person_id", share_owed_view.c.person_id, shares=True),
 }
 
