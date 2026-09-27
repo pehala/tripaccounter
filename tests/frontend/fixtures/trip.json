@@ -746,6 +746,44 @@
         {"keys": {"currency_id": 2, "date": "2026-09-14", "person_id": 2}, "amount": 13.333333, "item_count": 1},
         {"keys": {"currency_id": 2, "date": "2026-09-14", "person_id": 4}, "amount": 13.333333, "item_count": 1}
         ]
+      },
+      {
+        "by": ["currency", "country", "label"],
+        "rows": [
+        {"keys": {"currency_id": 1, "country_id": 1, "label": "lodging"}, "amount": 96000, "item_count": 1},
+        {"keys": {"currency_id": 1, "country_id": 1, "label": "food"}, "amount": 18400, "item_count": 1},
+        {"keys": {"currency_id": 1, "country_id": 1, "label": "restaurant"}, "amount": 18400, "item_count": 1},
+        {"keys": {"currency_id": 1, "country_id": 1, "label": "fuel"}, "amount": 7900, "item_count": 1},
+        {"keys": {"currency_id": 1, "country_id": 1, "label": "transport"}, "amount": 7900, "item_count": 1},
+        {"keys": {"currency_id": 3, "country_id": 2, "label": "airport"}, "amount": 480, "item_count": 1},
+        {"keys": {"currency_id": 3, "country_id": 2, "label": "food"}, "amount": 480, "item_count": 1},
+        {"keys": {"currency_id": 2, "country_id": 1, "label": "fun"}, "amount": 40, "item_count": 1},
+        {"keys": {"currency_id": 2, "country_id": 1, "label": "spa"}, "amount": 40, "item_count": 1}
+        ]
+      },
+      {
+        "by": ["currency", "country", "payer"],
+        "rows": [
+        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 4}, "amount": 96000, "item_count": 1},
+        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 1}, "amount": 18400, "item_count": 1},
+        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 3}, "amount": 7900, "item_count": 1},
+        {"keys": {"currency_id": 3, "country_id": 2, "payer_id": 2}, "amount": 480, "item_count": 1},
+        {"keys": {"currency_id": 2, "country_id": 1, "payer_id": 2}, "amount": 40, "item_count": 1}
+        ]
+      },
+      {
+        "by": ["currency", "country", "payer", "label"],
+        "rows": [
+        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 4, "label": "lodging"}, "amount": 96000, "item_count": 1},
+        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 1, "label": "food"}, "amount": 18400, "item_count": 1},
+        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 1, "label": "restaurant"}, "amount": 18400, "item_count": 1},
+        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 3, "label": "fuel"}, "amount": 7900, "item_count": 1},
+        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 3, "label": "transport"}, "amount": 7900, "item_count": 1},
+        {"keys": {"currency_id": 3, "country_id": 2, "payer_id": 2, "label": "airport"}, "amount": 480, "item_count": 1},
+        {"keys": {"currency_id": 3, "country_id": 2, "payer_id": 2, "label": "food"}, "amount": 480, "item_count": 1},
+        {"keys": {"currency_id": 2, "country_id": 1, "payer_id": 2, "label": "fun"}, "amount": 40, "item_count": 1},
+        {"keys": {"currency_id": 2, "country_id": 1, "payer_id": 2, "label": "spa"}, "amount": 40, "item_count": 1}
+        ]
       }
     ],
     "day_count": 10

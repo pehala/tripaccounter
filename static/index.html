@@ -29,18 +29,27 @@
     "preact":       "https://cdn.jsdelivr.net/npm/preact@10.29.8/dist/preact.module.js",
     "preact/hooks": "https://cdn.jsdelivr.net/npm/preact@10.29.8/hooks/dist/hooks.module.js",
     "htm":          "https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.module.js",
-    "leaflet":      "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet-src.esm.js"
+    "leaflet":      "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet-src.esm.js",
+    "chart.js":     "https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.js",
+    "@kurkle/color": "https://cdn.jsdelivr.net/npm/@kurkle/color@0.3.4/dist/color.esm.js"
   },
   "integrity": {
     "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet-src.esm.js":
-      "sha384-zd+tdvh8fbJAYA8L9jwid1BxMzHku/D6vwnXYzTG7Euqsam73FrDLArv8nyvdlUg"
+      "sha384-zd+tdvh8fbJAYA8L9jwid1BxMzHku/D6vwnXYzTG7Euqsam73FrDLArv8nyvdlUg",
+    "https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.js":
+      "sha384-ObwLZ0UzdseUDJYdCL5AC8oJyFiQYp2I/f/G1fiKtjk4YYhdUtRtKfO0aR3slR+G",
+    "https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chunks/helpers.dataset.js":
+      "sha384-BGTHU/imAIISS4RLqzlmbzohsjVVXTcuFFsre2WYfCpgSsOO7rIDdWvvri/PLSvv",
+    "https://cdn.jsdelivr.net/npm/@kurkle/color@0.3.4/dist/color.esm.js":
+      "sha384-kK5x4nQngGCMIIrcv6LmSK5ba7lpydhAr3wZ9V6bc3fRupiPKsUaVqGc7JJcvBLO"
   }
 }
 </script>
 
-<!-- Leaflet is the map tab's alone and is imported dynamically when that tab mounts,
-     so it is neither preloaded nor on any other tab's critical path. A dynamic import
-     takes no integrity attribute, so its hash is stated in the import map itself. -->
+<!-- Leaflet is the map tab's alone and Chart.js (with its chunk and @kurkle/color) the
+     statistics chart's; each is imported dynamically when its view mounts, so neither is
+     preloaded nor on any other tab's critical path. A dynamic import takes no integrity
+     attribute, so their hashes are stated in the import map itself. -->
 
 <!-- The three import-map modules sit at the far end of the import graph: the browser
      only discovers them once every local module has parsed, and the first API call

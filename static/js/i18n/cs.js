@@ -61,6 +61,7 @@ export default {
   'map.clear': 'Zrušit filtry',
   'map.close': 'Zavřít',
   'map.zoom': 'Přiblížit na místo',
+  'map.failed': 'Mapu se nepodařilo načíst. Zkuste stránku načíst znovu.',
 
   'item.kind.expense': 'Výdaj',
   'item.kind.transfer': 'Převod',
@@ -140,6 +141,10 @@ export default {
   'stats.unlabelled': 'bez štítku',
   'stats.total': 'celkem {amount}',
   'stats.share': 'podíl',
+  'stats.view.list': 'Seznam',
+  'stats.view.chart': 'Graf',
+  'stats.chart': 'Graf rozdělení',
+  'stats.chart_failed': 'Graf se nepodařilo načíst. Zkuste stránku načíst znovu.',
 
   'rates.your_rates': 'Vaše kurzy',
   'rates.scope': '— jen v tomto prohlížeči',

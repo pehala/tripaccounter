@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../h.js';
+import { t } from '../i18n/index.js';
 import { TILE_ATTRIBUTION, TILE_MAX_ZOOM, TILE_URL } from '../tiles.js';
 
 // Leaflet owns every node inside the canvas div and Preact owns none of them, so the
@@ -22,6 +23,7 @@ export function MapCanvas({ points, selectedKey, focus, layout, onSelect }) {
   const selectRef = useRef(onSelect);
   const selectedRef = useRef(selectedKey);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
   selectRef.current = onSelect;
   selectedRef.current = selectedKey;
 
@@ -38,6 +40,8 @@ export function MapCanvas({ points, selectedKey, focus, layout, onSelect }) {
       mapRef.current = instance;
       layerRef.current = leaflet.layerGroup().addTo(instance);
       setReady(true);
+    }).catch(() => {
+      if (!disposed) setFailed(true);
     });
     return () => {
       disposed = true;
@@ -104,5 +108,6 @@ export function MapCanvas({ points, selectedKey, focus, layout, onSelect }) {
     mapRef.current.fitBounds(bounds.pad(FIT_PADDING), { maxZoom: FIT_MAX_ZOOM });
   }, [ready, points]);
 
+  if (failed) return html`<div class="alert alert-warning py-2 px-3 small mb-0">${t('map.failed')}</div>`;
   return html`<div class="map-canvas rounded shadow-sm flex-grow-1 z-0" ref=${nodeRef}></div>`;
 }
