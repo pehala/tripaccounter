@@ -23,10 +23,7 @@ def setup_card(setup_page, card):
 def refused_delete(stub):
     """Answer DELETE on any person with the 409 in_use envelope; return the recorded calls."""
     body = load_fixture("errors/409_in_use.json")
-    return stub(
-        "**/api/v1/trips/*/people/*",
-        lambda request: (409, body) if request.method == "DELETE" else None,
-    )
+    return stub("**/api/v1/trips/*/people/*", lambda request: (409, body), method="DELETE")
 
 
 @pytest.fixture

@@ -8,22 +8,21 @@ an empty shell.
 import pytest
 from playwright.sync_api import expect
 
+from tests.frontend.conftest import TAB_PARAMS, TABS
 
-def test_cold_load_with_tab_path_lands_directly_on_that_tab(shared_balances_page):
-    """A first paint at /balances renders the Balances tab active and never mounts the Items FAB."""
-    expect(shared_balances_page.locator(".nav-link.active")).to_have_text("Balances")
-    expect(shared_balances_page.locator(".balances-content").first).to_be_visible()
+
+@pytest.mark.parametrize("tab", TAB_PARAMS)
+def test_cold_load_with_a_tab_path_lands_directly_on_that_tab(open_trip, tab):
+    """A first paint at /{tab} renders that tab active, marked aria-current, and no other."""
+    page = open_trip(TABS[tab][0])
+
+    expect(page.locator(".nav-link.active")).to_have_text(tab)
+    expect(page.locator('.nav-link[aria-current="page"]')).to_have_text(tab)
+
+
+def test_a_tab_other_than_items_never_mounts_the_items_fab(shared_balances_page):
+    """The FAB belongs to the Items tab; a cold load elsewhere never renders it."""
     assert shared_balances_page.locator(".fab").count() == 0
-
-
-def test_active_tab_link_marks_itself_current(shared_balances_page):
-    """The tab nav is links, not ARIA tabs, so the one we are on says aria-current=page."""
-    expect(shared_balances_page.get_by_role("link", name="Balances")).to_have_attribute(
-        "aria-current", "page"
-    )
-    expect(shared_balances_page.get_by_role("link", name="Items")).not_to_have_attribute(
-        "aria-current", "page"
-    )
 
 
 def test_back_and_forward_switch_tabs_without_refetching_balances(
@@ -44,20 +43,6 @@ def test_back_and_forward_switch_tabs_without_refetching_balances(
     expect(items_page.locator(".nav-link.active")).to_have_text("Balances")
     expect(items_page.locator(".balances-content").first).to_be_visible()
     assert len(balance_requests) == 1
-
-
-@pytest.mark.parametrize(
-    ("path", "tab"),
-    [
-        pytest.param("wallets", "Wallets", id="wallets"),
-        pytest.param("map", "Map", id="map"),
-    ],
-)
-def test_cold_load_with_a_tab_path_lands_directly_on_that_tab(open_trip, path, tab):
-    """A first paint at /{tab} renders that tab active, deep-linked like any other."""
-    page = open_trip(path)
-
-    expect(page.locator(".nav-link.active")).to_have_text(tab)
 
 
 def test_unknown_slug_renders_the_notfound_view(page, mockserver):

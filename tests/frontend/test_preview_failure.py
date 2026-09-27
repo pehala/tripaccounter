@@ -8,40 +8,26 @@ the form is still submittable.
 import pytest
 from playwright.sync_api import expect
 
-HAPPY_PREVIEW = {
-    "split": {
-        "mode": "equal",
-        "shares": [
-            {"person_id": 1, "weight": "1", "owed": 2500},
-            {"person_id": 2, "weight": "1", "owed": 2500},
-            {"person_id": 3, "weight": "1", "owed": 2500},
-            {"person_id": 4, "weight": "1", "owed": 2500},
-        ],
-    }
-}
-
 INTERNAL_ERROR = {"error": {"code": "internal_error", "params": {}}}
 
 
 @pytest.fixture
 def failing_preview(page, stub, new_item_modal, split_expanded):
-    """Return the page after a good preview of 10000 over four people, then a preview answered 500.
+    """Return the page after the mock's good preview of 18400 over four, then one answered 500.
 
-    preview-split answers the happy body until "2,500 each" is on screen, then every
+    preview-split goes through to the mock until "4,600 each" is on screen, then every
     later call gets a 500; unchecking person 3 is the call that fails.
     """
     state = {"fail": False}
 
     def responder(request):
-        if state["fail"]:
-            return 500, INTERNAL_ERROR
-        return 200, HAPPY_PREVIEW
+        return (500, INTERNAL_ERROR) if state["fail"] else None
 
     stub("**/api/v1/trips/*/items/preview-split", responder)
     amount = new_item_modal.locator('input[name="amount"]')
-    amount.fill("10000")
+    amount.fill("18400")
     amount.blur()
-    expect(page.locator(".num", has_text="2,500 each")).to_be_visible()
+    expect(page.locator(".num", has_text="4,600 each")).to_be_visible()
     state["fail"] = True
     with page.expect_response(lambda response: "preview-split" in response.url):
         split_expanded.locator("li:has(#split-3) input[type=checkbox]").uncheck()
@@ -53,7 +39,7 @@ def test_failed_preview_greys_out_the_list_and_keeps_the_last_numbers(failing_pr
     expect(failing_preview.locator("#split-body ul")).to_have_class(
         "list-group list-group-flush opacity-50"
     )
-    expect(failing_preview.locator(".num", has_text="2,500 each")).to_be_visible()
+    expect(failing_preview.locator(".num", has_text="4,600 each")).to_be_visible()
 
 
 def test_failed_preview_shows_no_nan_and_no_error_alert(failing_preview):

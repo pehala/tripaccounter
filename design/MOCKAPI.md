@@ -15,6 +15,7 @@ tests/
 │       ├── trip.json          the resting state: 4 people, 3 currencies, resolved splits
 │       ├── empty.json         a trip with no items
 │       ├── hostile.json       markup in every user-supplied string
+│       ├── routes.json        the routes and errors every trip fixture shares (§1)
 │       └── errors/            envelopes stubbed per test through page.route (§5)
 └── tools/
     └── test_mockapi.py        the engine, over HTTP, against an inline fixture
@@ -58,6 +59,12 @@ The data blocks are the exact response bodies of their `GET`s and are what the
 Playwright tests index (`fixture_data["items"]["items"]`). `routes` says which URL
 serves which block; `errors` supplies the bodies for a path nothing declares and for
 a request body that is not a JSON object.
+
+Every trip fixture serves the same routes, so they live once, in
+`fixtures/routes.json`, with `{slug}` standing for the trip's slug. `load_fixture`
+merges that file's `routes` under the fixture's own and copies its `errors`, so a
+fixture file declares only the routes that differ — each one's `preview-split`
+answer — and the engine still sees one complete dict.
 
 ## 2. Route grammar
 
@@ -156,7 +163,7 @@ and a typo in a route shows up as a failing test instead of an echoed body.
 | Fixture | Gives |
 |---|---|
 | `fixture_name` | the file the server is built from, `trip.json` unless a module overrides it or a test parametrizes it indirectly |
-| `fixture_data` | a fresh parse of `fixture_name`, private to the test; a module overrides it to mutate the copy before it is served |
+| `fixture_data` | a fresh parse of `fixture_name` with `routes.json` merged in, private to the test; a module overrides it to mutate the copy before it is served |
 | `mockserver` | base URL of a server built from `fixture_data`; stopped with the test |
 | `trip_url` | `{mockserver}/t/{slug}` |
 | `open_trip(hash)` / `items_page` … `setup_page` | the trip loaded on a tab, waited for; the factory form lets a test stub a baseline `GET` first |

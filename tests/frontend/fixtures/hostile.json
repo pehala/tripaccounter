@@ -29,14 +29,7 @@
           "active": true
         }
       ],
-      "currencies": [
-        {
-          "id": 1,
-          "code": "ISK",
-          "symbol": "kr",
-          "is_primary": true
-        }
-      ],
+      "currencies": [{"id": 1, "code": "ISK", "symbol": "kr", "is_primary": true}],
       "countries": [
         {
           "id": 1,
@@ -56,16 +49,7 @@
       "updated_at": "2026-09-01T08:12:00Z"
     }
   },
-  "labels": {
-    "labels": [
-      {
-        "id": 1,
-        "name": "<img src=x onerror=alert(2)>",
-        "color": "#6c757d",
-        "use_count": 1
-      }
-    ]
-  },
+  "labels": {"labels": [{"id": 1, "name": "<img src=x onerror=alert(2)>", "color": "#6c757d", "use_count": 1}]},
   "items": {
     "items": [
       {
@@ -79,31 +63,20 @@
         "payer_id": 1,
         "wallet_id": 1,
         "country_id": 1,
-        "labels": [
-          "<img src=x onerror=alert(2)>"
-        ],
+        "labels": ["<img src=x onerror=alert(2)>"],
         "map_url": null,
         "lat": null,
         "lon": null,
         "split": {
           "mode": "equal",
-          "shares": [
-            {
-              "person_id": 1,
-              "weight": "1",
-              "owed": 500
-            },
-            {
-              "person_id": 2,
-              "weight": "1",
-              "owed": 500
-            }
-          ]
+          "shares": [{"person_id": 1, "weight": "1", "owed": 500}, {"person_id": 2, "weight": "1", "owed": 500}]
         },
         "created_at": "2026-09-14T19:30:00Z",
         "updated_at": "2026-09-14T19:30:00Z"
       }
     ],
+    "day_totals": [],
+    "before_trip_totals": [],
     "transfers": [
       {
         "id": 1,
@@ -129,73 +102,14 @@
         "currency_id": 1,
         "total_spent": 1000,
         "people": [
-          {
-            "person_id": 1,
-            "paid": 1000,
-            "owed": 500,
-            "sent": 0,
-            "received": 0,
-            "net": 500
-          },
-          {
-            "person_id": 2,
-            "paid": 0,
-            "owed": 500,
-            "sent": 0,
-            "received": 0,
-            "net": -500
-          }
+          {"person_id": 1, "paid": 1000, "owed": 500, "sent": 0, "received": 0, "net": 500},
+          {"person_id": 2, "paid": 0, "owed": 500, "sent": 0, "received": 0, "net": -500}
         ],
-        "suggestions": [
-          {
-            "from_person_id": 2,
-            "to_person_id": 1,
-            "amount": 500
-          }
-        ]
+        "suggestions": [{"from_person_id": 2, "to_person_id": 1, "amount": 500}]
       }
     ]
   },
-  "stats": {
-    "stats": [
-      {
-        "currency_code": "ISK",
-        "currency_id": 1,
-        "by_label": [
-          {
-            "label": "<img src=x onerror=alert(2)>",
-            "item_count": 1,
-            "amount": 1000
-          }
-        ],
-        "by_country": [
-          {
-            "country_id": 1,
-            "item_count": 1,
-            "amount": 1000
-          }
-        ],
-        "by_person": [
-          {
-            "person_id": 1,
-            "amount": 500
-          },
-          {
-            "person_id": 2,
-            "amount": 500
-          }
-        ],
-        "by_day": [
-          {
-            "date": "2026-09-14",
-            "amount": 1000
-          }
-        ],
-        "total": 1000
-      }
-    ],
-    "day_count": 1
-  },
+  "stats": {"groups": [], "day_count": 0},
   "trips": {
     "trips": [
       {
@@ -214,108 +128,14 @@
     ]
   },
   "routes": {
-    "/api/v1/trips": {
-      "GET": "#/trips",
-      "POST": {
-        "trip": "$echo"
-      }
-    },
-    "/api/v1/trips/hostile-trip": {
-      "GET": "#/trip",
-      "PATCH": "#/trip"
-    },
-    "/api/v1/trips/hostile-trip/items": {
-      "collection": "#/items/items",
-      "item": "item",
-      "insert": "head",
-      "extra": {"transfers": "#/items/transfers"}
-    },
-    "/api/v1/trips/hostile-trip/transfers": {
-      "collection": "#/items/transfers",
-      "item": "transfer",
-      "insert": "head",
-      "defaults": {"from_currency_code": "ISK", "to_currency_code": "ISK", "note": null}
-    },
-    "/api/v1/trips/hostile-trip/wallets": {
-      "collection": "#/trip/trip/wallets",
-      "item": "wallet",
-      "defaults": {"tracked": false, "is_default": false, "balances": []}
-    },
-    "/api/v1/trips/hostile-trip/items/preview-split": {
+    "/api/v1/trips/{slug}/items/preview-split": {
       "POST": {
         "$status": 200,
         "split": {
           "mode": "equal",
-          "shares": [
-            {
-              "person_id": 1,
-              "weight": "1",
-              "owed": 500
-            },
-            {
-              "person_id": 2,
-              "weight": "1",
-              "owed": 500
-            }
-          ]
+          "shares": [{"person_id": 1, "weight": "1", "owed": 500}, {"person_id": 2, "weight": "1", "owed": 500}]
         },
         "total": 1000
-      }
-    },
-    "/api/v1/trips/hostile-trip/labels": {
-      "collection": "#/labels/labels",
-      "item": "label",
-      "defaults": {
-        "color": "#6c757d",
-        "use_count": 0
-      }
-    },
-    "/api/v1/trips/hostile-trip/people": {
-      "collection": "#/trip/trip/people",
-      "item": "person",
-      "defaults": {
-        "active": true,
-        "color": "#6c757d"
-      }
-    },
-    "/api/v1/trips/hostile-trip/currencies": {
-      "collection": "#/trip/trip/currencies",
-      "item": "currency",
-      "defaults": {
-        "symbol": null,
-        "is_primary": false
-      }
-    },
-    "/api/v1/trips/hostile-trip/countries": {
-      "collection": "#/trip/trip/countries",
-      "item": "country",
-      "defaults": {
-        "code": null,
-        "flag": null,
-        "is_default": false,
-        "item_count": 0
-      }
-    },
-    "/api/v1/trips/hostile-trip/balances": {
-      "GET": "#/balances"
-    },
-    "/api/v1/trips/hostile-trip/stats": {
-      "GET": "#/stats"
-    }
-  },
-  "errors": {
-    "not_found": {
-      "error": {
-        "code": "not_found",
-        "params": {
-          "resource": "route"
-        }
-      }
-    },
-    "bad_request": {
-      "error": {
-        "code": "bad_request",
-        "params": {}
       }
     }
   }

@@ -1,9 +1,8 @@
 """Fixtures the map tab's suites share.
 
-The pins the canned trip draws, the two page fixtures, and one helper for the cases
-`trip.json` cannot express — several expenses at one coordinate, expenses on
-different days — which are served as a per-test stub rather than by editing the
-fixture every other suite reads.
+The pins the canned trip draws and the two page fixtures. The cases `trip.json`
+cannot express — several expenses at one coordinate, expenses on different days —
+are served through the top-level `serve_items` stub.
 """
 
 import pytest
@@ -24,16 +23,3 @@ def map_page(open_trip):
 def shared_map_page(shared_trip):
     """Return the session's read-only Map tab."""
     return shared_trip("map")
-
-
-@pytest.fixture
-def serve_items(stub, fixture_data):
-    """Return `serve_items(items)`: serve this trip's item list with `items` in its place."""
-
-    def install(items):
-        stub(
-            "**/api/v1/trips/*/items",
-            lambda request: (200, {**fixture_data["items"], "items": items}),
-        )
-
-    return install

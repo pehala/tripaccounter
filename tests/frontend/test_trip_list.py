@@ -24,10 +24,7 @@ EXPECTED_BODY = {
 @pytest.fixture
 def no_trips(stub):
     """Answer GET /trips with an empty list."""
-    stub(
-        "**/api/v1/trips",
-        lambda request: (200, {"trips": []}) if request.method == "GET" else None,
-    )
+    stub("**/api/v1/trips", lambda request: (200, {"trips": []}), method="GET")
 
 
 @pytest.fixture
@@ -48,10 +45,7 @@ def czech_new_trip_form(new_trip_form):
 @pytest.fixture
 def posted_trips(stub):
     """Answer POST /trips with a minted slug; return the recorded request bodies."""
-    return stub(
-        "**/api/v1/trips",
-        lambda request: (201, MINTED_TRIP) if request.method == "POST" else None,
-    )
+    return stub("**/api/v1/trips", lambda request: (201, MINTED_TRIP), method="POST")
 
 
 @pytest.fixture
@@ -74,20 +68,14 @@ def submitted_form(posted_trips, new_trip_form):
 
 
 def test_one_card_per_trip_from_the_trip_list(page, mockserver):
-    """GET /trips renders one list-group-item per trip, name and people count shown."""
+    """GET /trips renders one list-group-item per trip: name, date range and people count."""
     page.goto(f"{mockserver}/")
 
     cards = page.locator(".list-group-item-action")
     expect(cards).to_have_count(1)
     expect(cards.first).to_contain_text("Iceland 2026")
+    expect(cards.first).to_contain_text("12–21 Sep")
     expect(cards.first).to_contain_text("4 people")
-
-
-def test_trip_card_shows_its_date_range(page, mockserver):
-    """A trip's start_date/end_date render as a same-month range on its card."""
-    page.goto(f"{mockserver}/")
-
-    expect(page.locator(".list-group-item-action").first).to_contain_text("12–21 Sep")
 
 
 def test_empty_trip_list_shows_the_empty_state(no_trips, page, mockserver):

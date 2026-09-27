@@ -1,5 +1,5 @@
 {
-  "_comment": "Canonical fixture for design/API.md. Balances and stats are derived from the items — keep them derived when editing. `routes` maps each URL to what tests/frontend/mockapi.py serves ('#/...' values are JSON Pointers into this file); `trips` is the literal GET /trips answer.",
+  "_comment": "Canonical fixture for design/API.md. Balances and stats are derived from the items — keep them derived when editing. `routes` adds this trip's preview-split to the shared fixtures/routes.json; `trips` is the literal GET /trips answer.",
   "trip": {
     "trip": {
       "id": 1,
@@ -48,54 +48,39 @@
         }
       ],
       "currencies": [
-        {
-          "id": 1,
-          "code": "ISK",
-          "symbol": "kr",
-          "is_primary": true
-        },
-        {
-          "id": 2,
-          "code": "EUR",
-          "symbol": "€",
-          "is_primary": false
-        },
-        {
-          "id": 3,
-          "code": "DKK",
-          "symbol": "kr.",
-          "is_primary": false
-        }
+        {"id": 1, "code": "ISK", "symbol": "kr", "is_primary": true},
+        {"id": 2, "code": "EUR", "symbol": "€", "is_primary": false},
+        {"id": 3, "code": "DKK", "symbol": "kr.", "is_primary": false}
       ],
       "countries": [
-        {
-          "id": 1,
-          "name": "Iceland",
-          "code": "IS",
-          "flag": "🇮🇸",
-          "is_default": true,
-          "item_count": 4
-        },
-        {
-          "id": 2,
-          "name": "Denmark",
-          "code": "DK",
-          "flag": "🇩🇰",
-          "is_default": false,
-          "item_count": 1
-        }
+        {"id": 1, "name": "Iceland", "code": "IS", "flag": "🇮🇸", "is_default": true, "item_count": 4},
+        {"id": 2, "name": "Denmark", "code": "DK", "flag": "🇩🇰", "is_default": false, "item_count": 1}
       ],
       "wallets": [
         {"id": 1, "person_id": 1, "name": "Card", "tracked": false, "is_default": true, "balances": []},
-        {"id": 5, "person_id": 1, "name": "Cash", "tracked": true, "is_default": false, "balances": [
-          {"currency_code": "ISK", "currency_id": 1, "received": 20000, "sent": 0, "spent": 18400, "balance": 1600},
-          {"currency_code": "EUR", "currency_id": 2, "received": 0, "sent": 20, "spent": 0, "balance": -20},
-          {"currency_code": "DKK", "currency_id": 3, "received": 150, "sent": 0, "spent": 0, "balance": 150}
-        ]},
+        {
+          "id": 5,
+          "person_id": 1,
+          "name": "Cash",
+          "tracked": true,
+          "is_default": false,
+          "balances": [
+            {"currency_code": "ISK", "currency_id": 1, "received": 20000, "sent": 0, "spent": 18400, "balance": 1600},
+            {"currency_code": "EUR", "currency_id": 2, "received": 0, "sent": 20, "spent": 0, "balance": -20},
+            {"currency_code": "DKK", "currency_id": 3, "received": 150, "sent": 0, "spent": 0, "balance": 150}
+          ]
+        },
         {"id": 2, "person_id": 2, "name": "Card", "tracked": false, "is_default": true, "balances": []},
-        {"id": 6, "person_id": 2, "name": "Envelope", "tracked": true, "is_default": false, "balances": [
-          {"currency_code": "DKK", "currency_id": 3, "received": 0, "sent": 0, "spent": 480, "balance": -480}
-        ]},
+        {
+          "id": 6,
+          "person_id": 2,
+          "name": "Envelope",
+          "tracked": true,
+          "is_default": false,
+          "balances": [
+            {"currency_code": "DKK", "currency_id": 3, "received": 0, "sent": 0, "spent": 480, "balance": -480}
+          ]
+        },
         {"id": 3, "person_id": 3, "name": "Card", "tracked": false, "is_default": true, "balances": []},
         {"id": 4, "person_id": 4, "name": "Card", "tracked": false, "is_default": true, "balances": []}
       ],
@@ -105,66 +90,16 @@
   },
   "labels": {
     "labels": [
-      {
-        "id": 1,
-        "name": "food",
-        "color": "#6c757d",
-        "use_count": 2
-      },
-      {
-        "id": 2,
-        "name": "restaurant",
-        "color": "#6c757d",
-        "use_count": 1
-      },
-      {
-        "id": 3,
-        "name": "transport",
-        "color": "#6c757d",
-        "use_count": 1
-      },
-      {
-        "id": 4,
-        "name": "fuel",
-        "color": "#6c757d",
-        "use_count": 1
-      },
-      {
-        "id": 5,
-        "name": "fun",
-        "color": "#6c757d",
-        "use_count": 1
-      },
-      {
-        "id": 6,
-        "name": "spa",
-        "color": "#6c757d",
-        "use_count": 1
-      },
-      {
-        "id": 7,
-        "name": "lodging",
-        "color": "#6c757d",
-        "use_count": 1
-      },
-      {
-        "id": 8,
-        "name": "airport",
-        "color": "#6c757d",
-        "use_count": 1
-      },
-      {
-        "id": 9,
-        "name": "groceries",
-        "color": "#6c757d",
-        "use_count": 0
-      },
-      {
-        "id": 10,
-        "name": "drinks",
-        "color": "#6c757d",
-        "use_count": 0
-      }
+      {"id": 1, "name": "food", "color": "#6c757d", "use_count": 2},
+      {"id": 2, "name": "restaurant", "color": "#6c757d", "use_count": 1},
+      {"id": 3, "name": "transport", "color": "#6c757d", "use_count": 1},
+      {"id": 4, "name": "fuel", "color": "#6c757d", "use_count": 1},
+      {"id": 5, "name": "fun", "color": "#6c757d", "use_count": 1},
+      {"id": 6, "name": "spa", "color": "#6c757d", "use_count": 1},
+      {"id": 7, "name": "lodging", "color": "#6c757d", "use_count": 1},
+      {"id": 8, "name": "airport", "color": "#6c757d", "use_count": 1},
+      {"id": 9, "name": "groceries", "color": "#6c757d", "use_count": 0},
+      {"id": 10, "name": "drinks", "color": "#6c757d", "use_count": 0}
     ]
   },
   "items": {
@@ -181,36 +116,17 @@
         "payer_id": 1,
         "wallet_id": 5,
         "country_id": 1,
-        "labels": [
-          "food",
-          "restaurant"
-        ],
+        "labels": ["food", "restaurant"],
         "map_url": "https://maps.app.goo.gl/Kx9mNq2",
         "lat": "64.14930",
         "lon": "-21.94030",
         "split": {
           "mode": "equal",
           "shares": [
-            {
-              "person_id": 1,
-              "weight": "1",
-              "owed": 4600
-            },
-            {
-              "person_id": 2,
-              "weight": "1",
-              "owed": 4600
-            },
-            {
-              "person_id": 3,
-              "weight": "1",
-              "owed": 4600
-            },
-            {
-              "person_id": 4,
-              "weight": "1",
-              "owed": 4600
-            }
+            {"person_id": 1, "weight": "1", "owed": 4600},
+            {"person_id": 2, "weight": "1", "owed": 4600},
+            {"person_id": 3, "weight": "1", "owed": 4600},
+            {"person_id": 4, "weight": "1", "owed": 4600}
           ]
         },
         "created_at": "2026-09-14T19:30:00Z",
@@ -228,36 +144,17 @@
         "payer_id": 3,
         "wallet_id": 3,
         "country_id": 1,
-        "labels": [
-          "fuel",
-          "transport"
-        ],
+        "labels": ["fuel", "transport"],
         "map_url": null,
         "lat": "63.93330",
         "lon": "-20.99000",
         "split": {
           "mode": "equal",
           "shares": [
-            {
-              "person_id": 1,
-              "weight": "1",
-              "owed": 1975
-            },
-            {
-              "person_id": 2,
-              "weight": "1",
-              "owed": 1975
-            },
-            {
-              "person_id": 3,
-              "weight": "1",
-              "owed": 1975
-            },
-            {
-              "person_id": 4,
-              "weight": "1",
-              "owed": 1975
-            }
+            {"person_id": 1, "weight": "1", "owed": 1975},
+            {"person_id": 2, "weight": "1", "owed": 1975},
+            {"person_id": 3, "weight": "1", "owed": 1975},
+            {"person_id": 4, "weight": "1", "owed": 1975}
           ]
         },
         "created_at": "2026-09-14T11:05:00Z",
@@ -275,36 +172,17 @@
         "payer_id": 2,
         "wallet_id": 2,
         "country_id": 1,
-        "labels": [
-          "fun",
-          "spa"
-        ],
+        "labels": ["fun", "spa"],
         "map_url": null,
         "lat": null,
         "lon": null,
         "split": {
           "mode": "equal",
           "shares": [
-            {
-              "person_id": 1,
-              "weight": "1",
-              "owed": 13.333333
-            },
-            {
-              "person_id": 2,
-              "weight": "1",
-              "owed": 13.333333
-            },
-            {
-              "person_id": 3,
-              "weight": null,
-              "owed": null
-            },
-            {
-              "person_id": 4,
-              "weight": "1",
-              "owed": 13.333333
-            }
+            {"person_id": 1, "weight": "1", "owed": 13.333333},
+            {"person_id": 2, "weight": "1", "owed": 13.333333},
+            {"person_id": 3, "weight": null, "owed": null},
+            {"person_id": 4, "weight": "1", "owed": 13.333333}
           ]
         },
         "created_at": "2026-09-14T09:00:00Z",
@@ -322,35 +200,17 @@
         "payer_id": 4,
         "wallet_id": 4,
         "country_id": 1,
-        "labels": [
-          "lodging"
-        ],
+        "labels": ["lodging"],
         "map_url": "https://maps.app.goo.gl/Vik42",
         "lat": null,
         "lon": null,
         "split": {
           "mode": "shares",
           "shares": [
-            {
-              "person_id": 1,
-              "weight": "1",
-              "owed": 27428.571428
-            },
-            {
-              "person_id": 2,
-              "weight": "1",
-              "owed": 27428.571428
-            },
-            {
-              "person_id": 3,
-              "weight": "1",
-              "owed": 27428.571428
-            },
-            {
-              "person_id": 4,
-              "weight": "0.5",
-              "owed": 13714.285714
-            }
+            {"person_id": 1, "weight": "1", "owed": 27428.571428},
+            {"person_id": 2, "weight": "1", "owed": 27428.571428},
+            {"person_id": 3, "weight": "1", "owed": 27428.571428},
+            {"person_id": 4, "weight": "0.5", "owed": 13714.285714}
           ]
         },
         "created_at": "2026-09-13T16:00:00Z",
@@ -368,36 +228,17 @@
         "payer_id": 2,
         "wallet_id": 6,
         "country_id": 2,
-        "labels": [
-          "airport",
-          "food"
-        ],
+        "labels": ["airport", "food"],
         "map_url": null,
         "lat": null,
         "lon": null,
         "split": {
           "mode": "equal",
           "shares": [
-            {
-              "person_id": 1,
-              "weight": "1",
-              "owed": 120
-            },
-            {
-              "person_id": 2,
-              "weight": "1",
-              "owed": 120
-            },
-            {
-              "person_id": 3,
-              "weight": "1",
-              "owed": 120
-            },
-            {
-              "person_id": 4,
-              "weight": "1",
-              "owed": 120
-            }
+            {"person_id": 1, "weight": "1", "owed": 120},
+            {"person_id": 2, "weight": "1", "owed": 120},
+            {"person_id": 3, "weight": "1", "owed": 120},
+            {"person_id": 4, "weight": "1", "owed": 120}
           ]
         },
         "created_at": "2026-09-12T12:40:00Z",
@@ -412,18 +253,8 @@
           {"currency_code": "EUR", "currency_id": 2, "amount": 40.5}
         ]
       },
-      {
-        "date": "2026-09-13",
-        "totals": [
-          {"currency_code": "ISK", "currency_id": 1, "amount": 96000}
-        ]
-      },
-      {
-        "date": "2026-09-12",
-        "totals": [
-          {"currency_code": "DKK", "currency_id": 3, "amount": 480.0}
-        ]
-      }
+      {"date": "2026-09-13", "totals": [{"currency_code": "ISK", "currency_id": 1, "amount": 96000}]},
+      {"date": "2026-09-12", "totals": [{"currency_code": "DKK", "currency_id": 3, "amount": 480.0}]}
     ],
     "before_trip_totals": [],
     "transfers": [
@@ -481,55 +312,15 @@
         "currency_id": 1,
         "total_spent": 122300,
         "people": [
-          {
-            "person_id": 1,
-            "paid": 18400,
-            "owed": 34003.571428,
-            "sent": 0,
-            "received": 0,
-            "net": -15603.571428
-          },
-          {
-            "person_id": 2,
-            "paid": 0,
-            "owed": 34003.571428,
-            "sent": 5000,
-            "received": 0,
-            "net": -29003.571428
-          },
-          {
-            "person_id": 3,
-            "paid": 7900,
-            "owed": 34003.571428,
-            "sent": 0,
-            "received": 5000,
-            "net": -31103.571428
-          },
-          {
-            "person_id": 4,
-            "paid": 96000,
-            "owed": 20289.285714,
-            "sent": 0,
-            "received": 0,
-            "net": 75710.714286
-          }
+          {"person_id": 1, "paid": 18400, "owed": 34003.571428, "sent": 0, "received": 0, "net": -15603.571428},
+          {"person_id": 2, "paid": 0, "owed": 34003.571428, "sent": 5000, "received": 0, "net": -29003.571428},
+          {"person_id": 3, "paid": 7900, "owed": 34003.571428, "sent": 0, "received": 5000, "net": -31103.571428},
+          {"person_id": 4, "paid": 96000, "owed": 20289.285714, "sent": 0, "received": 0, "net": 75710.714286}
         ],
         "suggestions": [
-          {
-            "from_person_id": 3,
-            "to_person_id": 4,
-            "amount": 31103.57
-          },
-          {
-            "from_person_id": 2,
-            "to_person_id": 4,
-            "amount": 29003.57
-          },
-          {
-            "from_person_id": 1,
-            "to_person_id": 4,
-            "amount": 15603.57
-          }
+          {"from_person_id": 3, "to_person_id": 4, "amount": 31103.57},
+          {"from_person_id": 2, "to_person_id": 4, "amount": 29003.57},
+          {"from_person_id": 1, "to_person_id": 4, "amount": 15603.57}
         ]
       },
       {
@@ -537,50 +328,14 @@
         "currency_id": 2,
         "total_spent": 40,
         "people": [
-          {
-            "person_id": 1,
-            "paid": 0,
-            "owed": 13.333333,
-            "sent": 0,
-            "received": 0,
-            "net": -13.333333
-          },
-          {
-            "person_id": 2,
-            "paid": 40,
-            "owed": 13.333333,
-            "sent": 0,
-            "received": 0,
-            "net": 26.666667
-          },
-          {
-            "person_id": 3,
-            "paid": 0,
-            "owed": 0,
-            "sent": 0,
-            "received": 0,
-            "net": 0
-          },
-          {
-            "person_id": 4,
-            "paid": 0,
-            "owed": 13.333333,
-            "sent": 0,
-            "received": 0,
-            "net": -13.333333
-          }
+          {"person_id": 1, "paid": 0, "owed": 13.333333, "sent": 0, "received": 0, "net": -13.333333},
+          {"person_id": 2, "paid": 40, "owed": 13.333333, "sent": 0, "received": 0, "net": 26.666667},
+          {"person_id": 3, "paid": 0, "owed": 0, "sent": 0, "received": 0, "net": 0},
+          {"person_id": 4, "paid": 0, "owed": 13.333333, "sent": 0, "received": 0, "net": -13.333333}
         ],
         "suggestions": [
-          {
-            "from_person_id": 1,
-            "to_person_id": 2,
-            "amount": 13.34
-          },
-          {
-            "from_person_id": 4,
-            "to_person_id": 2,
-            "amount": 13.33
-          }
+          {"from_person_id": 1, "to_person_id": 2, "amount": 13.34},
+          {"from_person_id": 4, "to_person_id": 2, "amount": 13.33}
         ]
       },
       {
@@ -588,55 +343,15 @@
         "currency_id": 3,
         "total_spent": 480,
         "people": [
-          {
-            "person_id": 1,
-            "paid": 0,
-            "owed": 120,
-            "sent": 0,
-            "received": 0,
-            "net": -120
-          },
-          {
-            "person_id": 2,
-            "paid": 480,
-            "owed": 120,
-            "sent": 0,
-            "received": 0,
-            "net": 360
-          },
-          {
-            "person_id": 3,
-            "paid": 0,
-            "owed": 120,
-            "sent": 0,
-            "received": 0,
-            "net": -120
-          },
-          {
-            "person_id": 4,
-            "paid": 0,
-            "owed": 120,
-            "sent": 0,
-            "received": 0,
-            "net": -120
-          }
+          {"person_id": 1, "paid": 0, "owed": 120, "sent": 0, "received": 0, "net": -120},
+          {"person_id": 2, "paid": 480, "owed": 120, "sent": 0, "received": 0, "net": 360},
+          {"person_id": 3, "paid": 0, "owed": 120, "sent": 0, "received": 0, "net": -120},
+          {"person_id": 4, "paid": 0, "owed": 120, "sent": 0, "received": 0, "net": -120}
         ],
         "suggestions": [
-          {
-            "from_person_id": 1,
-            "to_person_id": 2,
-            "amount": 120
-          },
-          {
-            "from_person_id": 3,
-            "to_person_id": 2,
-            "amount": 120
-          },
-          {
-            "from_person_id": 4,
-            "to_person_id": 2,
-            "amount": 120
-          }
+          {"from_person_id": 1, "to_person_id": 2, "amount": 120},
+          {"from_person_id": 3, "to_person_id": 2, "amount": 120},
+          {"from_person_id": 4, "to_person_id": 2, "amount": 120}
         ]
       }
     ]
@@ -646,163 +361,164 @@
       {
         "by": ["currency"],
         "rows": [
-        {"keys": {"currency_id": 1}, "amount": 122300, "item_count": 3},
-        {"keys": {"currency_id": 3}, "amount": 480, "item_count": 1},
-        {"keys": {"currency_id": 2}, "amount": 40, "item_count": 1}
+          {"keys": {"currency_id": 1}, "amount": 122300, "item_count": 3},
+          {"keys": {"currency_id": 3}, "amount": 480, "item_count": 1},
+          {"keys": {"currency_id": 2}, "amount": 40, "item_count": 1}
         ]
       },
       {
         "by": ["currency", "day"],
         "rows": [
-        {"keys": {"currency_id": 3, "date": "2026-09-12"}, "amount": 480, "item_count": 1},
-        {"keys": {"currency_id": 1, "date": "2026-09-13"}, "amount": 96000, "item_count": 1},
-        {"keys": {"currency_id": 1, "date": "2026-09-14"}, "amount": 26300, "item_count": 2},
-        {"keys": {"currency_id": 2, "date": "2026-09-14"}, "amount": 40, "item_count": 1}
+          {"keys": {"currency_id": 3, "date": "2026-09-12"}, "amount": 480, "item_count": 1},
+          {"keys": {"currency_id": 1, "date": "2026-09-13"}, "amount": 96000, "item_count": 1},
+          {"keys": {"currency_id": 1, "date": "2026-09-14"}, "amount": 26300, "item_count": 2},
+          {"keys": {"currency_id": 2, "date": "2026-09-14"}, "amount": 40, "item_count": 1}
         ]
       },
       {
         "by": ["currency", "person"],
         "rows": [
-        {"keys": {"currency_id": 1, "person_id": 1}, "amount": 34003.571428, "item_count": 3},
-        {"keys": {"currency_id": 1, "person_id": 2}, "amount": 34003.571428, "item_count": 3},
-        {"keys": {"currency_id": 1, "person_id": 3}, "amount": 34003.571428, "item_count": 3},
-        {"keys": {"currency_id": 1, "person_id": 4}, "amount": 20289.285714, "item_count": 3},
-        {"keys": {"currency_id": 3, "person_id": 1}, "amount": 120, "item_count": 1},
-        {"keys": {"currency_id": 3, "person_id": 2}, "amount": 120, "item_count": 1},
-        {"keys": {"currency_id": 3, "person_id": 3}, "amount": 120, "item_count": 1},
-        {"keys": {"currency_id": 3, "person_id": 4}, "amount": 120, "item_count": 1},
-        {"keys": {"currency_id": 2, "person_id": 1}, "amount": 13.333333, "item_count": 1},
-        {"keys": {"currency_id": 2, "person_id": 2}, "amount": 13.333333, "item_count": 1},
-        {"keys": {"currency_id": 2, "person_id": 4}, "amount": 13.333333, "item_count": 1}
+          {"keys": {"currency_id": 1, "person_id": 1}, "amount": 34003.571428, "item_count": 3},
+          {"keys": {"currency_id": 1, "person_id": 2}, "amount": 34003.571428, "item_count": 3},
+          {"keys": {"currency_id": 1, "person_id": 3}, "amount": 34003.571428, "item_count": 3},
+          {"keys": {"currency_id": 1, "person_id": 4}, "amount": 20289.285714, "item_count": 3},
+          {"keys": {"currency_id": 3, "person_id": 1}, "amount": 120, "item_count": 1},
+          {"keys": {"currency_id": 3, "person_id": 2}, "amount": 120, "item_count": 1},
+          {"keys": {"currency_id": 3, "person_id": 3}, "amount": 120, "item_count": 1},
+          {"keys": {"currency_id": 3, "person_id": 4}, "amount": 120, "item_count": 1},
+          {"keys": {"currency_id": 2, "person_id": 1}, "amount": 13.333333, "item_count": 1},
+          {"keys": {"currency_id": 2, "person_id": 2}, "amount": 13.333333, "item_count": 1},
+          {"keys": {"currency_id": 2, "person_id": 4}, "amount": 13.333333, "item_count": 1}
         ]
       },
       {
         "by": ["currency", "label"],
         "rows": [
-        {"keys": {"currency_id": 1, "label": "lodging"}, "amount": 96000, "item_count": 1},
-        {"keys": {"currency_id": 1, "label": "food"}, "amount": 18400, "item_count": 1},
-        {"keys": {"currency_id": 1, "label": "restaurant"}, "amount": 18400, "item_count": 1},
-        {"keys": {"currency_id": 1, "label": "fuel"}, "amount": 7900, "item_count": 1},
-        {"keys": {"currency_id": 1, "label": "transport"}, "amount": 7900, "item_count": 1},
-        {"keys": {"currency_id": 3, "label": "airport"}, "amount": 480, "item_count": 1},
-        {"keys": {"currency_id": 3, "label": "food"}, "amount": 480, "item_count": 1},
-        {"keys": {"currency_id": 2, "label": "fun"}, "amount": 40, "item_count": 1},
-        {"keys": {"currency_id": 2, "label": "spa"}, "amount": 40, "item_count": 1}
+          {"keys": {"currency_id": 1, "label": "lodging"}, "amount": 96000, "item_count": 1},
+          {"keys": {"currency_id": 1, "label": "food"}, "amount": 18400, "item_count": 1},
+          {"keys": {"currency_id": 1, "label": "restaurant"}, "amount": 18400, "item_count": 1},
+          {"keys": {"currency_id": 1, "label": "fuel"}, "amount": 7900, "item_count": 1},
+          {"keys": {"currency_id": 1, "label": "transport"}, "amount": 7900, "item_count": 1},
+          {"keys": {"currency_id": 3, "label": "airport"}, "amount": 480, "item_count": 1},
+          {"keys": {"currency_id": 3, "label": "food"}, "amount": 480, "item_count": 1},
+          {"keys": {"currency_id": 2, "label": "fun"}, "amount": 40, "item_count": 1},
+          {"keys": {"currency_id": 2, "label": "spa"}, "amount": 40, "item_count": 1}
         ]
       },
       {
         "by": ["currency", "country"],
         "rows": [
-        {"keys": {"currency_id": 1, "country_id": 1}, "amount": 122300, "item_count": 3},
-        {"keys": {"currency_id": 3, "country_id": 2}, "amount": 480, "item_count": 1},
-        {"keys": {"currency_id": 2, "country_id": 1}, "amount": 40, "item_count": 1}
-        ]
-      },
-      {
-        "by": ["currency", "city"],
-        "rows": [
-        {"keys": {"currency_id": 1, "city": null}, "amount": 103900, "item_count": 2},
-        {"keys": {"currency_id": 1, "city": "Reykjavík"}, "amount": 18400, "item_count": 1},
-        {"keys": {"currency_id": 3, "city": null}, "amount": 480, "item_count": 1},
-        {"keys": {"currency_id": 2, "city": null}, "amount": 40, "item_count": 1}
+          {"keys": {"currency_id": 1, "country_id": 1}, "amount": 122300, "item_count": 3},
+          {"keys": {"currency_id": 3, "country_id": 2}, "amount": 480, "item_count": 1},
+          {"keys": {"currency_id": 2, "country_id": 1}, "amount": 40, "item_count": 1}
         ]
       },
       {
         "by": ["currency", "payer"],
         "rows": [
-        {"keys": {"currency_id": 1, "payer_id": 4}, "amount": 96000, "item_count": 1},
-        {"keys": {"currency_id": 1, "payer_id": 1}, "amount": 18400, "item_count": 1},
-        {"keys": {"currency_id": 1, "payer_id": 3}, "amount": 7900, "item_count": 1},
-        {"keys": {"currency_id": 3, "payer_id": 2}, "amount": 480, "item_count": 1},
-        {"keys": {"currency_id": 2, "payer_id": 2}, "amount": 40, "item_count": 1}
-        ]
-      },
-      {
-        "by": ["currency", "wallet"],
-        "rows": [
-        {"keys": {"currency_id": 1, "wallet_id": 4}, "amount": 96000, "item_count": 1},
-        {"keys": {"currency_id": 1, "wallet_id": 5}, "amount": 18400, "item_count": 1},
-        {"keys": {"currency_id": 1, "wallet_id": 3}, "amount": 7900, "item_count": 1},
-        {"keys": {"currency_id": 3, "wallet_id": 6}, "amount": 480, "item_count": 1},
-        {"keys": {"currency_id": 2, "wallet_id": 2}, "amount": 40, "item_count": 1}
+          {"keys": {"currency_id": 1, "payer_id": 4}, "amount": 96000, "item_count": 1},
+          {"keys": {"currency_id": 1, "payer_id": 1}, "amount": 18400, "item_count": 1},
+          {"keys": {"currency_id": 1, "payer_id": 3}, "amount": 7900, "item_count": 1},
+          {"keys": {"currency_id": 3, "payer_id": 2}, "amount": 480, "item_count": 1},
+          {"keys": {"currency_id": 2, "payer_id": 2}, "amount": 40, "item_count": 1}
         ]
       },
       {
         "by": ["currency", "day", "person"],
         "rows": [
-        {"keys": {"currency_id": 3, "date": "2026-09-12", "person_id": 1}, "amount": 120, "item_count": 1},
-        {"keys": {"currency_id": 3, "date": "2026-09-12", "person_id": 2}, "amount": 120, "item_count": 1},
-        {"keys": {"currency_id": 3, "date": "2026-09-12", "person_id": 3}, "amount": 120, "item_count": 1},
-        {"keys": {"currency_id": 3, "date": "2026-09-12", "person_id": 4}, "amount": 120, "item_count": 1},
-        {"keys": {"currency_id": 1, "date": "2026-09-13", "person_id": 1}, "amount": 27428.571428, "item_count": 1},
-        {"keys": {"currency_id": 1, "date": "2026-09-13", "person_id": 2}, "amount": 27428.571428, "item_count": 1},
-        {"keys": {"currency_id": 1, "date": "2026-09-13", "person_id": 3}, "amount": 27428.571428, "item_count": 1},
-        {"keys": {"currency_id": 1, "date": "2026-09-13", "person_id": 4}, "amount": 13714.285714, "item_count": 1},
-        {"keys": {"currency_id": 1, "date": "2026-09-14", "person_id": 1}, "amount": 6575, "item_count": 2},
-        {"keys": {"currency_id": 1, "date": "2026-09-14", "person_id": 2}, "amount": 6575, "item_count": 2},
-        {"keys": {"currency_id": 1, "date": "2026-09-14", "person_id": 3}, "amount": 6575, "item_count": 2},
-        {"keys": {"currency_id": 1, "date": "2026-09-14", "person_id": 4}, "amount": 6575, "item_count": 2},
-        {"keys": {"currency_id": 2, "date": "2026-09-14", "person_id": 1}, "amount": 13.333333, "item_count": 1},
-        {"keys": {"currency_id": 2, "date": "2026-09-14", "person_id": 2}, "amount": 13.333333, "item_count": 1},
-        {"keys": {"currency_id": 2, "date": "2026-09-14", "person_id": 4}, "amount": 13.333333, "item_count": 1}
+          {"keys": {"currency_id": 3, "date": "2026-09-12", "person_id": 1}, "amount": 120, "item_count": 1},
+          {"keys": {"currency_id": 3, "date": "2026-09-12", "person_id": 2}, "amount": 120, "item_count": 1},
+          {"keys": {"currency_id": 3, "date": "2026-09-12", "person_id": 3}, "amount": 120, "item_count": 1},
+          {"keys": {"currency_id": 3, "date": "2026-09-12", "person_id": 4}, "amount": 120, "item_count": 1},
+          {"keys": {"currency_id": 1, "date": "2026-09-13", "person_id": 1}, "amount": 27428.571428, "item_count": 1},
+          {"keys": {"currency_id": 1, "date": "2026-09-13", "person_id": 2}, "amount": 27428.571428, "item_count": 1},
+          {"keys": {"currency_id": 1, "date": "2026-09-13", "person_id": 3}, "amount": 27428.571428, "item_count": 1},
+          {"keys": {"currency_id": 1, "date": "2026-09-13", "person_id": 4}, "amount": 13714.285714, "item_count": 1},
+          {"keys": {"currency_id": 1, "date": "2026-09-14", "person_id": 1}, "amount": 6575, "item_count": 2},
+          {"keys": {"currency_id": 1, "date": "2026-09-14", "person_id": 2}, "amount": 6575, "item_count": 2},
+          {"keys": {"currency_id": 1, "date": "2026-09-14", "person_id": 3}, "amount": 6575, "item_count": 2},
+          {"keys": {"currency_id": 1, "date": "2026-09-14", "person_id": 4}, "amount": 6575, "item_count": 2},
+          {"keys": {"currency_id": 2, "date": "2026-09-14", "person_id": 1}, "amount": 13.333333, "item_count": 1},
+          {"keys": {"currency_id": 2, "date": "2026-09-14", "person_id": 2}, "amount": 13.333333, "item_count": 1},
+          {"keys": {"currency_id": 2, "date": "2026-09-14", "person_id": 4}, "amount": 13.333333, "item_count": 1}
         ]
       },
       {
         "by": ["currency", "person", "day"],
         "rows": [
-        {"keys": {"currency_id": 3, "person_id": 1, "date": "2026-09-12"}, "amount": 120, "item_count": 1},
-        {"keys": {"currency_id": 3, "person_id": 2, "date": "2026-09-12"}, "amount": 120, "item_count": 1},
-        {"keys": {"currency_id": 3, "person_id": 3, "date": "2026-09-12"}, "amount": 120, "item_count": 1},
-        {"keys": {"currency_id": 3, "person_id": 4, "date": "2026-09-12"}, "amount": 120, "item_count": 1},
-        {"keys": {"currency_id": 1, "person_id": 1, "date": "2026-09-13"}, "amount": 27428.571428, "item_count": 1},
-        {"keys": {"currency_id": 1, "person_id": 2, "date": "2026-09-13"}, "amount": 27428.571428, "item_count": 1},
-        {"keys": {"currency_id": 1, "person_id": 3, "date": "2026-09-13"}, "amount": 27428.571428, "item_count": 1},
-        {"keys": {"currency_id": 1, "person_id": 4, "date": "2026-09-13"}, "amount": 13714.285714, "item_count": 1},
-        {"keys": {"currency_id": 1, "person_id": 1, "date": "2026-09-14"}, "amount": 6575, "item_count": 2},
-        {"keys": {"currency_id": 1, "person_id": 2, "date": "2026-09-14"}, "amount": 6575, "item_count": 2},
-        {"keys": {"currency_id": 1, "person_id": 3, "date": "2026-09-14"}, "amount": 6575, "item_count": 2},
-        {"keys": {"currency_id": 1, "person_id": 4, "date": "2026-09-14"}, "amount": 6575, "item_count": 2},
-        {"keys": {"currency_id": 2, "person_id": 1, "date": "2026-09-14"}, "amount": 13.333333, "item_count": 1},
-        {"keys": {"currency_id": 2, "person_id": 2, "date": "2026-09-14"}, "amount": 13.333333, "item_count": 1},
-        {"keys": {"currency_id": 2, "person_id": 4, "date": "2026-09-14"}, "amount": 13.333333, "item_count": 1}
+          {"keys": {"currency_id": 3, "person_id": 1, "date": "2026-09-12"}, "amount": 120, "item_count": 1},
+          {"keys": {"currency_id": 3, "person_id": 2, "date": "2026-09-12"}, "amount": 120, "item_count": 1},
+          {"keys": {"currency_id": 3, "person_id": 3, "date": "2026-09-12"}, "amount": 120, "item_count": 1},
+          {"keys": {"currency_id": 3, "person_id": 4, "date": "2026-09-12"}, "amount": 120, "item_count": 1},
+          {"keys": {"currency_id": 1, "person_id": 1, "date": "2026-09-13"}, "amount": 27428.571428, "item_count": 1},
+          {"keys": {"currency_id": 1, "person_id": 2, "date": "2026-09-13"}, "amount": 27428.571428, "item_count": 1},
+          {"keys": {"currency_id": 1, "person_id": 3, "date": "2026-09-13"}, "amount": 27428.571428, "item_count": 1},
+          {"keys": {"currency_id": 1, "person_id": 4, "date": "2026-09-13"}, "amount": 13714.285714, "item_count": 1},
+          {"keys": {"currency_id": 1, "person_id": 1, "date": "2026-09-14"}, "amount": 6575, "item_count": 2},
+          {"keys": {"currency_id": 1, "person_id": 2, "date": "2026-09-14"}, "amount": 6575, "item_count": 2},
+          {"keys": {"currency_id": 1, "person_id": 3, "date": "2026-09-14"}, "amount": 6575, "item_count": 2},
+          {"keys": {"currency_id": 1, "person_id": 4, "date": "2026-09-14"}, "amount": 6575, "item_count": 2},
+          {"keys": {"currency_id": 2, "person_id": 1, "date": "2026-09-14"}, "amount": 13.333333, "item_count": 1},
+          {"keys": {"currency_id": 2, "person_id": 2, "date": "2026-09-14"}, "amount": 13.333333, "item_count": 1},
+          {"keys": {"currency_id": 2, "person_id": 4, "date": "2026-09-14"}, "amount": 13.333333, "item_count": 1}
         ]
       },
       {
         "by": ["currency", "country", "label"],
         "rows": [
-        {"keys": {"currency_id": 1, "country_id": 1, "label": "lodging"}, "amount": 96000, "item_count": 1},
-        {"keys": {"currency_id": 1, "country_id": 1, "label": "food"}, "amount": 18400, "item_count": 1},
-        {"keys": {"currency_id": 1, "country_id": 1, "label": "restaurant"}, "amount": 18400, "item_count": 1},
-        {"keys": {"currency_id": 1, "country_id": 1, "label": "fuel"}, "amount": 7900, "item_count": 1},
-        {"keys": {"currency_id": 1, "country_id": 1, "label": "transport"}, "amount": 7900, "item_count": 1},
-        {"keys": {"currency_id": 3, "country_id": 2, "label": "airport"}, "amount": 480, "item_count": 1},
-        {"keys": {"currency_id": 3, "country_id": 2, "label": "food"}, "amount": 480, "item_count": 1},
-        {"keys": {"currency_id": 2, "country_id": 1, "label": "fun"}, "amount": 40, "item_count": 1},
-        {"keys": {"currency_id": 2, "country_id": 1, "label": "spa"}, "amount": 40, "item_count": 1}
+          {"keys": {"currency_id": 1, "country_id": 1, "label": "lodging"}, "amount": 96000, "item_count": 1},
+          {"keys": {"currency_id": 1, "country_id": 1, "label": "food"}, "amount": 18400, "item_count": 1},
+          {"keys": {"currency_id": 1, "country_id": 1, "label": "restaurant"}, "amount": 18400, "item_count": 1},
+          {"keys": {"currency_id": 1, "country_id": 1, "label": "fuel"}, "amount": 7900, "item_count": 1},
+          {"keys": {"currency_id": 1, "country_id": 1, "label": "transport"}, "amount": 7900, "item_count": 1},
+          {"keys": {"currency_id": 3, "country_id": 2, "label": "airport"}, "amount": 480, "item_count": 1},
+          {"keys": {"currency_id": 3, "country_id": 2, "label": "food"}, "amount": 480, "item_count": 1},
+          {"keys": {"currency_id": 2, "country_id": 1, "label": "fun"}, "amount": 40, "item_count": 1},
+          {"keys": {"currency_id": 2, "country_id": 1, "label": "spa"}, "amount": 40, "item_count": 1}
         ]
       },
       {
         "by": ["currency", "country", "payer"],
         "rows": [
-        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 4}, "amount": 96000, "item_count": 1},
-        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 1}, "amount": 18400, "item_count": 1},
-        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 3}, "amount": 7900, "item_count": 1},
-        {"keys": {"currency_id": 3, "country_id": 2, "payer_id": 2}, "amount": 480, "item_count": 1},
-        {"keys": {"currency_id": 2, "country_id": 1, "payer_id": 2}, "amount": 40, "item_count": 1}
+          {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 4}, "amount": 96000, "item_count": 1},
+          {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 1}, "amount": 18400, "item_count": 1},
+          {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 3}, "amount": 7900, "item_count": 1},
+          {"keys": {"currency_id": 3, "country_id": 2, "payer_id": 2}, "amount": 480, "item_count": 1},
+          {"keys": {"currency_id": 2, "country_id": 1, "payer_id": 2}, "amount": 40, "item_count": 1}
         ]
       },
       {
         "by": ["currency", "country", "payer", "label"],
         "rows": [
-        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 4, "label": "lodging"}, "amount": 96000, "item_count": 1},
-        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 1, "label": "food"}, "amount": 18400, "item_count": 1},
-        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 1, "label": "restaurant"}, "amount": 18400, "item_count": 1},
-        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 3, "label": "fuel"}, "amount": 7900, "item_count": 1},
-        {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 3, "label": "transport"}, "amount": 7900, "item_count": 1},
-        {"keys": {"currency_id": 3, "country_id": 2, "payer_id": 2, "label": "airport"}, "amount": 480, "item_count": 1},
-        {"keys": {"currency_id": 3, "country_id": 2, "payer_id": 2, "label": "food"}, "amount": 480, "item_count": 1},
-        {"keys": {"currency_id": 2, "country_id": 1, "payer_id": 2, "label": "fun"}, "amount": 40, "item_count": 1},
-        {"keys": {"currency_id": 2, "country_id": 1, "payer_id": 2, "label": "spa"}, "amount": 40, "item_count": 1}
+          {
+            "keys": {"currency_id": 1, "country_id": 1, "payer_id": 4, "label": "lodging"},
+            "amount": 96000,
+            "item_count": 1
+          },
+          {
+            "keys": {"currency_id": 1, "country_id": 1, "payer_id": 1, "label": "food"},
+            "amount": 18400,
+            "item_count": 1
+          },
+          {
+            "keys": {"currency_id": 1, "country_id": 1, "payer_id": 1, "label": "restaurant"},
+            "amount": 18400,
+            "item_count": 1
+          },
+          {"keys": {"currency_id": 1, "country_id": 1, "payer_id": 3, "label": "fuel"}, "amount": 7900, "item_count": 1},
+          {
+            "keys": {"currency_id": 1, "country_id": 1, "payer_id": 3, "label": "transport"},
+            "amount": 7900,
+            "item_count": 1
+          },
+          {
+            "keys": {"currency_id": 3, "country_id": 2, "payer_id": 2, "label": "airport"},
+            "amount": 480,
+            "item_count": 1
+          },
+          {"keys": {"currency_id": 3, "country_id": 2, "payer_id": 2, "label": "food"}, "amount": 480, "item_count": 1},
+          {"keys": {"currency_id": 2, "country_id": 1, "payer_id": 2, "label": "fun"}, "amount": 40, "item_count": 1},
+          {"keys": {"currency_id": 2, "country_id": 1, "payer_id": 2, "label": "spa"}, "amount": 40, "item_count": 1}
         ]
       }
     ],
@@ -826,123 +542,19 @@
     ]
   },
   "routes": {
-    "/api/v1/trips": {
-      "GET": "#/trips",
-      "POST": {
-        "trip": "$echo"
-      }
-    },
-    "/api/v1/trips/iceland-2026": {
-      "GET": "#/trip",
-      "PATCH": "#/trip"
-    },
-    "/api/v1/trips/iceland-2026/items": {
-      "collection": "#/items/items",
-      "item": "item",
-      "insert": "head",
-      "defaults": {"currency_code": "ISK", "split": {"mode": "equal", "shares": []}},
-      "extra": {
-        "day_totals": "#/items/day_totals",
-        "before_trip_totals": "#/items/before_trip_totals",
-        "transfers": "#/items/transfers"
-      }
-    },
-    "/api/v1/trips/iceland-2026/transfers": {
-      "collection": "#/items/transfers",
-      "item": "transfer",
-      "insert": "head",
-      "defaults": {"from_currency_code": "ISK", "to_currency_code": "ISK", "note": null}
-    },
-    "/api/v1/trips/iceland-2026/wallets": {
-      "collection": "#/trip/trip/wallets",
-      "item": "wallet",
-      "defaults": {"tracked": false, "is_default": false, "balances": []}
-    },
-    "/api/v1/trips/iceland-2026/items/preview-split": {
+    "/api/v1/trips/{slug}/items/preview-split": {
       "POST": {
         "$status": 200,
         "split": {
           "mode": "equal",
           "shares": [
-            {
-              "person_id": 1,
-              "weight": "1",
-              "owed": 4600
-            },
-            {
-              "person_id": 2,
-              "weight": "1",
-              "owed": 4600
-            },
-            {
-              "person_id": 3,
-              "weight": "1",
-              "owed": 4600
-            },
-            {
-              "person_id": 4,
-              "weight": "1",
-              "owed": 4600
-            }
+            {"person_id": 1, "weight": "1", "owed": 4600},
+            {"person_id": 2, "weight": "1", "owed": 4600},
+            {"person_id": 3, "weight": "1", "owed": 4600},
+            {"person_id": 4, "weight": "1", "owed": 4600}
           ]
         },
         "total": 18400
-      }
-    },
-    "/api/v1/trips/iceland-2026/labels": {
-      "collection": "#/labels/labels",
-      "item": "label",
-      "defaults": {
-        "color": "#6c757d",
-        "use_count": 0
-      }
-    },
-    "/api/v1/trips/iceland-2026/people": {
-      "collection": "#/trip/trip/people",
-      "item": "person",
-      "defaults": {
-        "active": true,
-        "color": "#6c757d"
-      }
-    },
-    "/api/v1/trips/iceland-2026/currencies": {
-      "collection": "#/trip/trip/currencies",
-      "item": "currency",
-      "defaults": {
-        "symbol": null,
-        "is_primary": false
-      }
-    },
-    "/api/v1/trips/iceland-2026/countries": {
-      "collection": "#/trip/trip/countries",
-      "item": "country",
-      "defaults": {
-        "code": null,
-        "flag": null,
-        "is_default": false,
-        "item_count": 0
-      }
-    },
-    "/api/v1/trips/iceland-2026/balances": {
-      "GET": "#/balances"
-    },
-    "/api/v1/trips/iceland-2026/stats": {
-      "GET": "#/stats"
-    }
-  },
-  "errors": {
-    "not_found": {
-      "error": {
-        "code": "not_found",
-        "params": {
-          "resource": "route"
-        }
-      }
-    },
-    "bad_request": {
-      "error": {
-        "code": "bad_request",
-        "params": {}
       }
     }
   }

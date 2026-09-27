@@ -29,24 +29,8 @@
           "active": true
         }
       ],
-      "currencies": [
-        {
-          "id": 1,
-          "code": "ISK",
-          "symbol": "kr",
-          "is_primary": true
-        }
-      ],
-      "countries": [
-        {
-          "id": 1,
-          "name": "Iceland",
-          "code": "IS",
-          "flag": "🇮🇸",
-          "is_default": true,
-          "item_count": 0
-        }
-      ],
+      "currencies": [{"id": 1, "code": "ISK", "symbol": "kr", "is_primary": true}],
+      "countries": [{"id": 1, "name": "Iceland", "code": "IS", "flag": "🇮🇸", "is_default": true, "item_count": 0}],
       "wallets": [
         {"id": 1, "person_id": 1, "name": "Card", "tracked": false, "is_default": true, "balances": []},
         {"id": 2, "person_id": 2, "name": "Card", "tracked": false, "is_default": true, "balances": []}
@@ -55,20 +39,10 @@
       "updated_at": "2026-09-01T08:12:00Z"
     }
   },
-  "labels": {
-    "labels": []
-  },
-  "items": {
-    "items": [],
-    "transfers": []
-  },
-  "balances": {
-    "balances": []
-  },
-  "stats": {
-    "stats": [],
-    "day_count": 0
-  },
+  "labels": {"labels": []},
+  "items": {"items": [], "day_totals": [], "before_trip_totals": [], "transfers": []},
+  "balances": {"balances": []},
+  "stats": {"groups": [], "day_count": 0},
   "trips": {
     "trips": [
       {
@@ -87,108 +61,14 @@
     ]
   },
   "routes": {
-    "/api/v1/trips": {
-      "GET": "#/trips",
-      "POST": {
-        "trip": "$echo"
-      }
-    },
-    "/api/v1/trips/empty-trip": {
-      "GET": "#/trip",
-      "PATCH": "#/trip"
-    },
-    "/api/v1/trips/empty-trip/items": {
-      "collection": "#/items/items",
-      "item": "item",
-      "insert": "head",
-      "extra": {"transfers": "#/items/transfers"}
-    },
-    "/api/v1/trips/empty-trip/transfers": {
-      "collection": "#/items/transfers",
-      "item": "transfer",
-      "insert": "head",
-      "defaults": {"from_currency_code": "ISK", "to_currency_code": "ISK", "note": null}
-    },
-    "/api/v1/trips/empty-trip/wallets": {
-      "collection": "#/trip/trip/wallets",
-      "item": "wallet",
-      "defaults": {"tracked": false, "is_default": false, "balances": []}
-    },
-    "/api/v1/trips/empty-trip/items/preview-split": {
+    "/api/v1/trips/{slug}/items/preview-split": {
       "POST": {
         "$status": 200,
         "split": {
           "mode": "equal",
-          "shares": [
-            {
-              "person_id": 1,
-              "weight": "1",
-              "owed": 500
-            },
-            {
-              "person_id": 2,
-              "weight": "1",
-              "owed": 500
-            }
-          ]
+          "shares": [{"person_id": 1, "weight": "1", "owed": 500}, {"person_id": 2, "weight": "1", "owed": 500}]
         },
         "total": 1000
-      }
-    },
-    "/api/v1/trips/empty-trip/labels": {
-      "collection": "#/labels/labels",
-      "item": "label",
-      "defaults": {
-        "color": "#6c757d",
-        "use_count": 0
-      }
-    },
-    "/api/v1/trips/empty-trip/people": {
-      "collection": "#/trip/trip/people",
-      "item": "person",
-      "defaults": {
-        "active": true,
-        "color": "#6c757d"
-      }
-    },
-    "/api/v1/trips/empty-trip/currencies": {
-      "collection": "#/trip/trip/currencies",
-      "item": "currency",
-      "defaults": {
-        "symbol": null,
-        "is_primary": false
-      }
-    },
-    "/api/v1/trips/empty-trip/countries": {
-      "collection": "#/trip/trip/countries",
-      "item": "country",
-      "defaults": {
-        "code": null,
-        "flag": null,
-        "is_default": false,
-        "item_count": 0
-      }
-    },
-    "/api/v1/trips/empty-trip/balances": {
-      "GET": "#/balances"
-    },
-    "/api/v1/trips/empty-trip/stats": {
-      "GET": "#/stats"
-    }
-  },
-  "errors": {
-    "not_found": {
-      "error": {
-        "code": "not_found",
-        "params": {
-          "resource": "route"
-        }
-      }
-    },
-    "bad_request": {
-      "error": {
-        "code": "bad_request",
-        "params": {}
       }
     }
   }
