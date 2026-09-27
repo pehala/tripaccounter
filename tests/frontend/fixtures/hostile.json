@@ -95,6 +95,9 @@
       }
     ]
   },
+  "exchange_rates": {
+    "exchange_rates": []
+  },
   "balances": {
     "balances": [
       {

@@ -124,6 +124,9 @@ export default {
   'wallets.overcharge': 'Utraceno víc, než kdy do této peněženky přišlo.',
   'wallets.no_activity': 'Zatím žádná aktivita.',
   'wallets.empty': 'Zatím žádné peněženky.',
+  'wallets.rates': 'Průměrný kurz utracených peněz',
+  'wallets.leftover': 'zbývá {amount}, nakoupeno za {rate}',
+  'wallets.no_rate': '{from} → {to}: zatím nic neutraceno',
 
   'stats.breakdown': 'Rozdělení',
   'stats.showing': 'Zobrazit',
@@ -155,6 +158,7 @@ export default {
   'rates.scope': '— jen v tomto prohlížeči',
   'rates.convert_to': 'Převést na',
   'rates.note': 'Zadáno zde, uloženo v localStorage, nikdy neodesláno na server, nikdy neuloženo s výletem. Týká se jen této sekce — bilance, vyrovnání a statistiky jednotlivých měn zůstávají nedotčené. Změna cílové měny vymaže zadané kurzy pro tu předchozí.',
+  'rates.use_average': 'Použít tento průměrný kurz',
   'rates.missing': 'Doplňte kurz pro každou měnu, abyste viděli celkový součet.',
   'rates.total_note': 'Čísla níže používají kurzy výše — ne oficiální.',
 

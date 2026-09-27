@@ -1,10 +1,10 @@
 """Tests for the API call budget in design/FRONTEND.md §5.
 
 Intercept network — opening a trip makes exactly 3 API calls, opening the edit
-modal makes 0, saving makes 2, the stats tab 1, the balances tab 1, the map 0 — every row of
-the table, asserted as equality, not a ceiling. Setup only needs `labels`, and Items
-already loads those, so Setup's own cost only shows up when it opens before Items
-ever does.
+modal makes 0, saving makes 2, the stats tab 1 (plus 1 the first time its Total
+shows), the balances tab 2, the wallets tab 2, the map 0 — every row of the table,
+asserted as equality, not a ceiling. Setup only needs `labels`, and Items already
+loads those, so Setup's own cost only shows up when it opens before Items ever does.
 """
 
 import pytest
@@ -64,9 +64,7 @@ def test_opening_the_edit_modal_makes_no_calls(items_page, count_requests, open_
 @pytest.mark.parametrize(
     ("tab", "expected_calls"),
     [
-        pytest.param("Balances", 1, id="balances"),
         pytest.param("Statistics", 1, id="stats"),
-        pytest.param("Wallets", 1, id="wallets"),
         pytest.param("Map", 0, id="map"),
         pytest.param("Setup", 0, id="setup"),
     ],
@@ -74,12 +72,54 @@ def test_opening_the_edit_modal_makes_no_calls(items_page, count_requests, open_
 def test_first_visit_to_a_derived_tab_costs_only_its_own_resource(
     items_page, count_requests, open_tab, tab, expected_calls
 ):
-    """Balances, Statistics and Wallets cost one GET each; Map and Setup reuse what Items loaded."""
+    """Statistics costs one GET; Map and Setup reuse what Items loaded."""
     calls = count_requests(API_CALLS)
 
     open_tab(tab)
 
     assert len(calls) == expected_calls
+
+
+def test_first_visit_to_balances_costs_its_report_and_the_exchange_rates(
+    items_page, count_requests, open_tab
+):
+    """Balances costs its report plus the exchange rates its Total's rate form offers."""
+    calls = count_requests(API_CALLS)
+
+    open_tab("Balances")
+    expect(items_page.locator(".rate-average").first).to_be_visible()
+
+    assert len(calls) == 2
+
+
+def test_showing_the_stats_total_fetches_the_exchange_rates_once(stats_page, count_requests):
+    """Showing the Statistics Total loads the exchange rates; showing it again does not."""
+    calls = count_requests(API_CALLS)
+
+    stats_page.locator("#stats-currency").select_option(label="Total")
+    expect(stats_page.locator(".rate-average").first).to_be_visible()
+    stats_page.locator("#stats-currency").select_option(label="ISK")
+    stats_page.locator("#stats-currency").select_option(label="Total")
+
+    assert len(calls) == 1
+
+
+def test_setup_after_items_makes_no_calls(items_page, count_requests, open_tab):
+    """Setup only needs labels, and Items already loaded them — opening it fetches nothing."""
+    calls = count_requests(API_CALLS)
+
+    open_tab("Setup")
+
+    assert len(calls) == 0
+
+
+def test_first_visit_to_setup_without_items_makes_exactly_two_calls(count_requests, open_trip):
+    """Landing straight on Setup, skipping Items, is trip + labels — two calls, not items."""
+    calls = count_requests(API_CALLS)
+
+    open_trip("setup")
+
+    assert len(calls) == 2
 
 
 def test_revisiting_derived_tabs_makes_no_further_calls(

@@ -4,13 +4,15 @@ The rate gate it shares with the statistics Total is in test_rates.py. Here: the
 converted, summed net per person, and the settle-up list, which is not a fresh
 minimum-transfer plan — it converts and nets each currency's own suggestions by
 unordered person pair, so the same two people never show up owing each other in both
-directions at once. No currency's own figures are ever touched by the rates.
+directions at once. No currency's own figures are ever touched by the rates. Each
+person's average exchange rate is offered as a link that fills the rate input,
+inverted when the pair runs the other way.
 """
 
 import pytest
 from playwright.sync_api import expect
 
-from tests.frontend.conftest import CURRENCY_ID, set_rates
+from tests.frontend.conftest import CURRENCY_ID, rate_input, set_rates
 
 SETTLE_UP_ROWS = "#sec-total-settle_up-body ul.list-group-flush li"
 
@@ -78,3 +80,32 @@ def test_per_currency_figures_are_unaffected_by_the_total_rates(balances_page):
     set_rates(balances_page, EUR="1")
 
     expect(ann_row.locator(".num")).to_have_text("+360")
+
+
+@pytest.mark.parametrize(
+    ("target", "currency_code", "expected"),
+    [
+        pytest.param("ISK", "EUR", "142.857", id="inverted-pair"),
+        pytest.param("EUR", "ISK", "0.007", id="pair-as-is"),
+    ],
+)
+def test_average_rate_link_fills_the_rate_input(balances_page, target, currency_code, expected):
+    """Petr's EUR→ISK average is offered under the matching input, and a click fills it."""
+    balances_page.locator("#rates-target").select_option(label=target)
+    row = balances_page.locator("#cur-total .row").filter(
+        has=balances_page.locator(".badge", has_text=currency_code)
+    )
+
+    row.locator(".rate-average").click()
+
+    expect(row.locator(".rate-average")).to_have_text(f"Petr {expected}")
+    expect(rate_input(balances_page, currency_code)).to_have_value(expected)
+
+
+def test_no_average_rate_link_without_a_spent_rate(balances_page):
+    """Petr's EUR→DKK exchange has nothing spent yet, so DKK offers no link."""
+    expect(balances_page.locator("#cur-total .rate-average")).to_have_count(1)
+    row = balances_page.locator("#cur-total .row").filter(
+        has=balances_page.locator(".badge", has_text="DKK")
+    )
+    expect(row.locator(".rate-average")).to_have_count(0)

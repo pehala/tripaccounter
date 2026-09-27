@@ -1,12 +1,36 @@
+import { useEffect } from 'preact/hooks';
 import { html } from '../h.js';
-import { t } from '../i18n/index.js';
+import { useStore, reload } from '../store.js';
+import { t, getLocale } from '../i18n/index.js';
+import { rate } from '../fmt.js';
+import { rateBetween } from '../convert.js';
+import { Loading } from './Loading.js';
 
 // `target` is whichever currency the user picked to convert everything into
 // — any trip currency, not necessarily the primary. Every other currency
 // needs its own typed rate into `target`. Shared by every page with a Total
-// (statistics, balances): nothing here is page-specific.
+// (statistics, balances): nothing here is page-specific. Each person's average
+// exchange rate for a pair is offered as a link that fills the input.
 export function RatesForm({ trip, target, values, onTargetChange, onRateChange }) {
+  const store = useStore();
+  const locale = getLocale();
   const others = trip.currencies.filter((c) => c.id !== target.id);
+
+  useEffect(() => {
+    if (!store.exchangeRates) reload('exchangeRates');
+  }, [store.slug]);
+
+  // Rendered only once the rates are in: a re-render when they arrive would
+  // reset an input the user is typing in before its change event fires.
+  if (!store.exchangeRates) return html`<${Loading} />`;
+
+  function averages(currency) {
+    return store.exchangeRates.flatMap((row) => {
+      const value = rateBetween(row, currency.code, target.code);
+      const person = trip.people.find((p) => p.id === row.person_id);
+      return value === null || !person ? [] : [{ person, text: rate(value, locale) }];
+    });
+  }
 
   return html`
     <div class="card shadow-sm mb-3">
@@ -30,6 +54,12 @@ export function RatesForm({ trip, target, values, onTargetChange, onRateChange }
                      value=${values[c.id] ?? ''} onChange=${(e) => onRateChange(c.id, e.target.value)} />
             </div>
             <div class="col-auto"><span class="badge text-bg-secondary">${target.code}</span></div>
+            ${averages(c).map(({ person, text }) => html`
+              <div key=${person.id} class="col-auto">
+                <button type="button" class="btn btn-link btn-sm p-0 rate-average" title=${t('rates.use_average')}
+                        onClick=${() => onRateChange(c.id, text)}>${person.name} ${text}</button>
+              </div>
+            `)}
           </div>
         `)}
         <div class="alert alert-primary py-2 px-3 small mt-3 mb-0">${t('rates.note')}</div>

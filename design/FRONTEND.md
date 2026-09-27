@@ -40,20 +40,21 @@ static/
     ├── api.js            fetch wrapper: base path, JSON,
     │                     error envelope → {status, code, params, fields};
     │                     attempt() runs a write and hands back that error
-    ├── store.js          per-trip state: trip, labels, items, balances, stats;
+    ├── store.js          per-trip state: trip, labels, items, balances, wallets,
+    │                     exchangeRates, stats;
     │                     load(), reload(kind), setStatsDims(dims)
     ├── breakdown.js      the statistics dimension chain, the currency on screen,
     │                     list-or-chart and the date range, one set per trip —
     │                     localStorage only; requestChains() turns the chain into
     │                     the group_by list, each level with day appended
     ├── chartTheme.js     Bootstrap's --bs-* colours and font, resolved for Chart.js
-    ├── fmt.js            money(), signed(), parse(), date() — one cached
+    ├── fmt.js            money(), signed(), rate(), parse(), date() — one cached
     │                     Intl.NumberFormat per locale
     ├── h.js              html = htm.bind(h)
     ├── rates.js          Total target currency + typed rates, one set per trip,
     │                     shared by the balances and statistics pages — localStorage
     │                     only, never sent
-    ├── convert.js        rateFor(), convert(), combineGroup(), combineSuggestions() —
+    ├── convert.js        rateFor(), rateBetween(), convert(), combineGroup(), combineSuggestions() —
     │                     the money-combination math behind every page's Total
     ├── collapse.js       toggleCollapse(), showCollapse() — tiny Bootstrap Collapse
     │                     API wrappers, for a click that must also scroll natively
@@ -178,7 +179,10 @@ Note the dashed arrow: **a write is followed by a re-read, never by a local muta
    and every operand is already the user's own guesswork. The rates live in
    `localStorage`, shared between the two pages so one typed rate set serves both, are
    never posted back, and never come near a currency's own balance, settle-up figure,
-   or statistics — only its Total.
+   or statistics — only its Total. The rate form offers each person's average
+   rate of what they spent, from `GET /exchange-rates`, as a link that fills the input;
+   `rateBetween()` inverts it when the pair runs the other way — a ratio, not an
+   amount, so the one division is allowed. `fmt.rate()` formats it.
 
 2. **No split computation.** `item.split.shares` arrives resolved: one entry per person
    in roster order, `owed: null` for anyone left out (render a dash), `owed: 0` meaning
@@ -250,20 +254,20 @@ it opens; landing straight on a tab via a direct link or a hard refresh pays for
 |---|---|---|
 | Trip list | 1 | `GET /trips` |
 | Open a trip (Items tab) | 3, parallel | `GET /trips/{slug}`, `/items`, `/labels` |
-| Balances tab, first open | 1 | `GET /balances` — `trip` is already in the store |
-| Wallets tab, first open | 1 | `GET /wallets` — `trip` is already in the store |
+| Balances tab, first open | 2 | `GET /balances`, then `/exchange-rates` for the Total's rate form — `trip` is already in the store |
+| Wallets tab, first open | 2, parallel | `GET /wallets` and `/exchange-rates` — `trip` is already in the store |
 | Stats tab, first open | 1 | `GET /stats?group_by=…` — `trip` is already in the store |
 | Changing the breakdown | 1 | the chain is a new `group_by`, so the answer is refetched |
-| Changing the shown currency | 0 | every grouping already carries every currency |
+| Changing the shown currency | 0 | every grouping already carries every currency; the first switch to Total costs 1, `GET /exchange-rates`, unless Balances or Wallets loaded it |
 | Changing the date range | 0 | every level already came grouped by day; the days are filtered |
 | Map tab, any open | 0 | it reads `store.items`, which the feed already loaded |
 | Setup tab, first open | 0 or 1 | `GET /labels`, unless Items already loaded them |
-| Balances/Wallets/Stats/Setup, cold (direct link) | 2 | `GET /trips/{slug}` plus that tab's own endpoint |
+| Balances/Wallets/Stats/Setup, cold (direct link) | 2, or 3 for Balances/Wallets | `GET /trips/{slug}` plus that tab's own endpoints |
 | Revisiting a loaded tab | 0 | already in the store |
 | Open the edit modal | 0 | the item or transfer is already in `store.items`/`store.transfers` |
 | Type in the modal | 0 | labels filtered from `store.labels` client-side |
 | Change amount or split | 1 | `preview-split` on `change`, not on input — expense mode only, never for a transfer |
-| Save an item or a transfer | 2 | the write, then `GET /items` (plus `/labels` if a new label was typed); a transfer or item write also invalidates `store.wallets`/`store.balances` so those refetch on next open |
+| Save an item or a transfer | 2 | the write, then `GET /items` (plus `/labels` if a new label was typed); a transfer or item write also invalidates `store.wallets`/`store.balances`/`store.exchangeRates` so those refetch on next open |
 | Setup edit | 2 | the write, then `GET /trips/{slug}` (or `/labels`) |
 
 Anything above this is a bug, and `test_call_budget.py` says so. A cold `GET

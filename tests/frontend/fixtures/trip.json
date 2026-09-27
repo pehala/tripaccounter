@@ -262,9 +262,9 @@
         "id": 2,
         "occurred_at": "2026-09-14T12:00:00Z",
         "from_wallet_id": 1,
-        "from_amount": 20000,
-        "from_currency_id": 1,
-        "from_currency_code": "ISK",
+        "from_amount": 140,
+        "from_currency_id": 2,
+        "from_currency_code": "EUR",
         "to_wallet_id": 5,
         "to_amount": 20000,
         "to_currency_id": 1,
@@ -354,6 +354,12 @@
           {"from_person_id": 4, "to_person_id": 2, "amount": 120}
         ]
       }
+    ]
+  },
+  "exchange_rates": {
+    "exchange_rates": [
+      {"person_id": 1, "from_currency_code": "EUR", "to_currency_code": "ISK", "rate": 0.007, "leftover": 1600, "leftover_rate": 0.007},
+      {"person_id": 1, "from_currency_code": "EUR", "to_currency_code": "DKK", "rate": null, "leftover": 150, "leftover_rate": 0.133333333}
     ]
   },
   "stats": {

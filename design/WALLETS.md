@@ -97,8 +97,9 @@ page. No transfer that changes currency between two people.
 | **Migration** | Wallets go into a rewritten `0001_initial.py` that spells out every table with explicit `op.create_table` calls — a frozen schema, no `metadata.create_all`. No `0002`, no backfill. | A guarded `0002` with a data migration. The app is unpublished, so there is no database to migrate; and today's `0001` creates whatever `models.py` currently says, which means every future migration would have to guard against tables that already exist. Freezing it now fixes both. |
 | **Where balances show** | A new **Wallets** tab, `/t/{slug}/wallets`, fed by `GET /trips/{slug}/wallets` on first open. | Inside the Balances tab (mixes person nets with pot balances) or Statistics (spend-only). Wallet CRUD stays in Setup, like every roster entity. |
 
-Out of scope, deliberately: a limit or budget on a wallet, a stored or displayed
-exchange rate, wallet history views, per-wallet statistics groups.
+Out of scope, deliberately: a limit or budget on a wallet, a stored exchange rate,
+wallet history views, per-wallet statistics groups. (A per-person *average* rate,
+derived on read, shipped later: `API.md` "Exchange rates".)
 
 ---
 

@@ -46,7 +46,8 @@
       "defaults": {"code": null, "flag": null, "is_default": false, "item_count": 0}
     },
     "/api/v1/trips/{slug}/balances": {"GET": "#/balances"},
-    "/api/v1/trips/{slug}/stats": {"GET": "#/stats"}
+    "/api/v1/trips/{slug}/stats": {"GET": "#/stats"},
+    "/api/v1/trips/{slug}/exchange-rates": {"GET": "#/exchange_rates"}
   },
   "errors": {
     "not_found": {"error": {"code": "not_found", "params": {"resource": "route"}}},

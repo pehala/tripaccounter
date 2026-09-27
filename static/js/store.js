@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { api } from './api.js';
 import { getDims, requestChains } from './breakdown.js';
 
-// Per-trip state: trip, labels, items, transfers, balances, wallets, stats. Plain
+// Per-trip state: trip, labels, items, transfers, balances, wallets, exchangeRates, stats. Plain
 // object + subscribers, so any component can read it with useStore() and re-render
 // when it changes.
 const state = {
@@ -15,6 +15,7 @@ const state = {
   transfers: null,
   balances: null,
   wallets: null,
+  exchangeRates: null,
   stats: null,
   statsDims: [],
   error: null,
@@ -44,8 +45,9 @@ const LOADERS = {
   }),
   balances: (slug) => api.get(`/trips/${slug}/balances`).then((r) => { state.balances = r.balances; }),
   wallets: (slug) => api.get(`/trips/${slug}/wallets`).then((r) => { state.wallets = r.wallets; }),
-  // Each chain is asked for as its own group_by; the server answers it together
-  // with its prefixes, which is where the nested subtotals come from.
+  exchangeRates: (slug) => api.get(`/trips/${slug}/exchange-rates`).then((r) => { state.exchangeRates = r.exchange_rates; }),
+  // The dimension chain is asked for as its own group_by; the server answers
+  // it together with its prefixes, which is where the nested subtotals come from.
   stats: (slug) => {
     const query = requestChains(state.statsDims).map((chain) => `group_by=${chain.join(',')}`).join('&');
     return api.get(`/trips/${slug}/stats?${query}`).then((r) => { state.stats = r.groups; });
@@ -66,18 +68,19 @@ export async function reload(kind) {
 }
 
 // A write that can change money movement (an item or a transfer) invalidates the
-// two tabs that summarize it, so the next visit refetches instead of showing a
+// views that summarize it, so the next visit refetches instead of showing a
 // stale figure - the same store.x ? skip : reload(x) pattern Balances/Wallets use.
 export function invalidateMoneyViews() {
   state.wallets = null;
   state.balances = null;
+  state.exchangeRates = null;
   notify();
 }
 
 export async function load(slug) {
   state.slug = slug;
   state.trip = state.labels = state.items = state.dayTotals = state.beforeTripTotals = null;
-  state.transfers = state.balances = state.wallets = state.stats = null;
+  state.transfers = state.balances = state.wallets = state.exchangeRates = state.stats = null;
   state.statsDims = getDims(slug);
   state.error = null;
   notify();

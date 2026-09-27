@@ -1,7 +1,8 @@
 """Integer money arithmetic. No parsing, no rounding, no formatting.
 
 Hundredths (minor units) are the stored scale for anything a human typed.
-Micro-units (10^-6) are the scale for anything computed (a view expression).
+Micro-units (10^-6) are the scale for anything computed (a view expression);
+an exchange rate, a ratio rather than an amount, is computed at 10^-9.
 `to_wire` is the one place either scale turns into a JSON number, at the
 serializer edge; nothing downstream of it ever feeds back into a column.
 """
@@ -10,6 +11,7 @@ AMOUNT_SCALE = 100
 WEIGHT_SCALE = 10_000
 MICRO_SCALE = 1_000_000
 MICRO_PER_MINOR = MICRO_SCALE // AMOUNT_SCALE
+RATE_SCALE = 1_000_000_000
 
 
 def to_hundredths(amount) -> int:

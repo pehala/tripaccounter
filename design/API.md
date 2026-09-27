@@ -345,6 +345,35 @@ currency has a positive typed rate — see "Statistics" below.
 `|sum(people[].net)| < 0.00001` per currency — a client may assert it;
 `sum(suggestions)` balances exactly.
 
+### Exchange rates
+`GET /trips/{slug}/exchange-rates` answers, for each person and every currency pair
+they exchanged between, what their foreign money cost: one row per `(person, pair)`,
+people in roster order, then `from_currency_code` and `to_currency_code` in trip
+currency order. Both rates read *1 `to_currency_code` cost `rate`
+`from_currency_code`*, computed to nine places and floored — ratios, not amounts,
+never stored.
+
+Only exchanges count (a transfer whose two currencies differ; always one owner). The
+funding side (`from`) is the currency that net left the pair, the target (`to`) the
+one that net arrived. Every exchange into a target is a **lot**, queued by
+`occurred_at`, then id — lots from different funding currencies share one queue per
+target. The person's target currency is split into three, **first in, first out**:
+
+1. **spent** — takes the oldest lots first. `rate` is what those units cost.
+2. **changed back** — the target amount sent back out in an exchange; takes the next
+   lots, and prices into neither rate.
+3. **held** — `leftover`, the newest lots: the positive balances of the person's
+   tracked wallets in that currency, capped at what the exchanges bought. Target
+   currency in an untracked wallet counts as spent; a negative balance holds
+   nothing. `leftover_rate` is what those units cost.
+
+A lot split across two parts is priced pro rata. `rate` is `null` when nothing is
+spent yet, `leftover_rate` when nothing is held, both when more was changed back than
+was bought — the row stays, so a client can say so.
+
+The client may offer `rate` as a prefill for the Total's typed rates, and may invert
+it for the opposite direction; it never enters a currency's own figures.
+
 ### Statistics
 Plain `GROUP BY` aggregates — per currency, never across them. The totals arrive
 already summed, so a client never adds a column of floats over this API's own

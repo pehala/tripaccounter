@@ -1,8 +1,9 @@
-"""Tests for fmt.js's money(), signed() and formatter caching, via page.evaluate.
+"""Tests for fmt.js's money(), signed(), rate() and formatter caching, via page.evaluate.
 
 Whole values show no fraction, typed values two, computed six-place values are
 trimmed to two, negative and zero keep their shape, grouping follows the locale;
-signed() puts + only on credits; the formatter cache returns one instance per locale.
+signed() puts + only on credits; rate() keeps six significant digits ungrouped so
+parse() reads it back; the formatter cache returns one instance per locale.
 """
 
 import pytest
@@ -36,6 +37,26 @@ def test_money(js, value, locale, expected):
 def test_signed_puts_plus_only_on_credits(js, value, expected):
     """signed() prefixes a credit with +, leaves a debit or zero alone."""
     assert js("fmt.js", "signed", value, "en") == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "locale", "expected"),
+    [
+        pytest.param(0.007608695, "en", "0.0076087", id="small-six-significant"),
+        pytest.param(131.4285801, "cs", "131,429", id="cs-decimal-comma"),
+        pytest.param(17543.8596, "en", "17543.9", id="no-grouping"),
+    ],
+)
+def test_rate(js, value, locale, expected):
+    """rate() keeps six significant digits and never groups."""
+    assert js("fmt.js", "rate", value, locale) == expected
+
+
+def test_rate_reads_back_through_parse(js):
+    """A rate formatted in cs parses back to the canonical decimal the rate form stores."""
+    text = js("fmt.js", "rate", 0.007608695, "cs")
+
+    assert js("fmt.js", "parse", text, "cs") == "0.0076087"
 
 
 def test_formatter_cache_reuses_one_instance_per_locale(page, mockserver):

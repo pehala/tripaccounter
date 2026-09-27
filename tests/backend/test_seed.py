@@ -40,6 +40,7 @@ def test_seed_demo_items_envelope_carries_every_seeded_row(client, session):
         pytest.param("balances", id="balances"),
         pytest.param("stats", id="stats"),
         pytest.param("wallets", id="wallets"),
+        pytest.param("exchange-rates", id="exchange-rates"),
         pytest.param("labels", id="labels"),
     ],
 )
