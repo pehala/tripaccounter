@@ -4,7 +4,7 @@ Three `GROUP BY (wallet_id, currency_id)` queries over the trip - the client
 never sums a column (same shape as `app/services/balances.py`).
 """
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.items import LineItem
@@ -18,7 +18,7 @@ from app.services.money import AMOUNT_SCALE, to_wire
 def _group_sum(session: Session, wallet_col, currency_col, amount_col, trip_id: int) -> dict:
     """Return `{(wallet_id, currency_id): summed amount_minor}` for one side of every transfer."""
     rows = session.execute(
-        select(wallet_col, currency_col, func.sum(amount_col))
+        select(wallet_col, currency_col, queries.int_sum(amount_col))
         .select_from(WalletTransfer)
         .where(WalletTransfer.trip_id == trip_id)
         .group_by(wallet_col, currency_col)
@@ -56,7 +56,7 @@ def wallet_balances(session: Session, trip_id: int) -> list[WalletReportOut]:
         trip_id,
     )
     spent_rows = session.execute(
-        select(LineItem.wallet_id, LineItem.currency_id, func.sum(LineItem.amount_minor))
+        select(LineItem.wallet_id, LineItem.currency_id, queries.int_sum(LineItem.amount_minor))
         .where(LineItem.trip_id == trip_id)
         .group_by(LineItem.wallet_id, LineItem.currency_id)
     ).all()

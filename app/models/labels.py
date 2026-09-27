@@ -32,5 +32,5 @@ class ItemLabel(SQLModel, table=True):
 
     __tablename__ = "item_label"
 
-    item_id: int = Field(foreign_key="line_item.id", primary_key=True)
-    label_id: int = Field(foreign_key="label.id", primary_key=True)
+    item_id: int = Field(foreign_key="line_item.id", primary_key=True, ondelete="CASCADE")
+    label_id: int = Field(foreign_key="label.id", primary_key=True, ondelete="CASCADE")

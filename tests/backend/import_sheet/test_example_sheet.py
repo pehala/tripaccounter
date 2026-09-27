@@ -5,21 +5,15 @@ which is the only place the result is observable.
 """
 
 import sys
-from pathlib import Path
 
 import pytest
-from alembic.config import Config
-from sqlalchemy import create_engine, select
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from alembic import command
 from app.models.trip import Trip
 from tests.backend.import_sheet.conftest import PEOPLE, PRAGUE, SAMPLE
 from tools.import_sheet import __main__ as cli
 from tools.import_sheet import apply, build_plan, create_trip
-
-ALEMBIC_SCRIPT_LOCATION = Path(__file__).resolve().parent.parent.parent.parent / "alembic"
 
 
 @pytest.fixture()
@@ -39,23 +33,15 @@ def imported(session, plan):
 
 
 @pytest.fixture()
-def run_cli(monkeypatch):
+def run_cli(scratch_engine, monkeypatch):
     """Run `main()` against a private database, and return a factory to inspect it with.
 
     `main()` owns its own session and decides between commit and rollback, so it
     cannot use the `session` fixture's rolled-back transaction: the branch under test
-    is exactly the one that ends the transaction. This gives it a throwaway engine
-    with the real schema, and leaves both endings observable.
+    is exactly the one that ends the transaction. `scratch_engine` gives it a throwaway
+    database with the real schema, and leaves both endings observable.
     """
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
-    alembic_config = Config()
-    alembic_config.set_main_option("script_location", str(ALEMBIC_SCRIPT_LOCATION))
-    with engine.connect() as connection:
-        alembic_config.attributes["connection"] = connection
-        command.upgrade(alembic_config, "head")
-    factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    factory = sessionmaker(bind=scratch_engine, autoflush=False, expire_on_commit=False)
     monkeypatch.setattr(cli, "SessionLocal", factory)
 
     def run(*argv):

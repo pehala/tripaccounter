@@ -7,7 +7,7 @@ person's `sent`/`received` (and so `net`) when it crosses owners: by the
 adds equal and opposite hundredths and never needs a conversion to balance.
 """
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, aliased
 
 from app.models.items import LineItem
@@ -29,7 +29,7 @@ def _cross_owner_by_person(session: Session, trip_id: int, currency_id: int) -> 
     to_wallet = aliased(Wallet)
     sent = dict(
         session.execute(
-            select(from_wallet.person_id, func.sum(WalletTransfer.from_amount_minor))
+            select(from_wallet.person_id, queries.int_sum(WalletTransfer.from_amount_minor))
             .join(from_wallet, WalletTransfer.from_wallet_id == from_wallet.id)
             .join(to_wallet, WalletTransfer.to_wallet_id == to_wallet.id)
             .where(
@@ -42,7 +42,7 @@ def _cross_owner_by_person(session: Session, trip_id: int, currency_id: int) -> 
     )
     received = dict(
         session.execute(
-            select(to_wallet.person_id, func.sum(WalletTransfer.to_amount_minor))
+            select(to_wallet.person_id, queries.int_sum(WalletTransfer.to_amount_minor))
             .join(from_wallet, WalletTransfer.from_wallet_id == from_wallet.id)
             .join(to_wallet, WalletTransfer.to_wallet_id == to_wallet.id)
             .where(
@@ -77,7 +77,7 @@ def compute_balances(session: Session, trip_id: int) -> list[BalanceBlockOut]:
 
         paid_minor = dict(
             session.execute(
-                select(LineItem.payer_id, func.sum(LineItem.amount_minor))
+                select(LineItem.payer_id, queries.int_sum(LineItem.amount_minor))
                 .where(LineItem.trip_id == trip_id, LineItem.currency_id == currency.id)
                 .group_by(LineItem.payer_id)
             ).all()

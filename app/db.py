@@ -2,19 +2,23 @@
 
 from collections.abc import Generator
 
-from sqlalchemy import create_engine, event
-from sqlalchemy.engine import Engine
+from sqlalchemy import create_engine, event, make_url
+from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Settings
 
 
-def make_engine(database_url: str) -> Engine:
-    """Build a SQLAlchemy engine, enabling SQLite foreign keys when applicable."""
-    connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
-    engine = create_engine(database_url, connect_args=connect_args)
+def make_engine(database_url: str | URL, **kwargs) -> Engine:
+    """Build a SQLAlchemy engine, enabling SQLite foreign keys when applicable.
 
-    if database_url.startswith("sqlite"):
+    `kwargs` go to `create_engine` as they are.
+    """
+    is_sqlite = make_url(database_url).get_backend_name() == "sqlite"
+    connect_args = {"check_same_thread": False} if is_sqlite else {}
+    engine = create_engine(database_url, connect_args=connect_args, **kwargs)
+
+    if is_sqlite:
 
         @event.listens_for(engine, "connect")
         def _enable_foreign_keys(dbapi_connection, _connection_record):

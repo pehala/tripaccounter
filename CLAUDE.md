@@ -76,6 +76,8 @@ make install_dev     # uv sync --frozen --group dev + chromium + lefthook
 make start_server     # production: backend + static on :8000, no reload
 make start_dev_server # backend + static on :8000, reload
 make test            # everything: tests/backend, tests/frontend, tests/tools
+TA_TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/postgres \
+  make test_backend  # the backend suite against a Postgres server, as CI also runs it
 make lint            # ruff check + format check + uv lock --check
 make coverage        # tests/backend + tests/tools with coverage: report + coverage.json
 make openapi         # regenerate the committed openapi.json from app.openapi()

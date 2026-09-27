@@ -4,13 +4,23 @@ Each returns a `Select` the caller executes, so a router can add its own
 options and a service can wrap it in an aggregate.
 """
 
-from sqlalchemy import func, select
+from sqlalchemy import BigInteger, String, cast, func, select
 
 from app.db_views import share_owed_view
 from app.models.items import LineItem
 from app.models.roster import TripCurrency
 from app.models.wallets import WalletTransfer
 from app.schemas.responses import ITEM_LOAD_OPTIONS, TRANSFER_LOAD_OPTIONS
+
+
+def int_sum(column):
+    """Sum `column` as a bigint; Postgres widens a bigint `SUM` to numeric otherwise."""
+    return cast(func.sum(column), BigInteger)
+
+
+def day_of(column):
+    """Return `column`'s calendar day as a `YYYY-MM-DD` string, on every dialect."""
+    return cast(func.date(column), String)
 
 
 def items_for_trip(trip_id: int, *, newest_first: bool = True):
@@ -53,7 +63,7 @@ def currencies_for_trip(trip_id: int):
 
 def spend_total(trip_id: int, currency_id: int):
     """Select the summed spend on a trip in one currency, 0 when there is none."""
-    return select(func.coalesce(func.sum(LineItem.amount_minor), 0)).where(
+    return select(func.coalesce(int_sum(LineItem.amount_minor), 0)).where(
         LineItem.trip_id == trip_id, LineItem.currency_id == currency_id
     )
 
@@ -61,7 +71,7 @@ def spend_total(trip_id: int, currency_id: int):
 def owed_by_person(trip_id: int, currency_id: int):
     """Select `(person_id, owed_micro)` summed over a trip's shares in one currency."""
     return (
-        select(share_owed_view.c.person_id, func.sum(share_owed_view.c.owed_micro))
+        select(share_owed_view.c.person_id, int_sum(share_owed_view.c.owed_micro))
         .where(
             share_owed_view.c.trip_id == trip_id,
             share_owed_view.c.currency_id == currency_id,

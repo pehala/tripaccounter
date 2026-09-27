@@ -1,7 +1,7 @@
 """Line item routes: create, update, delete, and preview splits."""
 
 from fastapi import APIRouter, Response
-from sqlalchemy import case, func, select
+from sqlalchemy import case, select
 
 from app.clock import ClockDep
 from app.deps import SessionDep, TripDep
@@ -61,7 +61,7 @@ def list_items(trip: TripDep, session: SessionDep):
     # of one per day, so the feed's "Before the trip" section gets a real
     # server-summed total too, same as every other day - reported separately
     # below, in before_trip_totals, so day_totals stays real dates only.
-    day = func.date(LineItem.occurred_at)
+    day = queries.day_of(LineItem.occurred_at)
     day_key = case((day < trip.start_date, "before"), else_=day) if trip.start_date else day
 
     day_rows = session.execute(
@@ -69,7 +69,7 @@ def list_items(trip: TripDep, session: SessionDep):
             day_key,
             TripCurrency.code,
             TripCurrency.id,
-            func.sum(LineItem.amount_minor),
+            queries.int_sum(LineItem.amount_minor),
         )
         .select_from(LineItem)
         .join(TripCurrency, TripCurrency.id == LineItem.currency_id)
