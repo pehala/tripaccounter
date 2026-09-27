@@ -107,6 +107,6 @@ def update_label(session: Session, label: Label, name: str | None) -> Label:
 
 
 def delete_label(session: Session, label: Label) -> None:
-    """Delete the label from its trip."""
+    """Delete the label from its trip; the database detaches it from every item."""
     session.delete(label)
     session.flush()
