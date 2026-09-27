@@ -4,6 +4,7 @@ import pytest
 
 DAY1 = "2026-09-13T12:00:00"
 DAY2 = "2026-09-14T12:00:00"
+DAY3 = "2026-09-15T12:00:00"
 
 
 @pytest.fixture()
@@ -16,7 +17,7 @@ def currency_ids(client, trip, currencies):
 
 @pytest.fixture()
 def record(client, trip, default_wallet_of, item_body, currency_ids):
-    """Return a function posting one person's exchanges and spends.
+    """Return a function posting one person's exchanges and spends, returning their wallets.
 
     Each person gets their `Card` plus tracked `Cash` and `Envelope`. A transfer is
     `(occurred_at, from_wallet, amount, code, to_wallet, amount, code)`, a spend
@@ -65,6 +66,23 @@ def record(client, trip, default_wallet_of, item_body, currency_ids):
                 ),
             )
             assert response.status_code == 201, response.text
+        return wallets
+
+    return post
+
+
+@pytest.fixture()
+def hand_over(client, trip, transfer_body):
+    """Return a function posting ISK from one wallet to another, a transfer and not an exchange."""
+
+    def post(from_wallet_id, to_wallet_id, amount):
+        response = client.post(
+            f"/api/v1/trips/{trip['slug']}/transfers",
+            json=transfer_body(
+                from_wallet_id=from_wallet_id, to_wallet_id=to_wallet_id, from_amount=amount
+            ),
+        )
+        assert response.status_code == 201, response.text
 
     return post
 
@@ -175,12 +193,13 @@ def get_rates(client, trip):
         pytest.param(
             {
                 "transfers": [
-                    (DAY1, "Card", "100", "EUR", "Cash", "14000", "ISK"),
-                    (DAY2, "Cash", "14000", "ISK", "Card", "101", "EUR"),
+                    (DAY1, "Card", "20000", "ISK", "Cash", "20000", "ISK"),
+                    (DAY1, "Card", "100", "EUR", "Cash", "10000", "ISK"),
+                    (DAY2, "Cash", "15000", "ISK", "Card", "90", "EUR"),
                 ],
                 "spends": [],
             },
-            [("ISK", "EUR", None, 0, None)],
+            [("EUR", "ISK", None, 0, None)],
             id="changed-back-more-than-bought-no-rate",
         ),
         pytest.param(
@@ -190,6 +209,72 @@ def get_rates(client, trip):
             },
             [],
             id="plain-transfer-no-row",
+        ),
+        # Whole histories: several rules at once, lots interleaved across pairs.
+        pytest.param(
+            {
+                "transfers": [
+                    (DAY1, "Card", "100", "EUR", "Cash", "10000", "ISK"),
+                    (DAY2, "Card", "1000", "CZK", "Cash", "5000", "ISK"),
+                    (DAY2, "Cash", "5000", "ISK", "Envelope", "5000", "ISK"),
+                    (DAY3, "Card", "100", "EUR", "Cash", "20000", "ISK"),
+                ],
+                "spends": [("Cash", "9000", "ISK"), ("Envelope", "3000", "ISK")],
+            },
+            [("CZK", "ISK", 0.2, 3000, 0.2), ("EUR", "ISK", 0.01, 20000, 0.005)],
+            id="lots-queue-by-date-across-funding-currencies",
+        ),
+        pytest.param(
+            {
+                "transfers": [
+                    (DAY1, "Card", "500", "CZK", "Cash", "2500", "ISK"),
+                    (DAY1, "Card", "100", "EUR", "Cash", "10000", "ISK"),
+                    (DAY1, "Card", "250", "CZK", "Cash", "2500", "ISK"),
+                ],
+                "spends": [("Cash", "7500", "ISK")],
+            },
+            [("CZK", "ISK", 0.2, 2500, 0.1), ("EUR", "ISK", 0.01, 5000, 0.01)],
+            id="same-time-lots-queue-by-id-across-funding-currencies",
+        ),
+        pytest.param(
+            {
+                "transfers": [
+                    (DAY1, "Card", "100", "EUR", "Cash", "10000", "ISK"),
+                    (DAY2, "Card", "100", "EUR", "Cash", "20000", "ISK"),
+                    (DAY3, "Cash", "6000", "ISK", "Envelope", "1200", "CZK"),
+                ],
+                "spends": [("Cash", "8000", "ISK"), ("Envelope", "200", "CZK")],
+            },
+            [("ISK", "CZK", 5, 1000, 5), ("EUR", "ISK", 0.01, 16000, 0.005)],
+            id="exchanged-into-third-currency-is-changed-back",
+        ),
+        pytest.param(
+            {
+                "transfers": [
+                    (DAY1, "Card", "100", "EUR", "Cash", "2500", "CZK"),
+                    (DAY2, "Cash", "2000", "CZK", "Envelope", "12000", "ISK"),
+                    (DAY3, "Card", "50", "EUR", "Envelope", "8000", "ISK"),
+                ],
+                "spends": [("Cash", "300", "CZK"), ("Envelope", "15000", "ISK")],
+            },
+            [
+                ("CZK", "ISK", 0.166666666, 0, None),
+                ("EUR", "ISK", 0.00625, 5000, 0.00625),
+                ("EUR", "CZK", 0.04, 200, 0.04),
+            ],
+            id="bought-currency-funds-the-next-exchange",
+        ),
+        pytest.param(
+            {
+                "transfers": [
+                    (DAY1, "Card", "200", "EUR", "Cash", "30000", "ISK"),
+                    (DAY2, "Cash", "10000", "ISK", "Card", "70", "EUR"),
+                    (DAY3, "Card", "50", "EUR", "Cash", "10000", "ISK"),
+                ],
+                "spends": [("Cash", "25000", "ISK")],
+            },
+            [("EUR", "ISK", 0.006666666, 5000, 0.005)],
+            id="changed-back-then-bought-again-takes-lots-after-spent",
         ),
     ],
 )
@@ -216,35 +301,45 @@ def test_exchange_rate_per_pair(person_id, record, get_rates, history, expected)
     }
 
 
-def test_exchange_rate_rows_per_person_in_roster_order(person_id, record, get_rates):
-    """Each person gets their own row, and another person's cash never counts as held."""
-    petr, ann = person_id("Petr"), person_id("Ann")
-    record(
-        ann,
-        [(DAY1, "Card", "100", "EUR", "Cash", "12500", "ISK")],
-        [("Cash", "12500", "ISK")],
-    )
-    record(
+def test_exchange_rate_rows_per_person_in_roster_order(person_id, record, get_rates, hand_over):
+    """Rows come per person in roster order; cash given away is spent, cash received is not held."""
+    petr, ann, bob, eva = (person_id(name) for name in ("Petr", "Ann", "Bob", "Eva"))
+    petr_wallets = record(
         petr,
-        [(DAY1, "Card", "100", "EUR", "Cash", "14000", "ISK")],
-        [("Cash", "10000", "ISK")],
+        [
+            (DAY1, "Card", "100", "EUR", "Cash", "10000", "ISK"),
+            (DAY2, "Card", "1000", "CZK", "Cash", "5000", "ISK"),
+            (DAY3, "Card", "100", "EUR", "Cash", "20000", "ISK"),
+        ],
+        [("Cash", "12000", "ISK")],
     )
+    ann_wallets = record(
+        ann,
+        [(DAY1, "Card", "100", "EUR", "Cash", "15000", "ISK")],
+        [("Cash", "4000", "ISK")],
+    )
+    bob_wallets = record(
+        bob,
+        [(DAY2, "Card", "50", "EUR", "Cash", "5000", "ISK")],
+        [("Cash", "3000", "ISK")],
+    )
+    eva_wallets = record(eva)
+    hand_over(petr_wallets["Cash"], eva_wallets["Cash"], "3000")
+    hand_over(ann_wallets["Cash"], bob_wallets["Cash"], "6000")
 
     assert get_rates().json()["exchange_rates"] == [
         {
-            "person_id": petr,
-            "from_currency_code": "EUR",
-            "to_currency_code": "ISK",
-            "rate": 0.007142857,
-            "leftover": 4000,
-            "leftover_rate": 0.007142857,
-        },
-        {
-            "person_id": ann,
-            "from_currency_code": "EUR",
-            "to_currency_code": "ISK",
-            "rate": 0.008,
-            "leftover": 0,
-            "leftover_rate": None,
-        },
+            "person_id": person,
+            "from_currency_code": from_code,
+            "to_currency_code": to_code,
+            "rate": rate,
+            "leftover": leftover,
+            "leftover_rate": leftover_rate,
+        }
+        for person, from_code, to_code, rate, leftover, leftover_rate in [
+            (petr, "CZK", "ISK", 0.2, 0, None),
+            (petr, "EUR", "ISK", 0.01, 20000, 0.005),
+            (ann, "EUR", "ISK", 0.006666666, 5000, 0.006666666),
+            (bob, "EUR", "ISK", None, 5000, 0.01),
+        ]
     ]

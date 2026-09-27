@@ -45,7 +45,10 @@ const LOADERS = {
   }),
   balances: (slug) => api.get(`/trips/${slug}/balances`).then((r) => { state.balances = r.balances; }),
   wallets: (slug) => api.get(`/trips/${slug}/wallets`).then((r) => { state.wallets = r.wallets; }),
-  exchangeRates: (slug) => api.get(`/trips/${slug}/exchange-rates`).then((r) => { state.exchangeRates = r.exchange_rates; }),
+  // Averages are an offer, not a figure: a failed fetch leaves none to offer
+  // instead of holding up the rates form and the wallets page.
+  exchangeRates: (slug) => api.get(`/trips/${slug}/exchange-rates`)
+    .then((r) => { state.exchangeRates = r.exchange_rates; }, () => { state.exchangeRates = []; }),
   // The dimension chain is asked for as its own group_by; the server answers
   // it together with its prefixes, which is where the nested subtotals come from.
   stats: (slug) => {

@@ -1,8 +1,9 @@
 """Compute each person's exchange rates per currency pair, first in first out.
 
-Every exchange into a target currency is a lot, queued by `occurred_at` then id.
-What the person spent uses up the oldest lots first, then whatever they changed
-back, and what is still held in their tracked wallets is the newest. `rate` is
+Every exchange into a target currency is a lot, queued by `occurred_at` then id,
+whatever currency funded it. What the person spent uses up the oldest lots first,
+then whatever they exchanged back out of the target into any currency, and what is
+still held in their tracked wallets is the newest. `rate` is
 what the spent units cost, `leftover_rate` what the held ones cost, both in the
 funding currency per one target unit, floored at `RATE_SCALE`.
 
@@ -11,7 +12,7 @@ currencies - then the queue in Python, on integers and exact fractions.
 """
 
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from fractions import Fraction
 
 from sqlalchemy import select
@@ -30,21 +31,11 @@ class Pair:
 
     person_id: int
     person_order: tuple
-    outflow: dict = field(default_factory=lambda: defaultdict(int))
-    transfers: list = field(default_factory=list)
+    direction: tuple
     spent_units: int = 0
     spent_cost: Fraction = Fraction(0)
     held_units: int = 0
     held_cost: Fraction = Fraction(0)
-
-    def direction(self):
-        """Return `(from_id, to_id)`: the side that net left funds the other, or None."""
-        low, high = sorted(self.outflow)
-        if self.outflow[low] > 0 > self.outflow[high]:
-            return low, high
-        if self.outflow[high] > 0 > self.outflow[low]:
-            return high, low
-        return None
 
 
 def exchanges_select(trip_id: int):
@@ -80,32 +71,31 @@ def held_by_person(session: Session, trip_id: int) -> dict:
     return held
 
 
-def collect_pairs(rows) -> list[Pair]:
-    """Group exchange rows into one `Pair` per person and unordered currency pair."""
+def collect_pairs(rows) -> tuple[list[Pair], list]:
+    """Group exchange rows into one `Pair` per person and unordered currency pair.
+
+    A pair's first exchange sets its direction: what it paid in funds, what it got is
+    the target.
+
+    Also return the exchanges as `(pair, paid_in, paid, got)`, in row order.
+    """
     pairs = {}
+    exchanges = []
     for person_id, sort_order, name, paid_in, bought, paid, got in rows:
         key = (person_id, frozenset((paid_in, bought)))
-        pair = pairs.setdefault(key, Pair(person_id=person_id, person_order=(sort_order, name)))
-        pair.outflow[paid_in] += paid
-        pair.outflow[bought] -= got
-        pair.transfers.append((paid_in, paid, got))
-    return list(pairs.values())
+        pair = pairs.setdefault(key, Pair(person_id, (sort_order, name), (paid_in, bought)))
+        exchanges.append((pair, paid_in, paid, got))
+    return list(pairs.values()), exchanges
 
 
-def price_queues(pairs: list[Pair], held: dict) -> None:
+def price_queues(exchanges: list, held: dict) -> None:
     """Split each person's target currency into spent, changed back and held, oldest first."""
     queues = defaultdict(list)
     sold = defaultdict(int)
-    for pair in pairs:
-        direction = pair.direction()
-        if direction is None:
-            continue
-        funding, target = direction
-        for paid_in, paid, got in pair.transfers:
-            if paid_in == funding:
-                queues[(pair.person_id, target)].append((pair, paid, got))
-            else:
-                sold[(pair.person_id, target)] += paid
+    for pair, paid_in, paid, got in exchanges:
+        sold[(pair.person_id, paid_in)] += paid
+        if pair.direction[0] == paid_in:
+            queues[(pair.person_id, pair.direction[1])].append((pair, paid, got))
 
     for key, lots in queues.items():
         bought = sum(got for _, _, got in lots)
@@ -136,15 +126,15 @@ def exchange_rates(session: Session, trip_id: int) -> list[ExchangeRateOut]:
 
     Rows come in roster order, then funding and target currency in trip order.
     """
-    pairs = collect_pairs(session.execute(exchanges_select(trip_id)))
-    price_queues(pairs, held_by_person(session, trip_id))
+    pairs, exchanges = collect_pairs(session.execute(exchanges_select(trip_id)))
+    price_queues(exchanges, held_by_person(session, trip_id))
     currencies = session.execute(queries.currencies_for_trip(trip_id)).scalars().all()
     by_id = {currency.id: currency for currency in currencies}
     position = {currency.id: index for index, currency in enumerate(currencies)}
 
     rows = []
     for pair in pairs:
-        from_id, to_id = pair.direction() or sorted(pair.outflow)
+        from_id, to_id = pair.direction
         rows.append(
             (
                 (pair.person_order, position[from_id], position[to_id]),

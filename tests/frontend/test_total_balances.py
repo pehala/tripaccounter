@@ -109,3 +109,42 @@ def test_no_average_rate_link_without_a_spent_rate(balances_page):
         has=balances_page.locator(".badge", has_text="DKK")
     )
     expect(row.locator(".rate-average")).to_have_count(0)
+
+
+def test_rate_form_without_averages_when_exchange_rates_fail(stub, open_trip):
+    """A 500 from exchange-rates still renders the rate form, just with no average links."""
+    stub(
+        "**/api/v1/trips/*/exchange-rates",
+        lambda request: (500, {"error": {"code": "internal_error", "params": {}}}),
+    )
+    page = open_trip("balances")
+
+    expect(page.locator("#rates-target")).to_be_visible()
+    expect(rate_input(page, "EUR")).to_be_visible()
+    expect(page.locator("#cur-total .rate-average")).to_have_count(0)
+
+
+def test_no_inverted_average_rate_link_for_a_zero_rate(stub, open_trip):
+    """A rate floored to 0 has no inverse, so EUR against ISK offers no link."""
+    stub(
+        "**/api/v1/trips/*/exchange-rates",
+        lambda request: (
+            200,
+            {
+                "exchange_rates": [
+                    {
+                        "person_id": 1,
+                        "from_currency_code": "EUR",
+                        "to_currency_code": "ISK",
+                        "rate": 0,
+                        "leftover": 0,
+                        "leftover_rate": None,
+                    }
+                ]
+            },
+        ),
+    )
+    page = open_trip("balances")
+
+    expect(rate_input(page, "EUR")).to_be_visible()
+    expect(page.locator("#cur-total .rate-average")).to_have_count(0)

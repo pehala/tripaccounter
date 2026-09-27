@@ -56,7 +56,7 @@ export function RatesForm({ trip, target, values, onTargetChange, onRateChange }
             <div class="col-auto"><span class="badge text-bg-secondary">${target.code}</span></div>
             ${averages(c).map(({ person, text }) => html`
               <div key=${person.id} class="col-auto">
-                <button type="button" class="btn btn-link btn-sm p-0 rate-average" title=${t('rates.use_average')}
+                <button type="button" class="btn btn-outline-secondary btn-sm rate-average" title=${t('rates.use_average')}
                         onClick=${() => onRateChange(c.id, text)}>${person.name} ${text}</button>
               </div>
             `)}

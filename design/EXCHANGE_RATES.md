@@ -1,6 +1,7 @@
 # Trip Accounter — Average exchange rates
 
-> **Status: designed, not implemented.** Issue #37.
+> **Status: shipped.** Issue #37. The design record; the rules themselves live in
+> `API.md` §exchange rates, which wins where the two differ.
 
 At the end of a trip, a person wants to know what their foreign money really cost:
 every exchange they made into ISK, net of anything they changed back, divided by the

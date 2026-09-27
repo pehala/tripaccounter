@@ -354,13 +354,14 @@ currency order. Both rates read *1 `to_currency_code` cost `rate`
 never stored.
 
 Only exchanges count (a transfer whose two currencies differ; always one owner). The
-funding side (`from`) is the currency that net left the pair, the target (`to`) the
-one that net arrived. Every exchange into a target is a **lot**, queued by
+funding side (`from`) is the currency paid in the pair's first exchange, the target
+(`to`) the one it bought. Every exchange into a target is a **lot**, queued by
 `occurred_at`, then id — lots from different funding currencies share one queue per
 target. The person's target currency is split into three, **first in, first out**:
 
 1. **spent** — takes the oldest lots first. `rate` is what those units cost.
-2. **changed back** — the target amount sent back out in an exchange; takes the next
+2. **changed back** — the target amount sent back out in an exchange, into any
+   currency; takes the next
    lots, and prices into neither rate.
 3. **held** — `leftover`, the newest lots: the positive balances of the person's
    tracked wallets in that currency, capped at what the exchanges bought. Target

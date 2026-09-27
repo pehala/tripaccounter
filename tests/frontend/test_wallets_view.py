@@ -68,3 +68,14 @@ def test_wallets_tab_first_open_is_two_calls_revisit_is_none(items_page, count_r
     open_tab("Items")
     open_tab("Wallets")
     assert len(calls) == 2
+
+
+def test_wallets_render_when_exchange_rates_fail(stub, open_trip):
+    """A 500 from exchange-rates still renders every person's card."""
+    stub(
+        "**/api/v1/trips/*/exchange-rates",
+        lambda request: (500, {"error": {"code": "internal_error", "params": {}}}),
+    )
+    page = open_trip("wallets")
+
+    expect(page.locator(".card-header", has_text="Petr")).to_have_count(1)

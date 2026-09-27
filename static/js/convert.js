@@ -21,7 +21,7 @@ export function rateFor(currencyId, targetId, values, locale) {
 // (`1 to = rate from`): the row's rate as is, or inverted when the pair runs the
 // other way — a ratio, not an amount (design/FRONTEND.md §4 rule 1).
 export function rateBetween(row, code, targetCode) {
-  if (row.rate === null) return null;
+  if (!(row.rate > 0)) return null;
   if (row.to_currency_code === code && row.from_currency_code === targetCode) return row.rate;
   if (row.from_currency_code === code && row.to_currency_code === targetCode) return 1 / row.rate;
   return null;
