@@ -1,0 +1,55 @@
+{
+  "_comment": "Routes and error bodies every trip fixture serves; conftest.load_fixture merges them under the fixture's own `routes`, `{slug}` replaced by its trip's slug.",
+  "routes": {
+    "/api/v1/trips": {"GET": "#/trips", "POST": {"trip": "$echo"}},
+    "/api/v1/trips/{slug}": {"GET": "#/trip", "PATCH": "#/trip"},
+    "/api/v1/trips/{slug}/items": {
+      "collection": "#/items/items",
+      "item": "item",
+      "insert": "head",
+      "defaults": {"currency_code": "ISK", "split": {"mode": "equal", "shares": []}},
+      "extra": {
+        "day_totals": "#/items/day_totals",
+        "before_trip_totals": "#/items/before_trip_totals",
+        "transfers": "#/items/transfers"
+      }
+    },
+    "/api/v1/trips/{slug}/transfers": {
+      "collection": "#/items/transfers",
+      "item": "transfer",
+      "insert": "head",
+      "defaults": {"from_currency_code": "ISK", "to_currency_code": "ISK", "note": null}
+    },
+    "/api/v1/trips/{slug}/wallets": {
+      "collection": "#/trip/trip/wallets",
+      "item": "wallet",
+      "defaults": {"tracked": false, "is_default": false, "balances": []}
+    },
+    "/api/v1/trips/{slug}/labels": {
+      "collection": "#/labels/labels",
+      "item": "label",
+      "defaults": {"color": "#6c757d", "use_count": 0}
+    },
+    "/api/v1/trips/{slug}/people": {
+      "collection": "#/trip/trip/people",
+      "item": "person",
+      "defaults": {"active": true, "color": "#6c757d"}
+    },
+    "/api/v1/trips/{slug}/currencies": {
+      "collection": "#/trip/trip/currencies",
+      "item": "currency",
+      "defaults": {"symbol": null, "is_primary": false}
+    },
+    "/api/v1/trips/{slug}/countries": {
+      "collection": "#/trip/trip/countries",
+      "item": "country",
+      "defaults": {"code": null, "flag": null, "is_default": false, "item_count": 0}
+    },
+    "/api/v1/trips/{slug}/balances": {"GET": "#/balances"},
+    "/api/v1/trips/{slug}/stats": {"GET": "#/stats"}
+  },
+  "errors": {
+    "not_found": {"error": {"code": "not_found", "params": {"resource": "route"}}},
+    "bad_request": {"error": {"code": "bad_request", "params": {}}}
+  }
+}

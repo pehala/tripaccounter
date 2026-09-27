@@ -304,6 +304,7 @@ tests/frontend/
 │   ├── trip.json        the resting state: 4 people, 2 currencies, resolved splits
 │   ├── empty.json       a trip with no items, for the empty states
 │   ├── hostile.json     markup in names and labels, for escaping
+│   ├── routes.json      the routes and errors every trip fixture shares
 │   └── errors/          one file per envelope: 404, 409_in_use, 422_shares, 500_html
 ├── map/                 the map tab's suites, with the pins, page fixtures and
 │   ├── conftest.py      items-stub helper they share

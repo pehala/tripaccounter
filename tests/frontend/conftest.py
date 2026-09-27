@@ -65,8 +65,20 @@ NO_TRANSITIONS = """document.addEventListener('DOMContentLoaded', () => {
 
 
 def load_fixture(name):
-    """Parse a file under fixtures/, e.g. "trip.json" or "errors/409_in_use.json"."""
-    return json.loads((FIXTURES / name).read_text())
+    """Parse a file under fixtures/, e.g. "trip.json" or "errors/409_in_use.json".
+
+    A trip fixture gets fixtures/routes.json merged in: its `errors`, and its `routes`
+    under the fixture's own, with `{slug}` in every path replaced by the trip's slug.
+    """
+    data = json.loads((FIXTURES / name).read_text())
+    if "trip" not in data:
+        return data
+    shared = json.loads((FIXTURES / "routes.json").read_text())
+    slug = data["trip"]["trip"]["slug"]
+    routes = {**shared["routes"], **data.get("routes", {})}
+    data["routes"] = {path.replace("{slug}", slug): route for path, route in routes.items()}
+    data["errors"] = shared["errors"]
+    return data
 
 
 # --- data -------------------------------------------------------------------------
