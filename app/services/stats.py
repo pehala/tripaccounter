@@ -18,6 +18,7 @@ from app.models.items import LineItem
 from app.models.labels import ItemLabel, Label
 from app.models.trip import Trip
 from app.schemas.responses import StatsGroupOut, StatsOut, StatsRowOut
+from app.services import queries
 from app.services.errors.fields import UnknownDimensionError
 from app.services.money import AMOUNT_SCALE, MICRO_SCALE, to_wire
 
@@ -84,12 +85,12 @@ def _grouping(session: Session, trip_id: int, names: tuple[str, ...]) -> StatsGr
     if any(dim.shares for dim in dims):
         # What a person owes is the share view's floored micro-units, never a
         # sum of typed amounts - design/ARCHITECTURE.md §Money.
-        total = func.sum(share_owed_view.c.owed_micro)
+        total = queries.int_sum(share_owed_view.c.owed_micro)
         item_count = func.count(share_owed_view.c.item_id.distinct())
         source = share_owed_view.join(LineItem, LineItem.id == share_owed_view.c.item_id)
         scale = MICRO_SCALE
     else:
-        total = func.sum(LineItem.amount_minor)
+        total = queries.int_sum(LineItem.amount_minor)
         item_count = func.count(LineItem.id.distinct())
         source = LineItem
         scale = AMOUNT_SCALE

@@ -69,7 +69,7 @@ def list_items(trip: TripDep, session: SessionDep):
             day_key,
             TripCurrency.code,
             TripCurrency.id,
-            func.sum(LineItem.amount_minor),
+            queries.int_sum(LineItem.amount_minor),
         )
         .select_from(LineItem)
         .join(TripCurrency, TripCurrency.id == LineItem.currency_id)
