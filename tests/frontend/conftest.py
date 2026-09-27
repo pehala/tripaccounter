@@ -65,6 +65,19 @@ NO_TRANSITIONS = """document.addEventListener('DOMContentLoaded', () => {
 });"""
 
 
+def settle(target):
+    """Pin `lang` to `en` and turn CSS transitions off on a page or a whole browser context."""
+    target.add_init_script("window.localStorage.setItem('lang', 'en')")
+    target.add_init_script(NO_TRANSITIONS)
+
+
+def goto_tab(page, trip_url, tab=None):
+    """Load the trip at `/tab` and wait for that tab's landmark; return the page."""
+    page.goto(trip_url if tab is None else f"{trip_url}/{tab}")
+    expect(TABS[TAB_BY_PATH[tab or "items"]][1](page)).to_be_visible()
+    return page
+
+
 def load_fixture(name):
     """Parse a file under fixtures/, e.g. "trip.json" or "errors/409_in_use.json".
 
@@ -126,8 +139,7 @@ def page(page):
     Without the pin the runner's OS locale would leak in; without the transitions every
     modal and collapse wait would pay Bootstrap's animation time.
     """
-    page.add_init_script("window.localStorage.setItem('lang', 'en')")
-    page.add_init_script(NO_TRANSITIONS)
+    settle(page)
     return page
 
 
@@ -172,6 +184,17 @@ def stub(page):
 
         page.route(pattern, handler)
         return calls
+
+    return install
+
+
+@pytest.fixture
+def serve_items(stub, fixture_data):
+    """Return `serve_items(items, **fields)`: answer GET items with `items` and those fields."""
+
+    def install(items, **fields):
+        body = {**fixture_data["items"], "items": items, **fields}
+        stub("**/api/v1/trips/*/items", lambda request: (200, body), method="GET")
 
     return install
 
@@ -241,9 +264,7 @@ def open_trip(page, trip_url):
     """
 
     def go(tab=None):
-        page.goto(trip_url if tab is None else f"{trip_url}/{tab}")
-        expect(TABS[TAB_BY_PATH[tab or "items"]][1](page)).to_be_visible()
-        return page
+        return goto_tab(page, trip_url, tab)
 
     return go
 
@@ -302,8 +323,7 @@ def shared_trip(browser):
     data = load_fixture("trip.json")
     slug = data["trip"]["trip"]["slug"]
     context = browser.new_context(timezone_id="UTC")
-    context.add_init_script("window.localStorage.setItem('lang', 'en')")
-    context.add_init_script(NO_TRANSITIONS)
+    settle(context)
     stub_tiles(context)
     pages = {}
 
@@ -311,11 +331,7 @@ def shared_trip(browser):
 
         def go(tab=None):
             if tab not in pages:
-                page = context.new_page()
-                url = f"{server.url}/t/{slug}"
-                page.goto(url if tab is None else f"{url}/{tab}")
-                expect(TABS[TAB_BY_PATH[tab or "items"]][1](page)).to_be_visible()
-                pages[tab] = page
+                pages[tab] = goto_tab(context.new_page(), f"{server.url}/t/{slug}", tab)
             return pages[tab]
 
         yield go
@@ -339,6 +355,12 @@ def shared_balances_page(shared_trip):
 def shared_stats_page(shared_trip):
     """Return the session's read-only Statistics tab."""
     return shared_trip("stats")
+
+
+@pytest.fixture(scope="session")
+def shared_wallets_page(shared_trip):
+    """Return the session's read-only Wallets tab."""
+    return shared_trip("wallets")
 
 
 # --- currency totals --------------------------------------------------------------
@@ -372,6 +394,23 @@ def card(page):
 # --- item modal -------------------------------------------------------------------
 
 
+def expand_split(modal):
+    """Open an item modal's split section; return its `#split-body` locator."""
+    modal.locator('[data-bs-target="#split-body"]').click()
+    body = modal.locator("#split-body.show")
+    body.wait_for()
+    return body
+
+
+def fill_card_to_cash_transfer(modal):
+    """Switch a new-entry modal to Transfer: 20000 ISK from Petr's Card to his Cash."""
+    modal.get_by_role("button", name="Transfer", exact=True).click()
+    selects = modal.locator("form select")
+    selects.nth(0).select_option("1")
+    modal.locator('input[inputmode="decimal"]').first.fill("20000")
+    selects.nth(2).select_option("5")
+
+
 @pytest.fixture
 def new_item_modal(items_page):
     """Return the `.modal.show` locator of the new-expense modal, opened from the Items tab."""
@@ -384,10 +423,7 @@ def new_item_modal(items_page):
 @pytest.fixture
 def split_expanded(new_item_modal):
     """Return the `#split-body` locator of the new-expense modal with its split section open."""
-    new_item_modal.locator('[data-bs-target="#split-body"]').click()
-    body = new_item_modal.locator("#split-body.show")
-    body.wait_for()
-    return body
+    return expand_split(new_item_modal)
 
 
 @pytest.fixture

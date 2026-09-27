@@ -10,14 +10,17 @@ ever does.
 import pytest
 from playwright.sync_api import expect
 
+from tests.frontend.conftest import fill_card_to_cash_transfer
+
 API_CALLS = "*/api/v1/*"
 
 
 @pytest.fixture
 def visited_tabs_page(items_page, open_tab):
-    """Return the page after Balances and Statistics were each opened once and Items reopened."""
+    """Return the page after Balances, Statistics and Wallets were each opened, Items reopened."""
     open_tab("Balances")
     open_tab("Statistics")
+    open_tab("Wallets")
     return open_tab("Items")
 
 
@@ -31,13 +34,22 @@ def filled_new_item_modal(page, new_item_modal):
     return new_item_modal
 
 
-def test_opening_a_trip_makes_exactly_three_calls(count_requests, open_trip):
-    """store.load() fires trip + items + labels in parallel — three calls, no more."""
+@pytest.mark.parametrize(
+    ("tab", "expected_calls"),
+    [
+        pytest.param(None, 3, id="items-trip-items-labels"),
+        pytest.param("setup", 2, id="setup-trip-labels"),
+    ],
+)
+def test_cold_load_makes_exactly_the_calls_its_tab_needs(
+    count_requests, open_trip, tab, expected_calls
+):
+    """store.load() fires trip + items + labels in parallel; landing on Setup skips items."""
     calls = count_requests(API_CALLS)
 
-    open_trip()
+    open_trip(tab)
 
-    assert len(calls) == 3
+    assert len(calls) == expected_calls
 
 
 def test_opening_the_edit_modal_makes_no_calls(items_page, count_requests, open_edit_modal):
@@ -54,13 +66,15 @@ def test_opening_the_edit_modal_makes_no_calls(items_page, count_requests, open_
     [
         pytest.param("Balances", 1, id="balances"),
         pytest.param("Statistics", 1, id="stats"),
+        pytest.param("Wallets", 1, id="wallets"),
         pytest.param("Map", 0, id="map"),
+        pytest.param("Setup", 0, id="setup"),
     ],
 )
 def test_first_visit_to_a_derived_tab_costs_only_its_own_resource(
     items_page, count_requests, open_tab, tab, expected_calls
 ):
-    """Balances and Statistics cost one GET each; the map reads store.items and costs none."""
+    """Balances, Statistics and Wallets cost one GET each; Map and Setup reuse what Items loaded."""
     calls = count_requests(API_CALLS)
 
     open_tab(tab)
@@ -68,32 +82,15 @@ def test_first_visit_to_a_derived_tab_costs_only_its_own_resource(
     assert len(calls) == expected_calls
 
 
-def test_setup_after_items_makes_no_calls(items_page, count_requests, open_tab):
-    """Setup only needs labels, and Items already loaded them — opening it fetches nothing."""
-    calls = count_requests(API_CALLS)
-
-    open_tab("Setup")
-
-    assert len(calls) == 0
-
-
-def test_first_visit_to_setup_without_items_makes_exactly_two_calls(count_requests, open_trip):
-    """Landing straight on Setup, skipping Items, is trip + labels — two calls, not items."""
-    calls = count_requests(API_CALLS)
-
-    open_trip("setup")
-
-    assert len(calls) == 2
-
-
-def test_revisiting_balances_and_stats_makes_no_further_calls(
+def test_revisiting_derived_tabs_makes_no_further_calls(
     visited_tabs_page, count_requests, open_tab
 ):
-    """Once loaded, store.balances/store.stats are cached — switching back refetches nothing."""
+    """Once loaded, balances, stats and wallets are cached — switching back refetches nothing."""
     calls = count_requests(API_CALLS)
 
     open_tab("Balances")
     open_tab("Statistics")
+    open_tab("Wallets")
 
     assert len(calls) == 0
 
@@ -110,11 +107,7 @@ def test_saving_an_item_makes_exactly_two_calls(filled_new_item_modal, count_req
 
 def test_saving_a_transfer_makes_exactly_two_calls(new_item_modal, count_requests):
     """A transfer save is POST /transfers + the re-read GET /items — two calls, same as an item."""
-    new_item_modal.get_by_role("button", name="Transfer", exact=True).click()
-    selects = new_item_modal.locator("form select")
-    selects.nth(0).select_option("1")
-    new_item_modal.locator('input[inputmode="decimal"]').first.fill("20000")
-    selects.nth(2).select_option("5")
+    fill_card_to_cash_transfer(new_item_modal)
     calls = count_requests(API_CALLS)
 
     new_item_modal.get_by_role("button", name="Save", exact=True).click()

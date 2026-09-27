@@ -11,16 +11,6 @@ from tools import check_i18n
 STATIC_JS = Path(__file__).parent.parent.parent / "static" / "js"
 LITERAL_TEXT_RE = re.compile(r">(?!\$\{)[A-Za-z]")
 
-SUM_MISMATCH = {
-    "error": {
-        "code": "validation_error",
-        "params": {},
-        "fields": {
-            "shares": {"code": "sum_mismatch", "params": {"diff": 1234.5, "currency_code": "ISK"}}
-        },
-    }
-}
-
 
 @pytest.fixture
 def browser_context_args(browser_context_args):
@@ -97,20 +87,6 @@ def test_locale_choice_persists_across_reload(czech_page):
 
     expect(czech_page.locator("html")).to_have_attribute("lang", "cs")
     expect(czech_page.get_by_role("link", name="Položky")).to_be_visible()
-
-
-def test_sum_mismatch_renders_czech_sentence_with_czech_formatted_number(
-    czech_page, czech_modal, stub
-):
-    """A stubbed 422 sum_mismatch renders through cs's catalog, diff formatted Czech-style."""
-    stub("**/api/v1/trips/*/items/preview-split", lambda request: (422, SUM_MISMATCH))
-    czech_modal.locator('input[name="amount"]').fill("100")
-    czech_modal.locator('[data-bs-target="#split-body"]').click()
-    czech_modal.locator("#split-body.show").wait_for()
-
-    czech_modal.get_by_role("button", name="Přesně", exact=True).click()
-
-    expect(czech_page.locator(".alert-danger")).to_have_text("Chybí 1 234,5 ISK.")
 
 
 @pytest.mark.parametrize(

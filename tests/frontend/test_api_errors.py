@@ -49,10 +49,7 @@ def save_snack_with_error(new_item_modal, stub):
     """
 
     def submit(status, body):
-        stub(
-            "**/api/v1/trips/*/items",
-            lambda request: (status, body) if request.method == "POST" else None,
-        )
+        stub("**/api/v1/trips/*/items", lambda request: (status, body), method="POST")
         new_item_modal.locator('input[name="name"]').fill("Snacks")
         new_item_modal.locator('input[name="amount"]').fill("500")
         new_item_modal.get_by_role("button", name="Save", exact=True).click()

@@ -17,7 +17,7 @@ SUM_MISMATCH = {
         "code": "validation_error",
         "params": {},
         "fields": {
-            "shares": {"code": "sum_mismatch", "params": {"diff": 1, "currency_code": "ISK"}}
+            "shares": {"code": "sum_mismatch", "params": {"diff": 1234.5, "currency_code": "ISK"}}
         },
     }
 }
@@ -53,16 +53,35 @@ def exact_input_for(split_expanded):
     return find
 
 
-def test_exact_mode_mismatch_renders_sum_mismatch_from_the_catalog(
-    new_item_modal, split_expanded, amount, stub
-):
-    """A stubbed 422 sum_mismatch on `shares` renders as the catalog's sentence, diff formatted."""
+@pytest.fixture(
+    params=[
+        pytest.param(("en", "Exact", "Off by 1,234.5 ISK."), id="en"),
+        pytest.param(("cs", "Přesně", "Chybí 1 234,5 ISK."), id="cs"),
+    ]
+)
+def mismatch_locale(request, new_item_modal, split_expanded, stub):
+    """Switch the open modal's UI to a locale and stub preview-split with a 422 sum_mismatch.
+
+    Returns that locale's `(Exact button label, expected sentence)`.
+    """
+    locale, exact, sentence = request.param
+    new_item_modal.page.evaluate(
+        "async (locale) => (await import('/js/i18n/index.js')).setLocale(locale)", locale
+    )
     stub(PREVIEW_URL, lambda request: (422, SUM_MISMATCH))
+    return exact, sentence
+
+
+def test_exact_mode_mismatch_renders_sum_mismatch_from_the_catalog(
+    new_item_modal, amount, mismatch_locale
+):
+    """A stubbed 422 sum_mismatch renders as the locale's catalog sentence, diff formatted."""
+    exact, sentence = mismatch_locale
     amount.fill("100")
 
-    new_item_modal.get_by_role("button", name="Exact", exact=True).click()
+    new_item_modal.get_by_role("button", name=exact, exact=True).click()
 
-    expect(new_item_modal.locator(".alert-danger")).to_have_text("Off by 1 ISK.")
+    expect(new_item_modal.locator(".alert-danger")).to_have_text(sentence)
 
 
 def test_preview_fires_on_change_not_on_every_keystroke(

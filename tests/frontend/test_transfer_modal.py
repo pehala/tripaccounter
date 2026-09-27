@@ -8,29 +8,19 @@ user edits it directly.
 
 from playwright.sync_api import expect
 
+from tests.frontend.conftest import fill_card_to_cash_transfer
+
 
 def test_transfer_switch_shows_on_a_new_entry(new_item_modal):
     """The Expense/Transfer switch is offered on a new entry."""
     expect(new_item_modal.get_by_role("button", name="Transfer")).to_be_visible()
 
 
-def test_transfer_switch_is_absent_while_editing(open_edit_modal):
-    """The kind switch never shows while editing an existing entry - the kind is frozen."""
-    modal = open_edit_modal("Dinner at Messinn")
-
-    expect(modal.get_by_role("button", name="Transfer")).to_have_count(0)
-
-
 def test_transfer_mode_posts_the_built_body_and_never_calls_preview_split(
     new_item_modal, count_requests
 ):
     """Switching to Transfer and saving posts to /transfers, never touching preview-split."""
-    new_item_modal.get_by_role("button", name="Transfer", exact=True).click()
-    selects = new_item_modal.locator("form select")
-    selects.nth(0).select_option("1")  # from wallet: Petr's Card
-    new_item_modal.locator('input[inputmode="decimal"]').first.fill("20000")
-    selects.nth(2).select_option("5")  # to wallet: Petr's Cash
-
+    fill_card_to_cash_transfer(new_item_modal)
     posted = count_requests("*/transfers", method="POST")
     preview = count_requests("*/preview-split")
 

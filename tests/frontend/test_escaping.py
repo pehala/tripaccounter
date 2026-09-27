@@ -35,6 +35,7 @@ def hostile_page(dialogs, open_trip):
         pytest.param("<img src=x onerror=alert(2)>", id="label"),
         pytest.param("<img src=x onerror=alert(1)> paid", id="person-name"),
         pytest.param("<script>alert('country')</script>", id="country-name"),
+        pytest.param("alert('note')", id="transfer-note"),
     ],
 )
 def test_hostile_text_renders_literally_and_never_executes(hostile_page, dialogs, hostile_text):
@@ -52,13 +53,4 @@ def test_hostile_wallet_name_renders_literally_in_wallets_and_setup(dialogs, ope
 
     setup_page = open_trip("setup")
     expect(setup_page.get_by_text("<i>x</i>")).to_be_visible()
-    assert dialogs == []
-
-
-def test_hostile_transfer_note_renders_literally_in_the_feed(dialogs, open_trip):
-    """A transfer note with markup shows as literal text in the feed, never as a script tag."""
-    page = open_trip()
-
-    expect(page.get_by_text("alert('note')", exact=False)).to_be_visible()
-    assert page.locator("script", has_text="alert").count() == 0
     assert dialogs == []
