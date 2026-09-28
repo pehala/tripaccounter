@@ -1,17 +1,18 @@
 # deploy/
 
-The Podman Quadlet unit files and env templates. **The runbook is
-[`../DEPLOY.md`](../DEPLOY.md)** — build, secrets, units, nginx, TLS, upgrades,
+The Podman Quadlet unit files and env templates, installed as rootless **user
+services** under the deploying user's `~/.config`. **The runbook is
+[`../DEPLOY.md`](../DEPLOY.md)** — image, secrets, units, nginx, TLS, upgrades,
 backups. This file only says what each artifact here is.
 
 | File | What it is |
 |---|---|
-| `tripaccounter.container` | the app container: the locally built image, `Requires=postgres.service`, published on `127.0.0.1:8000` only |
-| `postgres.container` | Postgres 17, healthchecked with `pg_isready` |
+| `tripaccounter.container` | the app container: `ghcr.io/pehala/tripaccounter:latest`, auto-updated, `Requires=postgres.service`, published on `127.0.0.1:8000` only |
+| `postgres.container` | Postgres 17, healthchecked with `pg_isready`, auto-updated within 17.x |
 | `tripaccounter.network` | the private Podman network both containers join; gives DNS by container name, which is how `TA_DATABASE_URL` reaches `tripaccounter-db` |
 | `postgres.volume` | the database volume — the only state that must outlive an image rebuild |
-| `app.env.example` | template for `/etc/tripaccounter/app.env`: `TA_DATABASE_URL` |
-| `postgres.env.example` | template for `/etc/tripaccounter/postgres.env`: user, password, database |
+| `app.env.example` | template for `~/.config/tripaccounter/app.env`: `TA_DATABASE_URL` |
+| `postgres.env.example` | template for `~/.config/tripaccounter/postgres.env`: user, password, database |
 
 The `.network` and `.volume` units are empty on purpose: Quadlet derives
 `tripaccounter-network.service` and `postgres-volume.service` from the `Network=`

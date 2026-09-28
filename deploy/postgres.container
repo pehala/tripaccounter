@@ -3,17 +3,20 @@ Description=Trip Accounter Postgres
 
 [Container]
 Image=docker.io/library/postgres:17-alpine
+AutoUpdate=registry
 ContainerName=tripaccounter-db
 Network=tripaccounter.network
 Volume=postgres.volume:/var/lib/postgresql/data
-EnvironmentFile=/etc/tripaccounter/postgres.env
+EnvironmentFile=%h/.config/tripaccounter/postgres.env
 HealthCmd=pg_isready -U tripaccounter
 HealthInterval=10s
 HealthRetries=5
 HealthStartPeriod=30s
+Notify=healthy
 
 [Service]
 Restart=always
+TimeoutStartSec=900
 
 [Install]
-WantedBy=multi-user.target default.target
+WantedBy=default.target

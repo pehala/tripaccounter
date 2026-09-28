@@ -4,18 +4,22 @@ After=postgres.service
 Requires=postgres.service
 
 [Container]
-Image=localhost/tripaccounter:latest
+Image=ghcr.io/pehala/tripaccounter:latest
+AutoUpdate=registry
 ContainerName=tripaccounter-app
 Network=tripaccounter.network
-EnvironmentFile=/etc/tripaccounter/app.env
+EnvironmentFile=%h/.config/tripaccounter/app.env
 PublishPort=127.0.0.1:8000:8000
 HealthCmd=/app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/')"
 HealthInterval=10s
 HealthRetries=5
 HealthStartPeriod=15s
+Notify=healthy
 
 [Service]
 Restart=always
+# The first start pulls the image; the default 90s is not always enough.
+TimeoutStartSec=900
 
 [Install]
-WantedBy=multi-user.target default.target
+WantedBy=default.target
