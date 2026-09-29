@@ -6,7 +6,9 @@ of stopping at the first bad cell.
 """
 
 import csv
+import io
 import re
+import sys
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -125,10 +127,17 @@ def infer_split(amount, owed):
     return None, None, f"shares total {total}, amount {amount}"
 
 
+STDIN = "-"
+
+
 def read_sheet(path):
-    """Read the export, returning its header and the rows that carry an item name."""
-    with Path(path).open(encoding="utf-8", newline="") as handle:
-        table = list(csv.reader(handle))
+    """Read the export (`-` is stdin): its header, and the rows that carry an item name."""
+    if path == STDIN:
+        stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8", newline="")
+        table = list(csv.reader(stdin))
+    else:
+        with Path(path).open(encoding="utf-8", newline="") as handle:
+            table = list(csv.reader(handle))
     if not table:
         return [], []
     rows = [(number, row) for number, row in enumerate(table[1:], 2) if row[COLUMN_NAME].strip()]
