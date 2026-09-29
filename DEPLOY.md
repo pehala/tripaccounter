@@ -328,7 +328,27 @@ A `systemctl --user` timer around the first command is the whole backup strategy
 this application needs; the volume alone is not a backup. Copy the dumps off the
 host — they share a disk, and a home directory, with the data they back up.
 
-## 10. Troubleshooting
+## 10. Importing a CSV sheet
+
+The image carries `tools/`, so an existing expense sheet is imported by exec'ing into
+the running app container. The sheet is streamed over stdin (`-` as the CSV path), so
+nothing is mounted or copied in, and the container already holds `TA_DATABASE_URL`.
+
+```bash
+# see what it would do first: nothing is written
+podman exec -i tripaccounter-app \
+  python -m tools.import_sheet - "Trip name" --people Ann Bob --dry-run < sheet.csv
+
+# import it, in one transaction
+podman exec -i tripaccounter-app \
+  python -m tools.import_sheet - "Trip name" --people Ann Bob < sheet.csv
+```
+
+Use `-i`, never `-t`: a TTY breaks piped stdin. From another machine, run the same
+command through `ssh host '…' < sheet.csv`. The options, the report and the sheet
+format are described in the README's "Import an existing sheet".
+
+## 11. Troubleshooting
 
 Everything below runs as the deploying user; `systemctl` and `journalctl` take
 `--user`.

@@ -73,7 +73,7 @@ def report(plan):
 def build_parser():
     """Build the command-line parser."""
     parser = argparse.ArgumentParser(prog="python -m tools.import_sheet", description=DESCRIPTION)
-    parser.add_argument("csv_path", metavar="CSV")
+    parser.add_argument("csv_path", metavar="CSV", help="path to the sheet, or - to read stdin")
     parser.add_argument("trip_name", metavar="TRIP_NAME")
     parser.add_argument("--people", nargs="+", required=True, metavar="NAME")
     parser.add_argument("--start-date")

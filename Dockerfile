@@ -17,6 +17,7 @@ RUN uv sync --frozen --no-dev --no-install-project --no-editable
 COPY app ./app
 COPY alembic ./alembic
 COPY static ./static
+COPY tools ./tools
 RUN uv sync --frozen --no-dev --no-editable
 
 # Final: no C toolchain, no cache — venv, app and uv (make migrate/start_server

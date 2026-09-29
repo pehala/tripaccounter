@@ -4,6 +4,7 @@ Writing rows goes through the `session` fixture and is read back over `client`,
 which is the only place the result is observable.
 """
 
+import io
 import sys
 
 import pytest
@@ -185,6 +186,19 @@ def test_main_commits_the_trip_and_its_items(run_cli):
         assert trip.slug == "trip-name"
         assert len(trip.items) == 24
         assert [person.name for person in trip.people] == ["Ann", "Bob"]
+
+
+def test_main_reads_the_sheet_from_stdin_when_the_path_is_a_dash(run_cli, monkeypatch):
+    """`-` as the CSV path imports the piped sheet exactly as the file would be."""
+    stdin = io.TextIOWrapper(io.BytesIO(SAMPLE.read_bytes()), encoding="utf-8")
+    monkeypatch.setattr(sys, "stdin", stdin)
+
+    code, factory = run_cli("-", "Trip name", "--people", *PEOPLE)
+
+    assert code == 0
+    with factory() as session:
+        trip = session.execute(select(Trip)).scalars().one()
+        assert len(trip.items) == 24
 
 
 def test_main_reports_problems_and_writes_nothing(sheet, row, run_cli):
