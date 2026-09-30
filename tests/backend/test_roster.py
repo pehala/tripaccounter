@@ -81,6 +81,22 @@ def test_delete_referenced_currency_is_409(client, trip, currency, item_body):
     assert body["error"]["fields"]["id"]["code"] == "in_use"
 
 
+def test_delete_country_held_by_a_stay_is_409_in_use(client, trip, country, stay_body):
+    """A country a stay sits in cannot be deleted, even with no item in it."""
+    client.post(f"/api/v1/trips/{trip['slug']}/stays", json=stay_body())
+
+    response = client.delete(f"/api/v1/trips/{trip['slug']}/countries/{country['id']}")
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "error": {
+            "code": "conflict",
+            "params": {},
+            "fields": {"id": {"code": "in_use", "params": {"count": 1, "name": "Iceland"}}},
+        }
+    }
+
+
 def test_duplicate_country_name_is_409(client, trip, country):
     """A country name collision within a trip conflicts."""
     response = client.post(

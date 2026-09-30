@@ -15,6 +15,7 @@ from sqlmodel import Field, Relationship, SQLModel
 from app.models.constraints import trip_scoped_fk
 from app.models.labels import ItemLabel, Label
 from app.models.roster import Person, TripCountry, TripCurrency
+from app.models.stays import Stay
 from app.models.trip import Trip
 from app.models.wallets import Wallet
 
@@ -30,6 +31,7 @@ class LineItem(SQLModel, table=True):
         trip_scoped_fk("payer_id", "person", "fk_item_payer_trip"),
         trip_scoped_fk("country_id", "trip_country", "fk_item_country_trip"),
         trip_scoped_fk("wallet_id", "wallet", "fk_item_wallet_trip"),
+        trip_scoped_fk("stay_id", "stay", "fk_item_stay_trip"),
     )
 
     id: int | None = Field(default=None, primary_key=True)
@@ -46,6 +48,7 @@ class LineItem(SQLModel, table=True):
     payer_id: int = Field(index=True)
     country_id: int = Field(index=True)
     wallet_id: int = Field(index=True)
+    stay_id: int | None = Field(default=None, index=True)
     map_url: str | None = None
     lat: str | None = Field(default=None, max_length=20)
     lon: str | None = Field(default=None, max_length=20)
@@ -62,16 +65,19 @@ class LineItem(SQLModel, table=True):
     # writes trip_id (it's set directly on the row), so the overlap is safe.
     trip: Trip = Relationship(back_populates="items")
     payer: Person = Relationship(
-        sa_relationship_kwargs={"overlaps": "country,currency,items,trip,wallet"}
+        sa_relationship_kwargs={"overlaps": "country,currency,items,stay,trip,wallet"}
     )
     currency: TripCurrency = Relationship(
-        sa_relationship_kwargs={"overlaps": "country,items,payer,trip,wallet"}
+        sa_relationship_kwargs={"overlaps": "country,items,payer,stay,trip,wallet"}
     )
     country: TripCountry = Relationship(
-        sa_relationship_kwargs={"overlaps": "currency,items,payer,trip,wallet"}
+        sa_relationship_kwargs={"overlaps": "currency,items,payer,stay,trip,wallet"}
     )
     wallet: Wallet = Relationship(
-        sa_relationship_kwargs={"overlaps": "country,currency,items,payer,trip"}
+        sa_relationship_kwargs={"overlaps": "country,currency,items,payer,stay,trip"}
+    )
+    stay: Stay | None = Relationship(
+        sa_relationship_kwargs={"overlaps": "country,currency,items,payer,trip,wallet"}
     )
     shares: list["ItemShare"] = Relationship(
         back_populates="item", sa_relationship_kwargs={"cascade": "all, delete-orphan"}

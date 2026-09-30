@@ -17,6 +17,7 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     HttpUrl,
+    PlainSerializer,
 )
 from pydantic_core import PydanticCustomError
 
@@ -121,10 +122,15 @@ LatStr = Annotated[str | None, BeforeValidator(parse_lat)]
 LonStr = Annotated[str | None, BeforeValidator(parse_lon)]
 OccurredAt = Annotated[datetime | None, AfterValidator(normalize_to_utc)]
 LabelToken = Annotated[str, BeforeValidator(parse_label)]
-# HttpUrl normalizes (trailing slash, host case, ...); map_url isn't required
+# HttpUrl normalizes (trailing slash, host case, ...); a URL isn't required
 # to survive a round trip byte-for-byte, only to be a genuine absolute
-# http(s) URL (API.md §4 `invalid_url`).
-MapUrl = HttpUrl | None
+# http(s) URL (API.md §4 `invalid_url`). Handed on as the plain string a
+# column stores.
+UrlStr = Annotated[
+    HttpUrl | None,
+    AfterValidator(lambda url: str(url) if url else None),
+    PlainSerializer(lambda url: url),
+]
 
 
 class Strict(BaseModel):

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { api } from './api.js';
 import { getDims, requestChains } from './breakdown.js';
 
-// Per-trip state: trip, labels, items, transfers, balances, wallets, exchangeRates, stats. Plain
+// Per-trip state: trip, labels, items, transfers, balances, wallets, exchangeRates, stays, stats. Plain
 // object + subscribers, so any component can read it with useStore() and re-render
 // when it changes.
 const state = {
@@ -16,6 +16,7 @@ const state = {
   balances: null,
   wallets: null,
   exchangeRates: null,
+  stays: null,
   stats: null,
   statsDims: [],
   error: null,
@@ -45,6 +46,7 @@ const LOADERS = {
   }),
   balances: (slug) => api.get(`/trips/${slug}/balances`).then((r) => { state.balances = r.balances; }),
   wallets: (slug) => api.get(`/trips/${slug}/wallets`).then((r) => { state.wallets = r.wallets; }),
+  stays: (slug) => api.get(`/trips/${slug}/stays`).then((r) => { state.stays = r.stays; }),
   // Averages are an offer, not a figure: a failed fetch leaves none to offer
   // instead of holding up the rates form and the wallets page.
   exchangeRates: (slug) => api.get(`/trips/${slug}/exchange-rates`)
@@ -77,13 +79,15 @@ export function invalidateMoneyViews() {
   state.wallets = null;
   state.balances = null;
   state.exchangeRates = null;
+  state.stays = null;
   notify();
 }
 
 export async function load(slug) {
   state.slug = slug;
   state.trip = state.labels = state.items = state.dayTotals = state.beforeTripTotals = null;
-  state.transfers = state.balances = state.wallets = state.exchangeRates = state.stats = null;
+  state.transfers = state.balances = state.wallets = state.exchangeRates = state.stays = null;
+  state.stats = null;
   state.statsDims = getDims(slug);
   state.error = null;
   notify();

@@ -801,6 +801,17 @@
           "split": {
             "$ref": "#/components/schemas/SplitOut"
           },
+          "stay_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stay Id"
+          },
           "updated_at": {
             "title": "Updated At",
             "type": "string"
@@ -822,6 +833,7 @@
           "payer_id",
           "country_id",
           "wallet_id",
+          "stay_id",
           "labels",
           "map_url",
           "lat",
@@ -1010,6 +1022,17 @@
               }
             ],
             "title": "Split Mode"
+          },
+          "stay_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stay Id"
           },
           "wallet_id": {
             "anyOf": [
@@ -1533,6 +1556,546 @@
         "title": "StatsRowOut",
         "type": "object"
       },
+      "StayCreate": {
+        "additionalProperties": false,
+        "description": "Request body for creating a stay.",
+        "properties": {
+          "check_in": {
+            "format": "date",
+            "title": "Check In",
+            "type": "string"
+          },
+          "check_out": {
+            "format": "date",
+            "title": "Check Out",
+            "type": "string"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Id"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "map_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Map Url"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "name",
+          "check_in",
+          "check_out"
+        ],
+        "title": "StayCreate",
+        "type": "object"
+      },
+      "StayEnvelope": {
+        "description": "`{ \"stay\": StayReport }`.",
+        "properties": {
+          "stay": {
+            "$ref": "#/components/schemas/StayReportOut"
+          }
+        },
+        "required": [
+          "stay"
+        ],
+        "title": "StayEnvelope",
+        "type": "object"
+      },
+      "StayListEnvelope": {
+        "description": "`{ \"stays\": [StayReport] }`, each stay with what its items add up to.",
+        "properties": {
+          "stays": {
+            "items": {
+              "$ref": "#/components/schemas/StayReportOut"
+            },
+            "title": "Stays",
+            "type": "array"
+          }
+        },
+        "required": [
+          "stays"
+        ],
+        "title": "StayListEnvelope",
+        "type": "object"
+      },
+      "StayOut": {
+        "description": "Wire representation of a stay, roster form: no totals.",
+        "properties": {
+          "check_in": {
+            "title": "Check In",
+            "type": "string"
+          },
+          "check_out": {
+            "title": "Check Out",
+            "type": "string"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "map_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Map Url"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nights": {
+            "title": "Nights",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "check_in",
+          "check_out",
+          "nights",
+          "url",
+          "note",
+          "country_id",
+          "city",
+          "map_url",
+          "lat",
+          "lon"
+        ],
+        "title": "StayOut",
+        "type": "object"
+      },
+      "StayReportOut": {
+        "description": "A stay plus what its items add up to, per currency - `[]` when it groups none.",
+        "properties": {
+          "check_in": {
+            "title": "Check In",
+            "type": "string"
+          },
+          "check_out": {
+            "title": "Check Out",
+            "type": "string"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "item_count": {
+            "title": "Item Count",
+            "type": "integer"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "map_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Map Url"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nights": {
+            "title": "Nights",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "totals": {
+            "items": {
+              "$ref": "#/components/schemas/StayTotalOut"
+            },
+            "title": "Totals",
+            "type": "array"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "check_in",
+          "check_out",
+          "nights",
+          "url",
+          "note",
+          "country_id",
+          "city",
+          "map_url",
+          "lat",
+          "lon",
+          "item_count",
+          "totals"
+        ],
+        "title": "StayReportOut",
+        "type": "object"
+      },
+      "StayTotalOut": {
+        "description": "One currency's spend on a stay, and that spend per night - `null` for a 0-night stay.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency_code": {
+            "title": "Currency Code",
+            "type": "string"
+          },
+          "currency_id": {
+            "title": "Currency Id",
+            "type": "integer"
+          },
+          "per_night": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Night"
+          }
+        },
+        "required": [
+          "currency_code",
+          "currency_id",
+          "amount",
+          "per_night"
+        ],
+        "title": "StayTotalOut",
+        "type": "object"
+      },
+      "StayUpdate": {
+        "additionalProperties": false,
+        "description": "Request body for partially updating a stay; an optional field sent as `null` clears it.",
+        "properties": {
+          "check_in": {
+            "format": "date",
+            "title": "Check In",
+            "type": "string"
+          },
+          "check_out": {
+            "format": "date",
+            "title": "Check Out",
+            "type": "string"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Id"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "map_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Map Url"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "title": "StayUpdate",
+        "type": "object"
+      },
       "SuggestionOut": {
         "description": "Wire representation of a suggested settle-up payment.",
         "properties": {
@@ -1987,6 +2550,13 @@
             ],
             "title": "Start Date"
           },
+          "stays": {
+            "items": {
+              "$ref": "#/components/schemas/StayOut"
+            },
+            "title": "Stays",
+            "type": "array"
+          },
           "updated_at": {
             "title": "Updated At",
             "type": "string"
@@ -2011,6 +2581,7 @@
           "currencies",
           "countries",
           "wallets",
+          "stays",
           "created_at",
           "updated_at"
         ],
@@ -4598,6 +5169,305 @@
         "summary": "Get Stats",
         "tags": [
           "reports"
+        ]
+      }
+    },
+    "/api/v1/trips/{slug}/stays": {
+      "get": {
+        "description": "List a trip's stays by check-in, with their totals.",
+        "operationId": "list_stays_api_v1_trips__slug__stays_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StayListEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List Stays",
+        "tags": [
+          "stays"
+        ]
+      },
+      "post": {
+        "description": "Add a new stay to a trip.",
+        "operationId": "create_stay_api_v1_trips__slug__stays_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StayCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StayEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Create Stay",
+        "tags": [
+          "stays"
+        ]
+      }
+    },
+    "/api/v1/trips/{slug}/stays/{stay_id}": {
+      "delete": {
+        "description": "Delete a stay; its items stay, no longer grouped under it.",
+        "operationId": "delete_stay_api_v1_trips__slug__stays__stay_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "stay_id",
+            "required": true,
+            "schema": {
+              "title": "Stay Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Delete Stay",
+        "tags": [
+          "stays"
+        ]
+      },
+      "patch": {
+        "description": "Update a stay's fields; an optional field sent as `null` clears it.",
+        "operationId": "update_stay_api_v1_trips__slug__stays__stay_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "stay_id",
+            "required": true,
+            "schema": {
+              "title": "Stay Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StayUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StayEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Update Stay",
+        "tags": [
+          "stays"
         ]
       }
     },

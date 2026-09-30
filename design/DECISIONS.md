@@ -42,6 +42,7 @@ flowchart TD
 | **Splits** | Equal by default; override to weighted shares or exact amounts. Computed server-side only; `preview-split` gives the form live numbers from the same expression that will be saved. |
 | **Paybacks** | **A settle-up suggestion is never recorded as paid** — no "Mark paid". A wallet transfer is different: it is a real, typed movement of money, and one between two people's wallets is exactly the amendment this row used to reserve for later (§2, "Why paybacks are not recorded"). |
 | **Wallets** | Every person gets one untracked, default wallet (`Card`) on creation, server-assigned. A wallet is either untracked (unlimited, no balance) or tracked (`received − sent − spent` per currency). Transfers between wallets have no stored exchange rate — both typed sides — and an exchange is same-owner only. A person's average rate per pair is derived on read by `GET /exchange-rates`, first in first out: what was spent took the oldest exchanges, what is still held the newest, and each gets its own rate. The spent rate is offered as a one-click prefill for a Total rate; neither is stored or applied on its own. |
+| **Stays** | **A stay groups items; it is not a kind of item.** `stay` is its own table with dates, a booking link and an optional location; `line_item.stay_id` is nullable. A stay stores no money — its totals and per-night averages are `GROUP BY` over its items, server-side, per currency. |
 | **Map** | **Leaflet 1.9.4 as one ESM module, OpenStreetMap's standard raster tiles, no key.** The map tab reads the coordinates the item feed already carries, filters them client-side, and never totals what a pin holds. Dark mode inverts the tile pane in CSS; there is no second tile provider and no geocoding. |
 | **Charts** | **Chart.js 4.5.1 as ESM, imported when the statistics chart mounts, coloured from Bootstrap's `--bs-*` variables.** It draws the grouping rows the list renders and sums nothing. Beat a hand-drawn SVG: more chart types, tooltips, legends and plugins for free, at the cost of a canvas the Playwright suite can only inspect through `Chart.getChart()`. |
 | **Viewer** | **No "current user" anywhere.** An item states who paid and what each person owes. Nothing is rendered relative to a viewer. |
@@ -125,6 +126,17 @@ force a country and a fake split onto something that is not an expense. A separa
 unset (a wallet holds any currency, like everything else in this app) and why the
 migration was frozen to explicit `op.create_table` calls rather than
 `metadata.create_all` while adding it.
+
+### Why a stay groups items instead of being one
+The first idea for hotels (#36) was an expense subtype carrying dates and a booking
+link. That makes the hotel one expense, so the city tax, the breakfast and the
+deposit paid months earlier cannot belong to it, and — like a `kind` column for
+transfers — every `SUM(amount_minor)` would have to learn about the subtype. A
+separate `stay` table that items point at changes the meaning of nothing that
+exists: each charge keeps its own payer, wallet, currency, date and split, and the
+stay's cost is simply what its items add up to. Its per-night figure divides that
+sum over the nights on the server, because the client never divides an amount
+(`FRONTEND.md` §4 rule 1).
 
 ### Why Leaflet and OSM tiles, not MapLibre, CARTO or a keyed provider
 MapLibre GL is the better renderer and has real dark styles, but it is ESM-only across

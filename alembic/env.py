@@ -11,7 +11,7 @@ from alembic import context
 from app.config import Settings
 
 # Importing every model module registers all tables on SQLModel.metadata.
-from app.models import items, labels, roster, trip, wallets  # noqa: F401
+from app.models import items, labels, roster, stays, trip, wallets  # noqa: F401
 
 config = context.config
 # config_file_name defaults to "alembic.ini" whether or not that file exists -
@@ -54,7 +54,11 @@ def run_migrations_offline() -> None:
     """Emit migration SQL against the configured URL without opening a connection."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url, target_metadata=target_metadata, literal_binds=True, render_item=render_item
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        render_item=render_item,
+        render_as_batch=True,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -62,7 +66,11 @@ def run_migrations_offline() -> None:
 
 def _do_run_migrations(connection) -> None:
     context.configure(
-        connection=connection, target_metadata=target_metadata, render_item=render_item
+        connection=connection,
+        target_metadata=target_metadata,
+        render_item=render_item,
+        # SQLite alters a constraint only by rebuilding the table.
+        render_as_batch=True,
     )
     with context.begin_transaction():
         context.run_migrations()

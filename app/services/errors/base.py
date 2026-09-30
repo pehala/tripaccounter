@@ -13,6 +13,10 @@ NATIVE_ERROR_CODES: dict[str, str] = {
     "datetime_parsing": "invalid_datetime",
     "datetime_type": "invalid_datetime",
     "datetime_from_date_parsing": "invalid_datetime",
+    "date_parsing": "invalid_date",
+    "date_type": "invalid_date",
+    "date_from_datetime_parsing": "invalid_date",
+    "date_from_datetime_inexact": "invalid_date",
 }
 
 

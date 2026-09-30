@@ -4,6 +4,7 @@ Unknown fields are rejected (`Strict`), except `PreviewSplitRequest`, which
 takes an item write body and reads only the fields a split needs.
 """
 
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -13,12 +14,13 @@ from app.schemas.fields import (
     LabelToken,
     LatStr,
     LonStr,
-    MapUrl,
     OccurredAt,
     Strict,
+    UrlStr,
     Weight,
     invalid_coordinates_error,
 )
+from app.services import geo
 
 
 class PersonCreate(Strict):
@@ -97,6 +99,47 @@ class WalletUpdate(Strict):
     is_default: bool | None = None
 
 
+class Located(Strict):
+    """A maps link and/or coordinates; coordinates left out are read off the link."""
+
+    map_url: UrlStr = None
+    lat: LatStr = None
+    lon: LonStr = None
+
+    @model_validator(mode="after")
+    def resolve_coordinates(self):
+        """Require lat and lon together; fill them from `map_url` when neither was given."""
+        if (self.lat is None) != (self.lon is None):
+            raise invalid_coordinates_error()
+        if self.map_url and self.lat is None and (coordinates := geo.parse(self.map_url)):
+            self.lat, self.lon = coordinates
+        return self
+
+
+class StayCreate(Located):
+    """Request body for creating a stay."""
+
+    name: str
+    check_in: date
+    check_out: date
+    url: UrlStr = None
+    note: str | None = None
+    country_id: int | None = None
+    city: str | None = None
+
+
+class StayUpdate(Located):
+    """Request body for partially updating a stay; an optional field sent as `null` clears it."""
+
+    name: str = None
+    check_in: date = None
+    check_out: date = None
+    url: UrlStr = None
+    note: str | None = None
+    country_id: int | None = None
+    city: str | None = None
+
+
 class TripCreate(Strict):
     """Request body for creating a trip with its roster, currencies, and countries."""
 
@@ -128,7 +171,7 @@ class TripUpdate(Strict):
 # raw list[dict] and splits.build_shares() does the real validation.
 
 
-class ItemWrite(Strict):
+class ItemWrite(Located):
     """Request body for creating or updating a line item."""
 
     name: str | None = None
@@ -139,20 +182,11 @@ class ItemWrite(Strict):
     payer_id: int | None = None
     country_id: int | None = None
     wallet_id: int | None = None
+    stay_id: int | None = None
     occurred_at: OccurredAt = None
     labels: list[LabelToken] | None = None
-    map_url: MapUrl = None
-    lat: LatStr = None
-    lon: LonStr = None
     split_mode: Literal["equal", "shares", "exact"] | None = None
     shares: list[dict] | None = None
-
-    @model_validator(mode="after")
-    def lat_lon_paired(self):
-        """Require lat and lon to be supplied together."""
-        if (self.lat is None) != (self.lon is None):
-            raise invalid_coordinates_error()
-        return self
 
 
 # ---- Transfers -----------------------------------------------------------------

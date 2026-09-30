@@ -45,9 +45,47 @@
         {"id": 3, "person_id": 1, "name": "<i>x</i>", "tracked": true, "is_default": false, "balances": []},
         {"id": 2, "person_id": 2, "name": "Card", "tracked": false, "is_default": true, "balances": []}
       ],
+      "stays": [
+        {
+          "id": 1,
+          "name": "<script>alert('stay')</script>",
+          "check_in": "2026-09-13",
+          "check_out": "2026-09-15",
+          "nights": 2,
+          "url": null,
+          "note": "<img src=x onerror=alert('note')>",
+          "country_id": 1,
+          "city": "<b>city</b>",
+          "map_url": null,
+          "lat": null,
+          "lon": null
+        }
+      ],
       "created_at": "2026-09-01T08:12:00Z",
       "updated_at": "2026-09-01T08:12:00Z"
     }
+  },
+  "stays": {
+    "stays": [
+      {
+        "id": 1,
+        "name": "<script>alert('stay')</script>",
+        "check_in": "2026-09-13",
+        "check_out": "2026-09-15",
+        "nights": 2,
+        "url": null,
+        "note": "<img src=x onerror=alert('note')>",
+        "country_id": 1,
+        "city": "<b>city</b>",
+        "map_url": null,
+        "lat": null,
+        "lon": null,
+        "item_count": 1,
+        "totals": [
+          {"currency_code": "ISK", "currency_id": 1, "amount": 1000, "per_night": 500}
+        ]
+      }
+    ]
   },
   "labels": {"labels": [{"id": 1, "name": "<img src=x onerror=alert(2)>", "color": "#6c757d", "use_count": 1}]},
   "items": {
@@ -62,6 +100,7 @@
         "amount": 1000,
         "payer_id": 1,
         "wallet_id": 1,
+        "stay_id": 1,
         "country_id": 1,
         "labels": ["<img src=x onerror=alert(2)>"],
         "map_url": null,

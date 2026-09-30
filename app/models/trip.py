@@ -10,11 +10,12 @@ if TYPE_CHECKING:
     from app.models.items import LineItem
     from app.models.labels import Label
     from app.models.roster import Person, TripCountry, TripCurrency
+    from app.models.stays import Stay
     from app.models.wallets import WalletTransfer
 
 
 class Trip(SQLModel, table=True):
-    """A trip: its slug, dates, and the roster, currencies, countries, labels and items under it."""
+    """A trip: its slug, dates, and the roster, currencies, countries, labels, stays and items."""
 
     __tablename__ = "trip"
     __table_args__ = (UniqueConstraint("slug", name="uq_trip_slug"),)
@@ -59,6 +60,13 @@ class Trip(SQLModel, table=True):
         sa_relationship_kwargs={
             "cascade": "all, delete-orphan",
             "order_by": "(Label.use_count.desc(), Label.name)",
+        },
+    )
+    stays: list["Stay"] = Relationship(
+        back_populates="trip",
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "order_by": "[Stay.check_in, Stay.name, Stay.id]",
         },
     )
     items: list["LineItem"] = Relationship(

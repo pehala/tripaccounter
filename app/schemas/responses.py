@@ -11,6 +11,7 @@ from sqlalchemy.orm import joinedload, selectinload
 
 from app.models.items import LineItem
 from app.models.roster import Person, TripCountry
+from app.models.stays import Stay
 from app.models.trip import Trip
 from app.models.wallets import WalletTransfer
 from app.schemas.fields import iso_z
@@ -123,6 +124,57 @@ class CountryOut(BaseModel):
         )
 
 
+class StayOut(BaseModel):
+    """Wire representation of a stay, roster form: no totals."""
+
+    id: int
+    name: str
+    check_in: str
+    check_out: str
+    nights: int
+    url: str | None
+    note: str | None
+    country_id: int | None
+    city: str | None
+    map_url: str | None
+    lat: str | None
+    lon: str | None
+
+    @classmethod
+    def from_stay(cls, stay: Stay) -> "StayOut":
+        """Build a StayOut from a Stay model instance."""
+        return cls(
+            id=stay.id,
+            name=stay.name,
+            check_in=stay.check_in.isoformat(),
+            check_out=stay.check_out.isoformat(),
+            nights=(stay.check_out - stay.check_in).days,
+            url=stay.url,
+            note=stay.note,
+            country_id=stay.country_id,
+            city=stay.city,
+            map_url=stay.map_url,
+            lat=stay.lat,
+            lon=stay.lon,
+        )
+
+
+class StayTotalOut(BaseModel):
+    """One currency's spend on a stay, and that spend per night - `null` for a 0-night stay."""
+
+    currency_code: str
+    currency_id: int
+    amount: Number
+    per_night: Number | None
+
+
+class StayReportOut(StayOut):
+    """A stay plus what its items add up to, per currency - `[]` when it groups none."""
+
+    item_count: int
+    totals: list[StayTotalOut]
+
+
 class LabelOut(BaseModel):
     """Wire representation of a label."""
 
@@ -148,6 +200,7 @@ class TripOut(BaseModel):
     currencies: list[CurrencyOut]
     countries: list[CountryOut]
     wallets: list[WalletOut]
+    stays: list[StayOut]
     created_at: str
     updated_at: str
 
@@ -168,6 +221,7 @@ class TripOut(BaseModel):
                 CountryOut.from_country(c, country_item_counts.get(c.id, 0)) for c in trip.countries
             ],
             wallets=[WalletOut.model_validate(w) for p in trip.people for w in p.wallets],
+            stays=[StayOut.from_stay(stay) for stay in trip.stays],
             created_at=iso_z(trip.created_at),
             updated_at=iso_z(trip.updated_at),
         )
@@ -253,6 +307,7 @@ class ItemOut(BaseModel):
     payer_id: int
     country_id: int
     wallet_id: int
+    stay_id: int | None
     labels: list[str]
     map_url: str | None
     lat: str | None
@@ -278,6 +333,7 @@ class ItemOut(BaseModel):
             payer_id=item.payer_id,
             country_id=item.country_id,
             wallet_id=item.wallet_id,
+            stay_id=item.stay_id,
             labels=[label.name_norm for label in item.label_rows],
             map_url=item.map_url,
             lat=item.lat,
