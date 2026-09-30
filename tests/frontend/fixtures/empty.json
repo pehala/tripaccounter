@@ -35,10 +35,12 @@
         {"id": 1, "person_id": 1, "name": "Card", "tracked": false, "is_default": true, "balances": []},
         {"id": 2, "person_id": 2, "name": "Card", "tracked": false, "is_default": true, "balances": []}
       ],
+      "stays": [],
       "created_at": "2026-09-01T08:12:00Z",
       "updated_at": "2026-09-01T08:12:00Z"
     }
   },
+  "stays": {"stays": []},
   "labels": {"labels": []},
   "items": {"items": [], "day_totals": [], "before_trip_totals": [], "transfers": []},
   "exchange_rates": {"exchange_rates": []},

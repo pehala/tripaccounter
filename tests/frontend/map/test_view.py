@@ -10,7 +10,14 @@ money (design/FRONTEND.md §4 rule 1).
 import pytest
 from playwright.sync_api import expect
 
-from tests.frontend.map.conftest import CONTROLS, FUEL_PIN, MESSINN_PIN, NEEDLE
+from tests.frontend.map.conftest import (
+    CONTROLS,
+    EXPENSE_PINS,
+    FUEL_PIN,
+    MESSINN_PIN,
+    NEEDLE,
+    STAY_PIN,
+)
 
 # The canvas stops short of the viewport bottom by the page's own bottom padding plus
 # the gap MapCanvas.js leaves; anything beyond that is height it failed to claim.
@@ -41,7 +48,9 @@ def twin_map_page(serve_items, fixture_data, open_trip):
 
 @pytest.fixture
 def uncharted_map_page(serve_items, fixture_data, page, trip_url):
-    """Return the Map tab served a trip whose every expense has null coordinates."""
+    """Return the Map tab served a trip whose every expense and stay has null coordinates."""
+    for stay in fixture_data["trip"]["trip"]["stays"]:
+        stay.update(lat=None, lon=None)
     serve_items([{**item, "lat": None, "lon": None} for item in fixture_data["items"]["items"]])
     page.goto(f"{trip_url}/map")
 
@@ -50,7 +59,7 @@ def uncharted_map_page(serve_items, fixture_data, page, trip_url):
 
 def test_each_coordinate_on_the_trip_becomes_one_pin(shared_map_page):
     """Two of the fixture's five expenses carry lat/lon; the other three are not drawn."""
-    expect(shared_map_page.locator("path.map-pin")).to_have_count(2)
+    expect(shared_map_page.locator(EXPENSE_PINS)).to_have_count(2)
     expect(shared_map_page.locator(MESSINN_PIN)).to_be_visible()
     expect(shared_map_page.locator(FUEL_PIN)).to_be_visible()
 
@@ -72,9 +81,19 @@ def test_clicking_a_pin_lists_its_expense_and_marks_itself_selected(map_page):
     expect(map_page.locator(f"{MESSINN_PIN}.map-pin-on")).to_be_visible()
 
 
+def test_a_stay_with_coordinates_is_its_own_pin_naming_it(map_page):
+    """A stay draws a pin of its own kind, whose panel names the stay and its dates."""
+    map_page.locator(STAY_PIN).click()
+
+    panel = map_page.locator(".map-stay")
+    expect(map_page.locator(f"{STAY_PIN}.map-pin-stay")).to_be_visible()
+    expect(panel).to_contain_text("Guesthouse Vík")
+    expect(panel).to_contain_text("13–15 Sep · 2 nights · Vík í Mýrdal")
+
+
 def test_expenses_at_one_coordinate_share_a_pin_that_lists_them_all(twin_map_page):
     """Two expenses at one place are one pin, whose panel lists both with their own amounts."""
-    expect(twin_map_page.locator("path.map-pin")).to_have_count(2)
+    expect(twin_map_page.locator(EXPENSE_PINS)).to_have_count(2)
 
     twin_map_page.locator(MESSINN_PIN).click()
 

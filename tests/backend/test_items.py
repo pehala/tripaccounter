@@ -141,7 +141,7 @@ def test_map_url_parsed_when_coordinates_absent(client, trip, item_body):
     """A parseable @lat,lon in map_url fills lat/lon when they are not given."""
     response = client.post(
         f"/api/v1/trips/{trip['slug']}/items",
-        json=item_body(map_url="https://maps.google.com/@64.1493,-21.9403,15z"),
+        json=item_body(map_url="https://example.com/@64.1493,-21.9403,15z"),
     )
     item = response.json()["item"]
     assert item["lat"] == "64.1493"
@@ -153,7 +153,7 @@ def test_explicit_coordinates_win_over_map_url(client, trip, item_body):
     response = client.post(
         f"/api/v1/trips/{trip['slug']}/items",
         json=item_body(
-            map_url="https://maps.google.com/@64.1493,-21.9403,15z", lat="1.000000", lon="2.000000"
+            map_url="https://example.com/@64.1493,-21.9403,15z", lat="1.000000", lon="2.000000"
         ),
     )
     item = response.json()["item"]

@@ -36,12 +36,12 @@ static/
 │                         Holds the body→#app→main→.map-page flex chain the map's
 │                         height comes out of — no JS measures a box.
 └── js/
-    ├── app.js            mount + router: / and /t/:slug/items|balances|stats|map|setup
+    ├── app.js            mount + router: / and /t/:slug/items|balances|wallets|stays|stats|map|setup
     ├── api.js            fetch wrapper: base path, JSON,
     │                     error envelope → {status, code, params, fields};
     │                     attempt() runs a write and hands back that error
     ├── store.js          per-trip state: trip, labels, items, balances, wallets,
-    │                     exchangeRates, stats;
+    │                     exchangeRates, stays, stats;
     │                     load(), reload(kind), setStatsDims(dims)
     ├── breakdown.js      the statistics dimension chain, the currency on screen,
     │                     list-or-chart and the date range, one set per trip —
@@ -73,9 +73,11 @@ static/
     │   ├── Items.js      day groups (items + transfers merged), empty state, FAB
     │   ├── Balances.js   per-currency + Total, collapsible sections, jump-to sidebar
     │   ├── Wallets.js    one card per person, a balance row per tracked wallet's currency
+    │   ├── Stays.js      one card per stay: dates, place, booking link, server totals
+    │   │                 with their per-night figure; add a stay, or an expense under one
     │   ├── Stats.js      per-currency + Total, collapsible sections, jump-to sidebar
-    │   ├── Map.js        pins from the items' coordinates, filters, the selected
-    │   │                 pin's expense list
+    │   ├── Map.js        pins from the items' and stays' coordinates, filters, the
+    │   │                 selected pin's expense list
     │   ├── Setup.js      composes the six setup sections
     │   └── setup/
     │       ├── PeopleSection.js  WalletsSection.js
@@ -111,9 +113,9 @@ static/
 ```
 
 State keys are exactly the API's resource names: `trip` (with embedded `people`,
-`currencies`, `countries`, `wallets`), `labels`, `items` (with `transfers`
+`currencies`, `countries`, `wallets`, `stays`), `labels`, `items` (with `transfers`
 alongside), `balances`, `wallets` (the balances report, its own lazily-loaded key),
-`stats`. The map owns no key of its own: coordinates ride along on every item, so the
+`stays` (the stays with their totals, likewise), `stats`. The map owns no key of its own: coordinates ride along on every item, so the
 tab is a second reading of `items`.
 
 ## 3. Data flow
@@ -256,11 +258,12 @@ it opens; landing straight on a tab via a direct link or a hard refresh pays for
 | Open a trip (Items tab) | 3, parallel | `GET /trips/{slug}`, `/items`, `/labels` |
 | Balances tab, first open | 2 | `GET /balances`, then `/exchange-rates` for the Total's rate form — `trip` is already in the store |
 | Wallets tab, first open | 2, parallel | `GET /wallets` and `/exchange-rates` — `trip` is already in the store |
+| Accommodation tab, first open | 1 | `GET /stays` — `trip` is already in the store; an item write clears `store.stays`, so an open tab refetches its totals |
 | Stats tab, first open | 1 | `GET /stats?group_by=…` — `trip` is already in the store |
 | Changing the breakdown | 1 | the chain is a new `group_by`, so the answer is refetched |
 | Changing the shown currency | 0 | every grouping already carries every currency; the first switch to Total costs 1, `GET /exchange-rates`, unless Balances or Wallets loaded it |
 | Changing the date range | 0 | every level already came grouped by day; the days are filtered |
-| Map tab, any open | 0 | it reads `store.items`, which the feed already loaded |
+| Map tab, any open | 0 | it reads `store.items`, which the feed already loaded, and `trip.stays` |
 | Setup tab, first open | 0 or 1 | `GET /labels`, unless Items already loaded them |
 | Balances/Wallets/Stats/Setup, cold (direct link) | 2, or 3 for Balances/Wallets | `GET /trips/{slug}` plus that tab's own endpoints |
 | Revisiting a loaded tab | 0 | already in the store |
@@ -269,6 +272,7 @@ it opens; landing straight on a tab via a direct link or a hard refresh pays for
 | Change amount or split | 1 | `preview-split` on `change`, not on input — expense mode only, never for a transfer |
 | Save an item or a transfer | 2 | the write, then `GET /items` (plus `/labels` if a new label was typed); a transfer or item write also invalidates `store.wallets`/`store.balances`/`store.exchangeRates` so those refetch on next open |
 | Setup edit | 2 | the write, then `GET /trips/{slug}` (or `/labels`) |
+| Save or delete a stay | 3, or 4 | the write, then `GET /stays` and `GET /trips/{slug}` for the item form's picker, plus `GET /items` once the feed is loaded — a delete detaches items |
 
 Anything above this is a bug, and `test_call_budget.py` says so. A cold `GET
 /trips/{slug}` may still come back as a 304 (see `design/ARCHITECTURE.md` §1,

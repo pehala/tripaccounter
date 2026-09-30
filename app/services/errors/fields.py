@@ -63,6 +63,18 @@ class InvalidDatetimeError(FieldError):
     code = "invalid_datetime"
 
 
+class InvalidDateError(FieldError):
+    """Not a `YYYY-MM-DD` calendar date."""
+
+    code = "invalid_date"
+
+
+class InvalidDateRangeError(FieldError):
+    """A stay's check-out falls before its check-in."""
+
+    code = "invalid_date_range"
+
+
 class InvalidUrlError(FieldError):
     """Not a genuine absolute http(s) URL."""
 

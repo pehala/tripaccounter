@@ -7,7 +7,7 @@ demo lands next to whatever trips the database already holds.
 
 import argparse
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,7 @@ from app.db import SessionLocal
 from app.models.items import ItemShare, LineItem
 from app.models.labels import Label
 from app.models.roster import Person, TripCountry, TripCurrency
+from app.models.stays import Stay
 from app.models.trip import Trip
 from app.models.wallets import Wallet, WalletTransfer
 
@@ -88,6 +89,7 @@ class SeedItem:
     lon: str
     split_mode: str = "equal"
     map_url: str | None = None
+    stay_key: int | None = None
 
 
 @dataclass(frozen=True)
@@ -132,7 +134,7 @@ ITEMS = (
         country_key=1,
         labels=("food", "restaurant"),
         shares=EVERYONE_EQUAL,
-        map_url="https://maps.app.goo.gl/Kx9mNq2",
+        map_url="https://example.com/Kx9mNq2",
         lat="64.14930",
         lon="-21.94030",
     ),
@@ -178,6 +180,7 @@ ITEMS = (
         wallet_key=4,
         country_key=1,
         labels=("lodging",),
+        stay_key=1,
         shares=(
             SeedShare(person_key=1, weight_scaled=10000),
             SeedShare(person_key=2, weight_scaled=10000),
@@ -185,7 +188,7 @@ ITEMS = (
             SeedShare(person_key=4, weight_scaled=5000),
         ),
         split_mode="shares",
-        map_url="https://maps.app.goo.gl/Vik42",
+        map_url="https://example.com/Vik42",
         lat="63.41870",
         lon="-19.00600",
     ),
@@ -239,6 +242,21 @@ TRANSFERS = (
 )
 
 
+# (name, check-in, check-out, booking link, country spec number, city, lat, lon)
+STAYS = (
+    (
+        "Guesthouse Vík",
+        date(2026, 9, 13),
+        date(2026, 9, 15),
+        "https://example.com/guesthouse-vik",
+        1,
+        "Vík í Mýrdal",
+        "63.41870",
+        "-19.00600",
+    ),
+)
+
+
 def resolve(ids: list[int], key: int) -> int:
     """Return the row id a spec number stands for."""
     return ids[key - 1]
@@ -283,8 +301,34 @@ def add_roster(session: Session, trip_id: int) -> SeedIds:
     )
 
 
-def add_item(
-    session: Session, trip_id: int, ids: SeedIds, labels: dict[str, Label], spec: SeedItem
+def add_stays(session: Session, trip_id: int, ids: SeedIds) -> list[int]:
+    """Insert the stays; return the ids they got."""
+    stays = [
+        Stay(
+            trip_id=trip_id,
+            name=name,
+            check_in=check_in,
+            check_out=check_out,
+            url=url,
+            country_id=resolve(ids.countries, country_key),
+            city=city,
+            lat=lat,
+            lon=lon,
+        )
+        for name, check_in, check_out, url, country_key, city, lat, lon in STAYS
+    ]
+    session.add_all(stays)
+    session.flush()
+    return [stay.id for stay in stays]
+
+
+def add_item(  # noqa: PLR0913, PLR0917
+    session: Session,
+    trip_id: int,
+    ids: SeedIds,
+    labels: dict[str, Label],
+    stay_ids: list[int],
+    spec: SeedItem,
 ) -> LineItem:
     """Insert one seeded line item together with its shares and label links; return it."""
     item = LineItem(
@@ -298,6 +342,7 @@ def add_item(
         payer_id=resolve(ids.people, spec.payer_key),
         wallet_id=resolve(ids.wallets, spec.wallet_key),
         country_id=resolve(ids.countries, spec.country_key),
+        stay_id=resolve(stay_ids, spec.stay_key) if spec.stay_key else None,
         map_url=spec.map_url,
         lat=spec.lat,
         lon=spec.lon,
@@ -342,7 +387,7 @@ def add_transfer(
 
 
 def seed_demo(session: Session) -> Trip:
-    """Insert the demo trip, roster, currencies, countries, labels and items; return the trip."""
+    """Insert the demo trip, roster, currencies, countries, labels, stays and items; return it."""
     trip = Trip(
         slug="iceland-2026",
         name="Iceland 2026",
@@ -367,8 +412,9 @@ def seed_demo(session: Session) -> Trip:
     session.add_all(labels.values())
     session.flush()
 
+    stay_ids = add_stays(session, trip.id, ids)
     for spec in ITEMS:
-        add_item(session, trip.id, ids, labels, spec)
+        add_item(session, trip.id, ids, labels, stay_ids, spec)
     for spec in TRANSFERS:
         add_transfer(session, trip.id, ids, spec)
 

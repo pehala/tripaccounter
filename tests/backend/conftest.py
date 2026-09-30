@@ -269,6 +269,25 @@ def item_body(trip, people, currencies, countries):
 
 
 @pytest.fixture()
+def stay_body(country):
+    """Return a function that builds a valid stay POST body - two nights in Vik - with overrides."""
+
+    def build(**overrides):
+        body = {
+            "name": "Guesthouse Vik",
+            "check_in": "2026-09-14",
+            "check_out": "2026-09-16",
+            "url": "https://example.com/guesthouse-vik",
+            "country_id": country["id"],
+            "city": "Vik",
+        }
+        body.update(overrides)
+        return body
+
+    return build
+
+
+@pytest.fixture()
 def items_two_same_day_one_earlier(client, trip, item_body):
     """Create three items, after the trip's start: two posted for 2026-09-14, one for 2026-09-13.
 

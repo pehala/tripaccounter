@@ -273,6 +273,29 @@ single-currency (an exchange cannot cross owners). A transfer between one person
 own wallets, plain or exchange, moves nothing between people and never appears in
 `sent`/`received` — only in the wallet report above.
 
+### Stays
+A stay is where the trip slept: `name`, `check_in`/`check_out` (`YYYY-MM-DD`,
+check-out on or after check-in), an optional booking `url`, `note`, `country_id`,
+`city`, and the same `map_url`/`lat`/`lon` pair an item carries, parsed the same
+way. **A stay holds no money.** An item joins one through a nullable `stay_id`, at
+most one stay per item and on any date — a deposit is paid months before check-in.
+
+`nights` is `check_out − check_in`, `0` for a same-day booking. `GET
+/trips/{slug}/stays` and every stay write answer with `item_count` and `totals`: one
+`{currency_code, currency_id, amount, per_night}` per currency the stay's items were
+charged in, trip currency order, `[]` when it groups none. `amount` sums **every**
+item under the stay; `per_night` is that sum over `nights`, floored at six places
+like any computed figure, and `null` at 0 nights. Nothing is converted. The trip read
+embeds the stays in roster form — no `item_count`, no `totals` — so an item form picks
+one without another request. Stays list by `check_in`, then `name`.
+
+**`null` clears.** On a stay `PATCH`, an optional field sent as `null` is cleared and
+an omitted one is left alone; `name`, `check_in` and `check_out` cannot be cleared.
+The same holds for an item's `stay_id`, the one clearable field on an item write:
+`"stay_id": null` detaches the item, leaving it out keeps its stay. Deleting a stay
+detaches its items — they survive, grouped under no stay. A country a stay sits in
+counts toward that country's `in_use`.
+
 ---
 
 ## 3. What the operations promise
@@ -382,7 +405,7 @@ response; all it does with these numbers otherwise is format them.
 
 **What to group by is the client's choice.** `?group_by=` takes a comma-separated
 chain of dimensions and may be repeated for several breakdowns at once. The registry
-is `label`, `country`, `person`, `day`, `city`, `payer`, `wallet` — a name outside it,
+is `label`, `country`, `person`, `day`, `city`, `payer`, `wallet`, `stay` — a name outside it,
 or one repeated within a chain, is `422 unknown_dimension`. There is no depth limit.
 
 **`currency` leads every chain, and is never asked for.** The server prepends it, so
@@ -396,8 +419,8 @@ row, summed in SQL, never a client-side accumulation. `["currency"]` therefore a
 comes back, and it carries each currency's trip total.
 
 A `row` is `{keys, amount, item_count}`; `keys` holds one entry per dimension in `by`,
-under `label`, `country_id`, `person_id`, `date`, `city`, `payer_id`, `wallet_id` and
-`currency_id`. A currency with no spend appears in no grouping at all.
+under `label`, `country_id`, `person_id`, `date`, `city`, `payer_id`, `wallet_id`,
+`stay_id` and `currency_id`; an item in no stay groups under `stay_id: null`. A currency with no spend appears in no grouping at all.
 
 **`person` is what someone owes; `payer` is what they paid.** The first is a sum over
 the share view (six places), everything else a sum of typed amounts (two). The two are
@@ -480,6 +503,12 @@ rule, its code and its intended meaning sit in one row.
 | `from_amount`, `to_amount` | canonical grammar, `> 0` | `invalid_amount` | | "Enter an amount." |
 | `from_currency_id`, `to_currency_id` | in trip; differ only when both wallets have one owner | `not_in_trip` / `cross_owner_exchange` | | "Exchange only between your own wallets." |
 | `DELETE` default wallet | refused | `is_default` | | "Make another wallet the default first." |
+| item `stay_id` | belongs to this trip | `not_in_trip` | | "Unknown accommodation." |
+| stay `name` | 1–200 chars after strip | `required` / `too_long` | `{max}` | "Give it a name." |
+| stay `check_in`, `check_out` | `YYYY-MM-DD` calendar date | `invalid_date` | | "Check the date." |
+| stay `check_out` | on or after `check_in` | `invalid_date_range` | | "Check-out can't be before check-in." |
+| stay `url` | absolute `http(s)` URL | `invalid_url` | | "Not a link." |
+| stay `country_id` | belongs to this trip | `not_in_trip` | | "Unknown country." |
 | `group_by` (stats) | each name in the dimension registry, once per chain | `unknown_dimension` | `{dimension}` | "Not something statistics can group by: wallet." |
 
 A new rule adds a row here, the code to `services/errors/`, and an `err.<code>`

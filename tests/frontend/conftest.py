@@ -28,6 +28,7 @@ TABS = {
     "Items": ("items", lambda page: page.get_by_placeholder("filter by name or label")),
     "Balances": ("balances", lambda page: page.locator(".balances-content").first),
     "Wallets": ("wallets", lambda page: page.get_by_text("untracked", exact=False).first),
+    "Accommodation": ("stays", lambda page: page.locator(".stays-content")),
     "Statistics": ("stats", lambda page: page.locator(".stats-content").first),
     "Map": ("map", lambda page: page.locator(".map-canvas")),
     "Setup": ("setup", lambda page: page.get_by_text("People", exact=True)),
