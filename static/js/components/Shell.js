@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { html } from '../h.js';
 import { t } from '../i18n/index.js';
 import { api } from '../api.js';
+import { asset } from '../assets.js';
 import { ThemeLangMenu } from './ThemeLangMenu.js';
 
 // Trips come back newest-first (backend orders by created_at desc), so the
@@ -36,7 +37,7 @@ export function Shell({ children }) {
       <div class="container">
         <!-- alt="" keeps the mark decorative: the brand text beside it already names the link. -->
         <a class="navbar-brand fw-semibold fs-6 me-3" href="/">
-          <img src="/favicon.svg" alt="" width="18" height="18" class="d-inline-block align-text-bottom me-1" />
+          <img src=${asset('favicon.svg')} alt="" width="18" height="18" class="d-inline-block align-text-bottom me-1" />
           ${t('app.name')}</a>
         <ul class="navbar-nav me-auto">
           <li class="nav-item dropdown">
