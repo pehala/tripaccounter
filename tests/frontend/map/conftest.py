@@ -11,6 +11,8 @@ CONTROLS = "Filters and selection"
 NEEDLE = "filter by name or label"
 MESSINN_PIN = '[data-pin="64.14930,-21.94030"]'
 FUEL_PIN = '[data-pin="63.93330,-20.99000"]'
+EXPENSE_PINS = "path.map-pin:not(.map-pin-stay)"
+STAY_PIN = '[data-pin="stay-1"]'
 
 
 @pytest.fixture

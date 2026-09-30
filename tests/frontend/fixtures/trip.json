@@ -84,9 +84,47 @@
         {"id": 3, "person_id": 3, "name": "Card", "tracked": false, "is_default": true, "balances": []},
         {"id": 4, "person_id": 4, "name": "Card", "tracked": false, "is_default": true, "balances": []}
       ],
+      "stays": [
+        {
+          "id": 1,
+          "name": "Guesthouse Vík",
+          "check_in": "2026-09-13",
+          "check_out": "2026-09-15",
+          "nights": 2,
+          "url": "https://example.com/guesthouse-vik",
+          "note": null,
+          "country_id": 1,
+          "city": "Vík í Mýrdal",
+          "map_url": null,
+          "lat": "63.41870",
+          "lon": "-19.00600"
+        }
+      ],
       "created_at": "2026-09-01T08:12:00Z",
       "updated_at": "2026-09-12T14:02:00Z"
     }
+  },
+  "stays": {
+    "stays": [
+      {
+        "id": 1,
+        "name": "Guesthouse Vík",
+        "check_in": "2026-09-13",
+        "check_out": "2026-09-15",
+        "nights": 2,
+        "url": "https://example.com/guesthouse-vik",
+        "note": null,
+        "country_id": 1,
+        "city": "Vík í Mýrdal",
+        "map_url": null,
+        "lat": "63.41870",
+        "lon": "-19.00600",
+        "item_count": 1,
+        "totals": [
+          {"currency_code": "ISK", "currency_id": 1, "amount": 96000, "per_night": 48000}
+        ]
+      }
+    ]
   },
   "labels": {
     "labels": [
@@ -115,9 +153,10 @@
         "amount": 18400,
         "payer_id": 1,
         "wallet_id": 5,
+        "stay_id": null,
         "country_id": 1,
         "labels": ["food", "restaurant"],
-        "map_url": "https://maps.app.goo.gl/Kx9mNq2",
+        "map_url": "https://example.com/Kx9mNq2",
         "lat": "64.14930",
         "lon": "-21.94030",
         "split": {
@@ -143,6 +182,7 @@
         "amount": 7900,
         "payer_id": 3,
         "wallet_id": 3,
+        "stay_id": null,
         "country_id": 1,
         "labels": ["fuel", "transport"],
         "map_url": null,
@@ -171,6 +211,7 @@
         "amount": 40.0,
         "payer_id": 2,
         "wallet_id": 2,
+        "stay_id": null,
         "country_id": 1,
         "labels": ["fun", "spa"],
         "map_url": null,
@@ -199,9 +240,10 @@
         "amount": 96000,
         "payer_id": 4,
         "wallet_id": 4,
+        "stay_id": 1,
         "country_id": 1,
         "labels": ["lodging"],
-        "map_url": "https://maps.app.goo.gl/Vik42",
+        "map_url": "https://example.com/Vik42",
         "lat": null,
         "lon": null,
         "split": {
@@ -227,6 +269,7 @@
         "amount": 480.0,
         "payer_id": 2,
         "wallet_id": 6,
+        "stay_id": null,
         "country_id": 2,
         "labels": ["airport", "food"],
         "map_url": null,

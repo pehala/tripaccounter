@@ -22,6 +22,7 @@ def test_seed_demo_trip_reads_back_with_its_full_roster(client, session):
     assert [currency["code"] for currency in trip["currencies"]] == ["ISK", "DKK", "EUR"]
     assert [country["name"] for country in trip["countries"]] == ["Iceland", "Denmark"]
     assert len(trip["wallets"]) == 6
+    assert [stay["name"] for stay in trip["stays"]] == ["Guesthouse Vík"]
 
 
 def test_seed_demo_items_envelope_carries_every_seeded_row(client, session):
@@ -42,6 +43,7 @@ def test_seed_demo_items_envelope_carries_every_seeded_row(client, session):
         pytest.param("wallets", id="wallets"),
         pytest.param("exchange-rates", id="exchange-rates"),
         pytest.param("labels", id="labels"),
+        pytest.param("stays", id="stays"),
     ],
 )
 def test_seed_demo_aggregates_compute_over_the_seeded_rows(client, session, report):

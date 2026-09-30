@@ -64,11 +64,11 @@ export function MapCanvas({ points, selectedKey, focus, layout, onSelect }) {
     if (!leaflet) return;
     layerRef.current.clearLayers();
     pinsRef.current = points.map((point) => {
-      const extra = Math.min(point.items.length - 1, PIN_MAX_EXTRA);
+      const extra = Math.max(Math.min(point.items.length - 1, PIN_MAX_EXTRA), 0);
       const pin = leaflet
         .circleMarker([point.lat, point.lon], {
           radius: PIN_RADIUS + extra * PIN_GROWTH,
-          className: 'map-pin',
+          className: point.stay ? 'map-pin map-pin-stay' : 'map-pin',
         })
         // Clicking the pin that is already selected is the zoom gesture: by then the
         // panel is open and nothing moves under the cursor, which is what makes a real

@@ -18,7 +18,7 @@ function defaultWalletFor(trip, personId) {
   return walletsFor(trip, personId).find((w) => w.is_default);
 }
 
-function initialItemState(item, trip) {
+function initialItemState(item, trip, stay) {
   if (item) {
     const included = new Set(item.split.shares.filter((s) => s.weight !== null).map((s) => s.person_id));
     const weights = {};
@@ -35,6 +35,10 @@ function initialItemState(item, trip) {
       payerId: item.payer_id,
       walletId: item.wallet_id,
       countryId: item.country_id,
+      stayId: item.stay_id ?? null,
+      // A stay picked while editing fills only what the item leaves empty.
+      countryTouched: true,
+      cityTouched: Boolean(item.city),
       occurredAt: toInputValue(item.occurred_at),
       labels: [...item.labels],
       city: item.city ?? '',
@@ -57,10 +61,13 @@ function initialItemState(item, trip) {
     currencyId: primary?.id ?? null,
     payerId,
     walletId: defaultWalletFor(trip, payerId)?.id ?? null,
-    countryId: defaultCountry?.id ?? null,
+    countryId: stay?.country_id ?? defaultCountry?.id ?? null,
+    stayId: stay?.id ?? null,
+    countryTouched: false,
+    cityTouched: false,
     occurredAt: toInputValue(new Date().toISOString()),
     labels: [],
-    city: '',
+    city: stay?.city ?? '',
     mapUrl: '',
     lat: '',
     lon: '',
@@ -101,7 +108,8 @@ function initialTransferState(transfer, trip) {
   };
 }
 
-export function ItemModal({ trip, labels, entry, onClose }) {
+// `stay` preselects a new expense's accommodation; an edit reads the item's own.
+export function ItemModal({ trip, labels, entry, stay, onClose }) {
   const locale = getLocale();
   const modalRef = useRef(null);
   const bsRef = useRef(null);
@@ -111,7 +119,7 @@ export function ItemModal({ trip, labels, entry, onClose }) {
   const [kind, setKind] = useState(isEdit && entry.kind === 'transfer' ? 'transfer' : 'item');
   const activePeople = useMemo(() => trip.people.filter((p) => p.active), [trip]);
 
-  const [state, setState] = useState(() => initialItemState(item, trip));
+  const [state, setState] = useState(() => initialItemState(item, trip, stay));
   const [tstate, setTState] = useState(() => initialTransferState(transfer, trip));
   const [fieldErrors, setFieldErrors] = useState({});
   const [previewFailed, setPreviewFailed] = useState(false);
@@ -208,6 +216,18 @@ export function ItemModal({ trip, labels, entry, onClose }) {
     firePreview({ currencyId });
   }
 
+  // Picking a stay fills in its country and city until the user sets either by hand.
+  function stayChanged(e) {
+    const stayId = e.target.value ? Number(e.target.value) : null;
+    const picked = (trip.stays || []).find((candidate) => candidate.id === stayId);
+    setState((s) => ({
+      ...s,
+      stayId,
+      countryId: !s.countryTouched && picked?.country_id ? picked.country_id : s.countryId,
+      city: !s.cityTouched && picked?.city ? picked.city : s.city,
+    }));
+  }
+
   function payerChanged(personId) {
     set({ payerId: personId, walletId: defaultWalletFor(trip, personId)?.id ?? null });
   }
@@ -221,6 +241,7 @@ export function ItemModal({ trip, labels, entry, onClose }) {
       payer_id: state.payerId,
       wallet_id: state.walletId,
       country_id: state.countryId,
+      stay_id: state.stayId,
       occurred_at: fromInputValue(state.occurredAt),
       labels: state.labels,
       city: state.city.trim() || null,
@@ -375,10 +396,21 @@ export function ItemModal({ trip, labels, entry, onClose }) {
 
             <label class="form-label small mb-1">${t('item.country_label')} <span class="text-danger">*</span></label>
             <select class="form-select mb-3 ${fieldErrors.country_id ? 'is-invalid' : ''}" name="country_id" required
-                    value=${state.countryId ?? ''} onChange=${(e) => set({ countryId: Number(e.target.value) })}>
+                    value=${state.countryId ?? ''}
+                    onChange=${(e) => set({ countryId: Number(e.target.value), countryTouched: true })}>
               ${trip.countries.map((c) => html`<option key=${c.id} value=${c.id}>${c.flag} ${c.name}</option>`)}
             </select>
             ${fieldError('country_id')}
+
+            ${(trip.stays || []).length > 0 && html`
+              <label class="form-label small mb-1" for="item-stay">${t('item.stay_label')}</label>
+              <select id="item-stay" class="form-select mb-3 ${fieldErrors.stay_id ? 'is-invalid' : ''}" name="stay_id"
+                      value=${state.stayId ?? ''} onChange=${stayChanged}>
+                <option value="">${t('item.stay_none')}</option>
+                ${trip.stays.map((st) => html`<option key=${st.id} value=${st.id}>${st.name}</option>`)}
+              </select>
+              ${fieldError('stay_id')}
+            `}
 
             <label class="form-label small mb-1">${t('item.paid_by_label')}</label>
             <div class="d-flex gap-1 flex-wrap mb-3">
@@ -421,7 +453,7 @@ export function ItemModal({ trip, labels, entry, onClose }) {
                   <span class="text-body-secondary">${t('item.city_optional')}</span></label>
                 <input class="form-control ${fieldErrors.city ? 'is-invalid' : ''}" name="city"
                        placeholder=${t('item.city_placeholder')}
-                       value=${state.city} onInput=${(e) => set({ city: e.target.value })} />
+                       value=${state.city} onInput=${(e) => set({ city: e.target.value, cityTouched: true })} />
                 ${fieldError('city')}
               </div>
               <div class="col-12">

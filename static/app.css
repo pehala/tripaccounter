@@ -52,5 +52,6 @@ body:has(.map-page) { padding-bottom: 0; }
 /* Leaflet draws tiles into their own pane, so inverting it turns the standard OSM
    raster dark without touching the pins or the attribution. */
 .map-pin { fill: var(--bs-primary); fill-opacity: .6; stroke: var(--bs-body-bg); stroke-width: 2; }
+.map-pin-stay { fill: var(--bs-success); fill-opacity: .75; }
 .map-pin-on { fill: var(--bs-danger); fill-opacity: .85; }
 [data-bs-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.95); }

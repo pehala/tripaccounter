@@ -6,10 +6,11 @@ from sqlalchemy.orm import Session
 
 from app.models.items import ItemShare, LineItem
 from app.models.roster import Person, TripCountry, TripCurrency, active_roster_ids
+from app.models.stays import Stay
 from app.models.trip import Trip
 from app.models.wallets import Wallet
 from app.schemas.requests import ItemWrite
-from app.services import geo, roster, splits
+from app.services import roster, splits
 from app.services.errors.base import FieldError
 from app.services.errors.fields import (
     InactiveError,
@@ -50,6 +51,7 @@ def validate_write(
         ("payer_id", Person, creating),
         ("country_id", TripCountry, creating),
         ("wallet_id", Wallet, False),
+        ("stay_id", Stay, False),
     ):
         error = ref_error(session, model, getattr(body, field), trip.id, required=required)
         if error:
@@ -88,20 +90,6 @@ def rewrite_wallet(session: Session, item: LineItem, body: ItemWrite) -> None:
     item.wallet_id = resolve_wallet_id(session, body.wallet_id, payer_id)
 
 
-def resolve_coordinates(
-    map_url: str | None, lat: str | None, lon: str | None
-) -> tuple[str | None, str | None] | None:
-    """Return the coordinates a write settles on: the pair given, else the pair `map_url` carries.
-
-    None when the write supplies neither.
-    """
-    if lat is not None or lon is not None:
-        return lat, lon
-    if map_url:
-        return geo.parse(map_url)
-    return None
-
-
 def apply_write(item: LineItem, body: ItemWrite) -> None:
     """Write the fields a body supplies onto an item, leaving the omitted ones as they are."""
     if body.name is not None:
@@ -120,14 +108,13 @@ def apply_write(item: LineItem, body: ItemWrite) -> None:
         item.occurred_at = body.occurred_at
     if body.amount is not None:
         item.amount_minor = to_hundredths(body.amount)
-
-    # DB storage and geo.parse both want a plain string, not pydantic's HttpUrl.
-    map_url = str(body.map_url) if body.map_url is not None else None
-    if map_url is not None:
-        item.map_url = map_url
-    coordinates = resolve_coordinates(map_url, body.lat, body.lon)
-    if coordinates:
-        item.lat, item.lon = coordinates
+    if body.map_url is not None:
+        item.map_url = body.map_url
+    if body.lat is not None:
+        item.lat, item.lon = body.lat, body.lon
+    # `null` detaches the item from its stay; left out, the stay stays.
+    if "stay_id" in body.model_fields_set:
+        item.stay_id = body.stay_id
 
 
 def split_mode(body: ItemWrite, item: LineItem | None) -> str:
