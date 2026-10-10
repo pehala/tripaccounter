@@ -20,6 +20,7 @@ function LabelChip({ label, slug, locale }) {
   }
 
   async function remove() {
+    if (!window.confirm(t('setup.label_delete_confirm', { name: label.name, n: label.use_count }))) return;
     const err = await attempt(api.del(`/trips/${slug}/labels/${label.id}`));
     if (err) pushFlash(errText(err, locale));
     else await reload('labels');

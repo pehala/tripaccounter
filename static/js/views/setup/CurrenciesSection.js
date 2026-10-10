@@ -22,6 +22,7 @@ function CurrencyRow({ currency, slug, locale }) {
   }
 
   async function remove() {
+    if (!window.confirm(t('setup.delete_confirm', { name: currency.code }))) return;
     const err = await attempt(api.del(`/trips/${slug}/currencies/${currency.id}`));
     if (err) pushFlash(errText(err, locale));
     else await reload('trip');
