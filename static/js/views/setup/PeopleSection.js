@@ -30,6 +30,7 @@ function PersonRow({ person, slug, locale }) {
   }
 
   async function remove() {
+    if (!window.confirm(t('setup.delete_confirm', { name: person.name }))) return;
     const err = await attempt(api.del(`/trips/${slug}/people/${person.id}`));
     if (!err) return reload('trip');
     if (err.fields?.id?.code === 'in_use') setInUse(err.fields.id);

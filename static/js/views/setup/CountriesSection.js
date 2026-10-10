@@ -22,6 +22,7 @@ function CountryRow({ country, slug, locale }) {
   }
 
   async function remove() {
+    if (!window.confirm(t('setup.delete_confirm', { name: country.name }))) return;
     const err = await attempt(api.del(`/trips/${slug}/countries/${country.id}`));
     if (err) pushFlash(errText(err, locale));
     else await reload('trip');

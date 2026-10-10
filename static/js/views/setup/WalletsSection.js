@@ -10,7 +10,7 @@ import { FieldError } from '../../components/FieldError.js';
 import { AddToggle } from '../../components/AddToggle.js';
 
 // A flat section, not nested under each PersonRow — nesting would break
-// test_setup.py's strict per-section locators the same way currencies/countries
+// setup/test_crud.py's strict per-section locators the same way currencies/countries
 // stay flat.
 
 function WalletRow({ wallet, owner, slug, locale }) {
@@ -40,6 +40,7 @@ function WalletRow({ wallet, owner, slug, locale }) {
   }
 
   async function remove() {
+    if (!window.confirm(t('setup.delete_confirm', { name: wallet.name }))) return;
     const err = await attempt(api.del(`/trips/${slug}/wallets/${wallet.id}`));
     if (!err) return reload('trip');
     if (err.fields?.id?.code === 'in_use') setInUse(err.fields.id);

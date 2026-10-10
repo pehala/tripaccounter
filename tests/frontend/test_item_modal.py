@@ -163,6 +163,20 @@ def test_delete_removes_the_row_after_confirm(items_page, open_edit_modal, count
     expect(items_page.get_by_text("Dinner at Messinn")).to_have_count(0)
 
 
+def test_delete_dismissed_keeps_the_modal_and_sends_nothing(
+    items_page, open_edit_modal, count_requests
+):
+    """Dismissing the confirmation leaves the modal open, the row in place and sends no DELETE."""
+    items_page.once("dialog", lambda dialog: dialog.dismiss())
+    modal = open_edit_modal("Dinner at Messinn")
+    deleted = count_requests("*/items/42", method="DELETE")
+
+    modal.get_by_role("button", name="Delete").click()
+
+    expect(modal).to_be_visible()
+    assert deleted == []
+
+
 def test_save_and_add_another_keeps_modal_open_and_resets_only_name_and_amount(
     new_item_modal, count_requests
 ):

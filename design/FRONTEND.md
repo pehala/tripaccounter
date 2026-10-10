@@ -316,6 +316,9 @@ tests/frontend/
 ├── stats/               the statistics tab's suites, with the picker and chart
 │   ├── conftest.py      helpers and the before-trip page fixture they share
 │   └── test_*.py
+├── setup/               the Setup tab's suites: add/rename (test_crud.py) and
+│   ├── conftest.py      delete + confirmation (test_delete.py), sharing setup_card
+│   └── test_*.py
 └── test_*.py
 ```
 
