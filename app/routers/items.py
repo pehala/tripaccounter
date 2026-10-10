@@ -20,7 +20,7 @@ from app.services import items as item_service
 from app.services import queries, splits
 from app.services.errors.api import ValidationError, field_errors
 from app.services.errors.fields import NotInTripError
-from app.services.labels import set_item_labels
+from app.services.labels import prune_unused, set_item_labels
 from app.services.money import AMOUNT_SCALE, to_hundredths, to_wire
 from app.services.scope import in_trip, require_in_trip
 
@@ -170,6 +170,8 @@ def update_item(item_id: int, body: ItemWrite, trip: TripDep, session: SessionDe
 def delete_item(item_id: int, trip: TripDep, session: SessionDep):
     """Delete an item from a trip."""
     item = require_in_trip(session, LineItem, item_id, trip.id, "item", options=ITEM_LOAD_OPTIONS)
+    labels = list(item.label_rows)
     session.delete(item)
     session.flush()
+    prune_unused(session, labels)
     return Response(status_code=204)

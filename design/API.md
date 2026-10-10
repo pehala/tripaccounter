@@ -204,7 +204,8 @@ A label name is **one token** — no whitespace inside it, ever. Typing `street 
 yields two labels unless the user writes `street-food`; a token containing whitespace
 is a `422`, not a silent join. Matching is case-insensitive, so `Food`, `food` and
 `" food "` are one row, and `name` keeps the first-typed casing. Unknown labels on an
-item write are created on the fly and the response echoes the set. An
+item write are created on the fly, a label an item write or delete leaves unused is
+deleted, and the response echoes the set. An
 item's `labels` array holds each label's `name` as stored, sorted alphabetically
 (case-insensitively) and deduplicated.
 

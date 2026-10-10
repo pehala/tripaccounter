@@ -270,7 +270,7 @@ it opens; landing straight on a tab via a direct link or a hard refresh pays for
 | Open the edit modal | 0 | the item or transfer is already in `store.items`/`store.transfers` |
 | Type in the modal | 0 | labels filtered from `store.labels` client-side |
 | Change amount or split | 1 | `preview-split` on `change`, not on input — expense mode only, never for a transfer |
-| Save an item or a transfer | 2 | the write, then `GET /items` (plus `/labels` if a new label was typed); a transfer or item write also invalidates `store.wallets`/`store.balances`/`store.exchangeRates` so those refetch on next open |
+| Save an item or a transfer | 2 | the write, then `GET /items` (plus `/labels` if the save changed the item's label set); a transfer or item write also invalidates `store.wallets`/`store.balances`/`store.exchangeRates` so those refetch on next open |
 | Setup edit | 2 | the write, then `GET /trips/{slug}` (or `/labels`) |
 | Save or delete a stay | 3, or 4 | the write, then `GET /stays` and `GET /trips/{slug}` for the item form's picker, plus `GET /items` once the feed is loaded — a delete detaches items |
 

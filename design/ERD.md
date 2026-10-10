@@ -262,8 +262,9 @@ erDiagram
   the bundled frontend sends a fixed starter set the user can untick. Labels are
   user data and are never translated, so the set is the same in every locale.
 - `use_count` is not stored: the label routes count `ITEM_LABEL` rows per label on
-  every read. A label with `use_count = 0` is suggestable but can be deleted with
-  no consequences.
+  every read. When an item write or delete leaves a label with no items, the server
+  deletes that label. A label created directly (`POST /labels`, or `labels` on
+  `POST /trips`) exists with `use_count = 0` until an item uses it.
 - Deleting a label removes its `ITEM_LABEL` rows only — items survive untouched.
 
 **Balances** (per trip, per currency)

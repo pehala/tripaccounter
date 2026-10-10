@@ -48,7 +48,7 @@ def get_or_create(session: Session, trip_id: int, token: str) -> Label:
 
 
 def set_item_labels(session: Session, item: LineItem, tokens: list[str]) -> None:
-    """Replace the item's labels with those for the given tokens."""
+    """Replace the item's labels with those for the given tokens; labels it leaves unused go."""
     wanted: list[Label] = []
     seen_norms: set[str] = set()
     for token in tokens:
@@ -58,7 +58,19 @@ def set_item_labels(session: Session, item: LineItem, tokens: list[str]) -> None
         seen_norms.add(norm)
         wanted.append(get_or_create(session, item.trip_id, token))
 
+    previous = list(item.label_rows)
     item.label_rows = wanted
+    session.flush()
+    prune_unused(session, [label for label in previous if label not in wanted])
+
+
+def prune_unused(session: Session, labels: list[Label]) -> None:
+    """Delete each of the given labels that no item carries any more."""
+    counts = use_counts(session, [label.id for label in labels])
+    for label in labels:
+        if counts[label.id] == 0:
+            session.delete(label)
+    session.flush()
 
 
 def use_counts(session: Session, label_ids: list[int]) -> dict[int, int]:
