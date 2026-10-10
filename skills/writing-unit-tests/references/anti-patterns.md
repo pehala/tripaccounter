@@ -202,3 +202,43 @@ tests are checking the mirror.
 **When the real thing is genuinely awkward to construct**, that is a signal about the
 production code, not about the test: the dependency wants to become an argument. Say
 so and make the seam, rather than building the mirror.
+
+---
+
+## AP-7: Acting on a Modal Before Bootstrap Has Finished Opening It
+
+*A `tests/frontend/` anti-pattern.* `.modal.show` appears the moment Bootstrap starts
+showing a dialog, not when it has settled. Once shown, Bootstrap moves focus to the
+dialog itself. A Playwright action that depends on focus and lands in that gap loses
+the race on some runs and wins it on others — the test is green locally and red in CI,
+alone and in the suite alike, and nothing it asserts is wrong.
+
+The sharpest case is `fill("")` on a pre-filled input. Playwright focuses the input,
+then deletes its text; if Bootstrap steals focus in between, the delete goes to the
+dialog, no `input` event fires, the field keeps its old value, and the save sends
+the old value instead of `null`.
+
+❌ **Bad — fills as soon as `.modal.show` matches:**
+```python
+stay_card.get_by_role("button", name="Edit accommodation").click()
+modal = stays_page.locator(".modal.show")
+modal.locator("#stay-url").fill("")  # ~1 run in 5 leaves the old URL in place
+```
+
+✅ **Good — wait for the dialog to take focus, then act:**
+```python
+stay_card.get_by_role("button", name="Edit accommodation").click()
+modal = stays_page.locator(".modal.show")
+expect(modal).to_be_focused()  # Bootstrap's last step; nothing moves focus after it
+modal.locator("#stay-url").fill("")
+```
+
+**How to spot it:** a failure that disappears on re-run, an input that "did not take"
+the value, a request body carrying the *pre-edit* value. Register `focusin` and
+`input` listeners on the page and compare a passing run with a failing one — the
+failing run shows `focusin` on the dialog and no `input`. Reproduce with the test run
+alone (`-k`) a dozen times; a failure there rules out leftover state from other tests.
+
+**Scope:** only focus-dependent actions on a field that already holds a value.
+Filling an empty field or `select_option` did not show the race in 60 runs each.
+Do not reach for `time.sleep` or a retry loop; wait for the state that ends the race.

@@ -44,7 +44,7 @@ references:
 | Reference | Content |
 |---|---|
 | [common-pitfalls.md](skills/writing-unit-tests/references/common-pitfalls.md) | P-1 … P-12 — the specific mistakes, with fixes |
-| [anti-patterns.md](skills/writing-unit-tests/references/anti-patterns.md) | AP-1 … AP-6 — shapes that prove nothing |
+| [anti-patterns.md](skills/writing-unit-tests/references/anti-patterns.md) | AP-1 … AP-7 — shapes that prove nothing |
 | [review-conventions.md](skills/writing-unit-tests/references/review-conventions.md) | C-1 … C-28 — what a PR touching `tests/` is measured against |
 
 Writing a test and reviewing it are one job, not two: apply the review conventions
