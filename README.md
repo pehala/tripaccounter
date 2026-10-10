@@ -116,7 +116,7 @@ is how you confirm the sheet lines up before trusting the rest.
 |---|---|---|
 | `--people NAME...` | — | **required**; one name per owed column, left to right |
 | `--start-date` / `--end-date` | — | the trip's dates |
-| `--tz ZONE` | `Europe/Prague` | the zone the sheet's times are written in |
+| `--tz ZONE` | `Europe/Prague` | the zone the sheet's times are written in; it becomes the trip's `timezone` |
 | `--dry-run` | off | roll back instead of committing |
 
 [`tests/backend/fixtures/sheet.csv`](tests/backend/fixtures/sheet.csv) is the format

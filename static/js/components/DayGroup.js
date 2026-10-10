@@ -1,5 +1,5 @@
 import { html } from '../h.js';
-import { date as fmtDate, money } from '../fmt.js';
+import { date as fmtDate, money, weekday } from '../fmt.js';
 import { t } from '../i18n/index.js';
 import { ItemRow } from './ItemRow.js';
 import { TransferRow } from './TransferRow.js';
@@ -14,7 +14,7 @@ import { TransferRow } from './TransferRow.js';
 export function DayGroup({ date, beforeTrip, entries, totals, trip, locale, onSelect }) {
   const label = beforeTrip
     ? t('day.before_trip')
-    : `${new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(date))} ${fmtDate(date, locale)}`;
+    : `${weekday(date, locale)} ${fmtDate(date, locale)}`;
   return html`
     <div class="day-sep d-flex align-items-center gap-2 bg-body-tertiary py-1">
       <small class="text-body-secondary text-uppercase fw-semibold">${label}</small>

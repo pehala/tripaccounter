@@ -141,7 +141,7 @@ def test_patch_sends_the_built_body_on_save(open_edit_modal, count_requests):
         "wallet_id": 5,
         "country_id": 1,
         "stay_id": None,
-        "occurred_at": body["occurred_at"],
+        "occurred_at": "2026-09-14T19:30",
         "labels": ["food", "restaurant"],
         "city": "Reykjavík",
         "map_url": "https://maps.example.test/messinn",

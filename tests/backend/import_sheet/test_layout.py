@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.backend.import_sheet.conftest import HEADER, PEOPLE, PRAGUE
+from tests.backend.import_sheet.conftest import HEADER, PEOPLE
 from tools.import_sheet import Layout, build_plan
 
 
@@ -25,12 +25,12 @@ def test_build_plan_rejects_a_people_list_that_overruns_the_row(sheet, row):
     too_many = ["Ann", "Bob", "Cal", "Dee", "Eve", "Fay"]
 
     with pytest.raises(SystemExit, match="note column"):
-        build_plan(sheet([row()]), too_many, PRAGUE)
+        build_plan(sheet([row()]), too_many)
 
 
 def test_build_plan_catches_owed_columns_that_land_on_the_summary_block(sheet, row):
     """A roster too long but still inside the row reads cells from the summary block."""
-    plan = build_plan(sheet([row()]), ["Ann", "Bob", "Cal", "Dee"], PRAGUE)
+    plan = build_plan(sheet([row()]), ["Ann", "Bob", "Cal", "Dee"])
 
     assert [(problem.code, problem.detail) for problem in plan.problems] == [
         ("bad_share", "Dee: 'Ann'")
@@ -57,7 +57,7 @@ def test_build_plan_reads_columns_by_index_not_by_header(sheet, row):
         "Poznámky",
     ]
 
-    plan = build_plan(sheet([row()], header=czech), PEOPLE, PRAGUE)
+    plan = build_plan(sheet([row()], header=czech), PEOPLE)
 
     assert plan.problems == []
     assert plan.items[0].name == "ITEM3"
@@ -66,7 +66,7 @@ def test_build_plan_reads_columns_by_index_not_by_header(sheet, row):
 
 def test_build_plan_reports_a_payer_who_is_not_in_the_roster(sheet, row):
     """A payer cell naming someone outside --people is a problem, not a new person."""
-    plan = build_plan(sheet([row(**{"3": "Cal"})]), PEOPLE, PRAGUE)
+    plan = build_plan(sheet([row(**{"3": "Cal"})]), PEOPLE)
 
     assert [(problem.code, problem.detail) for problem in plan.problems] == [
         ("unknown_payer", "'Cal' is not in --people ['Ann', 'Bob']")
@@ -86,7 +86,7 @@ def test_build_plan_reports_a_payer_who_is_not_in_the_roster(sheet, row):
 )
 def test_build_plan_reports_unusable_cells(sheet, row, column, value, code):
     """Each unusable cell becomes a named problem rather than a partial import."""
-    plan = build_plan(sheet([row(**{column: value})]), PEOPLE, PRAGUE)
+    plan = build_plan(sheet([row(**{column: value})]), PEOPLE)
 
     assert code in {problem.code for problem in plan.problems}
 
@@ -95,6 +95,6 @@ def test_build_plan_skips_rows_with_no_name(sheet, row):
     """The blank rows a spreadsheet leaves below the data are dropped, not reported."""
     blank = [""] * len(HEADER)
 
-    plan = build_plan(sheet([row(), blank, blank]), PEOPLE, PRAGUE)
+    plan = build_plan(sheet([row(), blank, blank]), PEOPLE)
 
     assert (len(plan.items), plan.problems) == (1, [])

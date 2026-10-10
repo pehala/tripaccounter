@@ -8,7 +8,8 @@ import { DayGroup } from '../components/DayGroup.js';
 import { ItemModal } from '../components/ItemModal.js';
 import { Loading } from '../components/Loading.js';
 
-// Items and transfers merge into one feed, newest first; on an exact tie an
+// Items and transfers merge into one feed, newest first by `trip_occurred_at`, the
+// wall time in the trip's zone (design/TIMEZONES.md §1); on an exact tie an
 // item sorts before a transfer, then by id descending (design/WALLETS.md §2
 // "One fetch for the feed" - ordering rows by timestamp is not money
 // arithmetic, so it is allowed client-side).
@@ -18,8 +19,8 @@ function mergeFeed(items, transfers) {
     ...transfers.map((row) => ({ kind: 'transfer', row })),
   ];
   entries.sort((a, b) => {
-    if (a.row.occurred_at !== b.row.occurred_at) {
-      return a.row.occurred_at < b.row.occurred_at ? 1 : -1;
+    if (a.row.trip_occurred_at !== b.row.trip_occurred_at) {
+      return a.row.trip_occurred_at < b.row.trip_occurred_at ? 1 : -1;
     }
     if (a.kind !== b.kind) return a.kind === 'item' ? -1 : 1;
     return b.row.id - a.row.id;
@@ -34,7 +35,7 @@ function groupByDay(entries, startDate) {
   const groups = [];
   let current = null;
   for (const entry of entries) {
-    const day = entry.row.occurred_at.slice(0, 10);
+    const day = entry.row.day;
     const key = isBeforeTrip(day, startDate) ? 'before' : day;
     if (!current || current.date !== key) {
       current = { date: key, beforeTrip: key === 'before', entries: [] };

@@ -28,7 +28,7 @@ export function TripList() {
             <a key=${trip.id} class="list-group-item list-group-item-action" href="/t/${trip.slug}">
               <span class="d-block fw-semibold">${trip.name}</span>
               <small class="text-body-secondary">
-                ${[dateRange(trip.start_date, trip.end_date, getLocale()), t('header.people', { n: trip.people_count })]
+                ${[dateRange(trip.start_date, trip.end_date, getLocale()), trip.timezone, t('header.people', { n: trip.people_count })]
                   .filter(Boolean).join(' · ')}
               </small>
             </a>

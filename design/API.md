@@ -93,12 +93,27 @@ number on output, because they are what clients format; everything else is passe
 through untouched.
 
 ### Time
-`occurred_at` is **always tz-aware, always UTC on output**: `"2026-09-14T19:30:00Z"`.
-Input may carry an explicit offset (`+02:00`, `Z`, …) or omit one entirely — an
-offset-less input is assumed to already be UTC, **never the server's own local
-time**, so the stored value never depends on how a given deployment happens to
-be configured. The server converts to UTC and always answers with `Z`.
-`created_at` / `updated_at` are UTC with `Z` too — the same convention.
+`occurred_at` is a **wall time without an offset**, `YYYY-MM-DDTHH:MM:SS`, in both
+directions: the digits a person sees and types. On input it is read in the trip's
+`timezone` (an IANA name) and the server resolves it to the stored UTC instant; an
+input with an offset (`Z`, `+02:00`, …) is `invalid_datetime`. A wall time the zone
+skips (a spring-forward gap) is `invalid_datetime`; one that happens twice (the
+autumn repeat) is the earlier instant. An omitted `occurred_at` is now. `PATCH`
+without `occurred_at` leaves the instant as it is.
+
+Every item and transfer answers four time fields:
+
+| Field | Meaning |
+|---|---|
+| `occurred_at` | the wall time in the trip's zone, `"2026-09-14T17:00:00"` |
+| `occurred_tz` | the zone it is written in, the trip's `timezone`, `"Asia/Tokyo"` |
+| `trip_occurred_at` | the wall time in the trip's zone, the key clients merge items and transfers on |
+| `day` | `YYYY-MM-DD`, the date part of `trip_occurred_at`, the key `day_totals` sums under |
+
+The trip's `timezone` cuts days for the whole trip: item `day`, `day_totals`,
+`before_trip_totals` and the statistics `day` dimension. Changing it re-reads every row
+in the new zone; the stored instants stay. A client sending `occurred_tz` is tolerated
+and ignored. `created_at` / `updated_at` are UTC instants with `Z`.
 
 ### IDs
 Integers, unique per table. `slug` is the only external string identifier.
@@ -159,6 +174,10 @@ and for clients that want one list. The trip list replaces those embedded lists 
 `people_count` and `item_count`, and orders by `end_date` descending — the trip that
 ended most recently first; a trip with no `end_date` sorts after every dated one,
 newest created first among themselves.
+
+`timezone` is the IANA name of the zone the trip's times are read in and its days are
+cut in. It is optional on create (`UTC` when omitted), writable by `PATCH`, and an
+unknown name is `invalid_timezone`.
 
 `slug` is generated from `name` at creation and **never changes**, so a pasted link
 survives a rename. `PATCH` cannot move it. Deleting a trip cascades everything.
@@ -460,7 +479,7 @@ favor of the roster names a reader would otherwise have to look up: no
 `person_id`.
 
 The CSV header row is part of the contract, because something parses it: `item_id,
-name, note, city, occurred_at, currency_code, amount, payer_id, wallet_id,
+name, note, city, occurred_at, occurred_tz, trip_occurred_at, day, currency_code, amount, payer_id, wallet_id,
 country_id, labels, map_url, lat, lon, created_at, updated_at, person_name, weight,
 owed`. CSV has no `null` or list type: `labels` joins with `;`, and an absent
 `note`/`city`/`map_url`/`lat`/`lon` is an empty field, not the string `"None"`. JSON
@@ -484,7 +503,8 @@ rule, its code and its intended meaning sit in one row.
 | `currency_id` | belongs to this trip | `not_in_trip` | | "Unknown currency." |
 | `payer_id` | belongs to this trip, `active` | `not_in_trip` / `inactive` | | "Pick who paid." |
 | `country_id` | **required**, belongs to this trip | `required` / `not_in_trip` | | "Pick a country." |
-| `occurred_at` | valid datetime, any offset or none (assumed UTC); default = now (UTC) | `invalid_datetime` | | "Check the date." |
+| `occurred_at` | valid wall time with no offset, not in a clock-change gap; default = now | `invalid_datetime` | | "Check the date." |
+| trip `timezone` | an IANA zone name; `UTC` when omitted on create | `invalid_timezone` | | "Unknown time zone." |
 | `labels[]` | each 1–40 chars, no whitespace | `label_whitespace` / `too_long` | `{value}` | "Labels can't contain spaces — use street-food." |
 | `shares` | ≥1 entry, no duplicate `person_id` | `empty` / `duplicate_person` | | "Somebody has to owe something." |
 | `shares` (exact) | each ≤ 2 fraction digits; sum exactly to `amount` | `sum_mismatch` | `{diff, currency_code}` | "Off by 0.03 ISK." |

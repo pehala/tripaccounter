@@ -1,10 +1,12 @@
 """Line item writes: ref validation, the wallet/coordinate/split-mode rules, and share rows."""
 
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
 from app.models.items import ItemShare, LineItem
+from app.models.occurred import Occurred
 from app.models.roster import Person, TripCountry, TripCurrency, active_roster_ids
 from app.models.stays import Stay
 from app.models.trip import Trip
@@ -21,6 +23,7 @@ from app.services.errors.fields import (
 )
 from app.services.money import AMOUNT_SCALE, to_hundredths
 from app.services.scope import in_trip, ref_error
+from app.services.timezones import occurred_error
 
 
 def validate_name(name: str | None, *, required: bool) -> FieldError | None:
@@ -45,6 +48,9 @@ def validate_write(
         fields["name"] = name_error
     if creating and body.amount is None:
         fields["amount"] = InvalidAmountError()
+    when_error = occurred_error(body.occurred_at, trip.zone)
+    if when_error:
+        fields["occurred_at"] = when_error
 
     for field, model, required in (
         ("currency_id", TripCurrency, creating),
@@ -90,8 +96,12 @@ def rewrite_wallet(session: Session, item: LineItem, body: ItemWrite) -> None:
     item.wallet_id = resolve_wallet_id(session, body.wallet_id, payer_id)
 
 
-def apply_write(item: LineItem, body: ItemWrite) -> None:
-    """Write the fields a body supplies onto an item, leaving the omitted ones as they are."""
+def apply_write(item: LineItem, body: ItemWrite, zone: ZoneInfo) -> None:
+    """Write the fields a body supplies onto an item, leaving the omitted ones as they are.
+
+    The body's `occurred_at` is a wall time in `zone`. `validate_write` has already
+    rejected one that falls in a gap.
+    """
     if body.name is not None:
         item.name = body.name
     if body.note is not None:
@@ -105,7 +115,7 @@ def apply_write(item: LineItem, body: ItemWrite) -> None:
     if body.country_id is not None:
         item.country_id = body.country_id
     if body.occurred_at is not None:
-        item.occurred_at = body.occurred_at
+        item.occurred_at = Occurred.resolve(body.occurred_at, zone)
     if body.amount is not None:
         item.amount_minor = to_hundredths(body.amount)
     if body.map_url is not None:

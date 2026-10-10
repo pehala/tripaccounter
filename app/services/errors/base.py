@@ -17,6 +17,7 @@ NATIVE_ERROR_CODES: dict[str, str] = {
     "date_type": "invalid_date",
     "date_from_datetime_parsing": "invalid_date",
     "date_from_datetime_inexact": "invalid_date",
+    "timezone_naive": "invalid_datetime",
 }
 
 

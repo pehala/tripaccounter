@@ -485,6 +485,7 @@ def seed_demo(session: Session) -> Trip:
         name="Iceland 2026",
         start_date="2026-09-12",
         end_date="2026-09-21",
+        timezone="Atlantic/Reykjavik",
         note=None,
         archived=False,
         created_at=datetime(2026, 9, 1, 8, 12, 0, tzinfo=UTC),

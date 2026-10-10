@@ -14,6 +14,7 @@ from sqlalchemy import (
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.models.constraints import trip_scoped_fk
+from app.models.occurred import Occurred
 from app.models.roster import Person, TripCurrency
 from app.models.trip import Trip
 
@@ -46,7 +47,7 @@ class Wallet(SQLModel, table=True):
     )
 
 
-class WalletTransfer(SQLModel, table=True):
+class WalletTransfer(Occurred, table=True):
     """Money moved between two wallets: a plain transfer, or an exchange when currencies differ."""
 
     __tablename__ = "wallet_transfer"
@@ -64,7 +65,6 @@ class WalletTransfer(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     trip_id: int = Field(foreign_key="trip.id")
-    occurred_at: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     from_wallet_id: int = Field(index=True)
     from_currency_id: int
     from_amount_minor: int = Field(sa_column=Column(BigInteger))

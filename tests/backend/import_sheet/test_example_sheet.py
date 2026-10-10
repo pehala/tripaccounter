@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from app.models.trip import Trip
-from tests.backend.import_sheet.conftest import PEOPLE, PRAGUE, SAMPLE
+from tests.backend.import_sheet.conftest import PEOPLE, PRAGUE_ZONE, SAMPLE
 from tools.import_sheet import __main__ as cli
 from tools.import_sheet import apply, build_plan, create_trip
 
@@ -20,7 +20,7 @@ from tools.import_sheet import apply, build_plan, create_trip
 @pytest.fixture()
 def plan():
     """Resolve the committed example sheet, which is expected to be free of problems."""
-    resolved = build_plan(SAMPLE, PEOPLE, PRAGUE)
+    resolved = build_plan(SAMPLE, PEOPLE)
     assert resolved.problems == []
     return resolved
 
@@ -28,7 +28,7 @@ def plan():
 @pytest.fixture()
 def imported(session, plan):
     """Import the committed example sheet into a fresh trip and return the trip."""
-    trip = create_trip(session, "Trip name", "2026-09-06", "2026-09-09")
+    trip = create_trip(session, "Trip name", "2026-09-06", "2026-09-09", PRAGUE_ZONE)
     apply(session, plan, trip)
     return trip
 
@@ -67,14 +67,14 @@ def test_example_sheet_resolves_every_row(plan):
 @pytest.mark.parametrize(
     ("name", "occurred_at"),
     [
-        pytest.param("ITEM3", "2026-09-06T10:00:00+00:00", id="date-only"),
-        pytest.param("ITEM4", "2026-09-06T16:25:00+00:00", id="year-taken-from-the-sheet"),
-        pytest.param("ITEM5", "2026-09-06T16:35:00+00:00", id="year-less-trailing-dot"),
-        pytest.param("ITEM6", "2026-09-07T06:55:00+00:00", id="full-timestamp"),
+        pytest.param("ITEM3", "2026-09-06T12:00:00", id="date-only"),
+        pytest.param("ITEM4", "2026-09-06T18:25:00", id="year-taken-from-the-sheet"),
+        pytest.param("ITEM5", "2026-09-06T18:35:00", id="year-less-trailing-dot"),
+        pytest.param("ITEM6", "2026-09-07T08:55:00", id="full-timestamp"),
     ],
 )
 def test_example_sheet_resolves_each_date_shape(plan, name, occurred_at):
-    """A date-only cell lands at midday local, and a year-less one takes the sheet's year."""
+    """A date-only cell lands at midday wall time, and a year-less one takes the sheet's year."""
     item = next(item for item in plan.items if item.name == name)
 
     assert item.occurred_at.isoformat() == occurred_at
@@ -186,6 +186,18 @@ def test_main_commits_the_trip_and_its_items(run_cli):
         assert trip.slug == "trip-name"
         assert len(trip.items) == 24
         assert [person.name for person in trip.people] == ["Ann", "Bob"]
+
+
+def test_main_sets_the_trip_zone_from_tz_and_keeps_the_typed_wall_times(run_cli):
+    """`--tz` is the trip's zone, and the sheet's digits read back unchanged through it."""
+    code, factory = run_cli(str(SAMPLE), "Trip name", "--people", *PEOPLE, "--tz", "Asia/Tokyo")
+
+    assert code == 0
+    with factory() as session:
+        trip = session.execute(select(Trip)).scalars().one()
+        item = next(item for item in trip.items if item.name == "ITEM6")
+        assert trip.timezone == "Asia/Tokyo"
+        assert item.wire_times()["occurred_at"] == "2026-09-07T08:55:00"
 
 
 def test_main_reads_the_sheet_from_stdin_when_the_path_is_a_dash(run_cli, monkeypatch):

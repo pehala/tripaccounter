@@ -8,10 +8,13 @@ an exchange keeps whatever `to_amount` it already had (WALLETS.md §9 story 5).
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
+from app.models.occurred import Occurred
 from app.models.roster import TripCurrency
 from app.models.trip import Trip
 from app.models.wallets import Wallet, WalletTransfer
@@ -25,6 +28,7 @@ from app.services.errors.fields import (
 )
 from app.services.money import AMOUNT_SCALE, to_hundredths
 from app.services.scope import in_trip, ref_error
+from app.services.timezones import occurred_error
 
 
 @dataclass
@@ -83,10 +87,19 @@ def resolve_write(body: TransferWrite, existing: WalletTransfer | None) -> Resol
 
 
 def validate(
-    session: Session, trip: Trip, resolved: ResolvedTransfer, *, creating: bool
+    session: Session,
+    trip: Trip,
+    resolved: ResolvedTransfer,
+    occurred_at: datetime | None,
+    *,
+    creating: bool,
 ) -> dict[str, FieldError]:
-    """Validate a resolved write's refs and cross-field rules; return its field errors."""
+    """Validate a resolved write's refs, wall time and cross-field rules; return its errors."""
     fields: dict[str, FieldError] = {}
+
+    when_error = occurred_error(occurred_at, trip.zone)
+    if when_error:
+        fields["occurred_at"] = when_error
 
     # Both wallets are required on every write; a currency only on create, since
     # `resolve_write` carries the stored one forward on a patch.
@@ -132,8 +145,17 @@ def validate(
     return fields
 
 
-def apply_write(transfer: WalletTransfer, resolved: ResolvedTransfer, occurred_at, note) -> None:
-    """Write a validated, resolved transfer's fields onto the model instance."""
+def apply_write(
+    transfer: WalletTransfer,
+    resolved: ResolvedTransfer,
+    occurred_at: datetime | None,
+    note: str | None,
+    zone: ZoneInfo,
+) -> None:
+    """Write a validated, resolved transfer's fields onto the model instance.
+
+    `occurred_at` is a wall time in `zone`, or None to leave the instant as it is.
+    """
     transfer.from_wallet_id = resolved.from_wallet_id
     transfer.from_currency_id = resolved.from_currency_id
     transfer.from_amount_minor = to_hundredths(resolved.from_amount)
@@ -141,6 +163,6 @@ def apply_write(transfer: WalletTransfer, resolved: ResolvedTransfer, occurred_a
     transfer.to_currency_id = resolved.to_currency_id
     transfer.to_amount_minor = to_hundredths(resolved.to_amount)
     if occurred_at is not None:
-        transfer.occurred_at = occurred_at
+        transfer.occurred_at = Occurred.resolve(occurred_at, zone)
     if note is not None:
         transfer.note = note

@@ -53,7 +53,7 @@ def test_list_items_orders_by_occurred_at_desc_then_id_desc(
     """List order is occurred_at DESC, id DESC; day_totals sums each day, newest first."""
     items = client.get(f"/api/v1/trips/{trip['slug']}/items").json()
     dates = [item["occurred_at"] for item in items["items"]]
-    assert dates == ["2026-09-14T09:00:00Z", "2026-09-14T09:00:00Z", "2026-09-13T09:00:00Z"]
+    assert dates == ["2026-09-14T09:00:00", "2026-09-14T09:00:00", "2026-09-13T09:00:00"]
     assert items["items"][0]["id"] > items["items"][1]["id"]
 
     assert items["day_totals"] == [
@@ -134,7 +134,7 @@ def test_occurred_at_defaults_to_clock(client, trip, item_body, frozen_clock):
 
     response = client.post(f"/api/v1/trips/{trip['slug']}/items", json=body)
     assert response.status_code == 201
-    assert response.json()["item"]["occurred_at"] == "2026-08-01T10:30:00Z"
+    assert response.json()["item"]["occurred_at"] == "2026-08-01T10:30:00"
 
 
 def test_map_url_parsed_when_coordinates_absent(client, trip, item_body):
@@ -327,7 +327,7 @@ def test_occurred_at_sent_as_null_defaults_to_clock(client, trip, item_body, fro
     response = client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(occurred_at=None))
 
     assert response.status_code == 201
-    assert response.json()["item"]["occurred_at"] == "2026-08-01T10:30:00Z"
+    assert response.json()["item"]["occurred_at"] == "2026-08-01T10:30:00"
 
 
 def test_patch_item_amount_on_an_exact_item_is_sum_mismatch(client, trip, people, item_body):

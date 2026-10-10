@@ -731,6 +731,10 @@
             "title": "Currency Id",
             "type": "integer"
           },
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -794,6 +798,10 @@
             "title": "Occurred At",
             "type": "string"
           },
+          "occurred_tz": {
+            "title": "Occurred Tz",
+            "type": "string"
+          },
           "payer_id": {
             "title": "Payer Id",
             "type": "integer"
@@ -812,6 +820,10 @@
             ],
             "title": "Stay Id"
           },
+          "trip_occurred_at": {
+            "title": "Trip Occurred At",
+            "type": "string"
+          },
           "updated_at": {
             "title": "Updated At",
             "type": "string"
@@ -827,6 +839,9 @@
           "note",
           "city",
           "occurred_at",
+          "occurred_tz",
+          "trip_occurred_at",
+          "day",
           "currency_code",
           "currency_id",
           "amount",
@@ -2164,6 +2179,10 @@
             "title": "Created At",
             "type": "string"
           },
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
           "from_amount": {
             "anyOf": [
               {
@@ -2206,6 +2225,10 @@
             "title": "Occurred At",
             "type": "string"
           },
+          "occurred_tz": {
+            "title": "Occurred Tz",
+            "type": "string"
+          },
           "to_amount": {
             "anyOf": [
               {
@@ -2229,6 +2252,10 @@
             "title": "To Wallet Id",
             "type": "integer"
           },
+          "trip_occurred_at": {
+            "title": "Trip Occurred At",
+            "type": "string"
+          },
           "updated_at": {
             "title": "Updated At",
             "type": "string"
@@ -2237,6 +2264,9 @@
         "required": [
           "id",
           "occurred_at",
+          "occurred_tz",
+          "trip_occurred_at",
+          "day",
           "from_wallet_id",
           "from_amount",
           "from_currency_id",
@@ -2432,6 +2462,17 @@
               }
             ],
             "title": "Start Date"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
           }
         },
         "required": [
@@ -2557,6 +2598,10 @@
             "title": "Stays",
             "type": "array"
           },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
           "updated_at": {
             "title": "Updated At",
             "type": "string"
@@ -2575,6 +2620,7 @@
           "name",
           "start_date",
           "end_date",
+          "timezone",
           "note",
           "archived",
           "people",
@@ -2652,6 +2698,10 @@
             ],
             "title": "Start Date"
           },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          },
           "updated_at": {
             "title": "Updated At",
             "type": "string"
@@ -2663,6 +2713,7 @@
           "name",
           "start_date",
           "end_date",
+          "timezone",
           "note",
           "archived",
           "people_count",
@@ -2731,6 +2782,17 @@
               }
             ],
             "title": "Start Date"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
           }
         },
         "title": "TripUpdate",

@@ -34,7 +34,7 @@ STATUS_BY_METHOD = {
     "DELETE": HTTPStatus.NO_CONTENT,
 }
 ERRORS = {"not_found": HTTPStatus.NOT_FOUND, "bad_request": HTTPStatus.BAD_REQUEST}
-COLLECTION_FIELDS = {"collection", "item", "defaults", "insert", "extra"}
+COLLECTION_FIELDS = {"collection", "item", "defaults", "insert", "extra", "wall_time"}
 COLLECTION_OPERATIONS = (
     ("GET", (), "read"),
     ("POST", (), "create"),
@@ -139,6 +139,18 @@ class Collection:
     ids: Iterator[int]
     not_found: Response
     extra: dict
+    wall_time: str | None = None
+
+    def derive_times(self, row: dict) -> None:
+        """Set the trip-zone time fields a row carries from its wall-time field, if declared.
+
+        The mock has one zone, so `trip_occurred_at` is the wall time itself and `day` is
+        its date part - the fields the real server derives and a client reads back.
+        """
+        if self.wall_time is None or not row.get(self.wall_time):
+            return
+        row["trip_occurred_at"] = row[self.wall_time]
+        row["day"] = row[self.wall_time][:10]
 
     def find(self, rid: str | None) -> dict | None:
         """Return the row whose id renders as rid in a URL, or None."""
@@ -151,6 +163,7 @@ class Collection:
     def create(self, body: dict, rid: str | None) -> Response:
         """Store defaults + body under a fresh id and answer 201 with the row."""
         row = {**self.defaults, **body, "id": next(self.ids)}
+        self.derive_times(row)
         if self.insert == "head":
             self.rows.insert(0, row)
         else:
@@ -163,6 +176,7 @@ class Collection:
         if row is None:
             return self.not_found
         row.update(body)
+        self.derive_times(row)
         return HTTPStatus.OK, {self.item_key: row}
 
     def delete(self, body: dict, rid: str | None) -> Response:
@@ -250,6 +264,7 @@ class Router:
                     insert=spec.get("insert", "tail"),
                     ids=self.ids,
                     not_found=self.not_found,
+                    wall_time=spec.get("wall_time"),
                     extra={
                         key: resolve_pointer(data, value) if is_pointer(value) else value
                         for key, value in spec.get("extra", {}).items()

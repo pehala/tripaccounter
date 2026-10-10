@@ -7,6 +7,7 @@
       "name": "Hostile <b>Trip</b>",
       "start_date": "2026-09-12",
       "end_date": "2026-09-21",
+      "timezone": "UTC",
       "note": null,
       "archived": false,
       "people": [
@@ -95,6 +96,9 @@
         "name": "<script>alert(1)</script>",
         "note": null,
         "occurred_at": "2026-09-14T19:30:00",
+        "occurred_tz": "UTC",
+        "trip_occurred_at": "2026-09-14T19:30:00",
+        "day": "2026-09-14",
         "currency_code": "ISK",
         "currency_id": 1,
         "amount": 1000,
@@ -119,7 +123,10 @@
     "transfers": [
       {
         "id": 1,
-        "occurred_at": "2026-09-14T18:00:00Z",
+        "occurred_at": "2026-09-14T18:00:00",
+        "occurred_tz": "UTC",
+        "trip_occurred_at": "2026-09-14T18:00:00",
+        "day": "2026-09-14",
         "from_wallet_id": 1,
         "from_amount": 100,
         "from_currency_id": 1,
@@ -160,6 +167,7 @@
         "name": "Hostile <b>Trip</b>",
         "start_date": "2026-09-12",
         "end_date": "2026-09-21",
+        "timezone": "UTC",
         "note": null,
         "archived": false,
         "created_at": "2026-09-01T08:12:00Z",

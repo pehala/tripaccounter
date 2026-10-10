@@ -34,18 +34,27 @@ class Dimension:
 
 
 # `label` is the only dimension needing a join of its own; `person` is the only
-# one living on the share view rather than on the item.
-DIMENSIONS: dict[str, Dimension] = {
-    "currency": Dimension("currency_id", LineItem.currency_id),
-    "label": Dimension("label", Label.name),
-    "country": Dimension("country_id", LineItem.country_id),
-    "city": Dimension("city", LineItem.city),
-    "payer": Dimension("payer_id", LineItem.payer_id),
-    "wallet": Dimension("wallet_id", LineItem.wallet_id),
-    "stay": Dimension("stay_id", LineItem.stay_id),
-    "day": Dimension("date", queries.day_of(LineItem.occurred_at), ordinal=True),
-    "person": Dimension("person_id", share_owed_view.c.person_id, shares=True),
-}
+# one living on the share view rather than on the item; `day` is cut in the trip's
+# zone, so the registry is built per request.
+DIMENSION_NAMES = frozenset(
+    ("currency", "label", "country", "city", "payer", "wallet", "stay", "day", "person")
+)
+
+
+def dimensions(tz: str) -> dict[str, Dimension]:
+    """Return the dimension registry for a trip whose days are cut in the zone `tz`."""
+    return {
+        "currency": Dimension("currency_id", LineItem.currency_id),
+        "label": Dimension("label", Label.name),
+        "country": Dimension("country_id", LineItem.country_id),
+        "city": Dimension("city", LineItem.city),
+        "payer": Dimension("payer_id", LineItem.payer_id),
+        "wallet": Dimension("wallet_id", LineItem.wallet_id),
+        "stay": Dimension("stay_id", LineItem.stay_id),
+        "day": Dimension("date", queries.day_of(LineItem.occurred_at, tz), ordinal=True),
+        "person": Dimension("person_id", share_owed_view.c.person_id, shares=True),
+    }
+
 
 CURRENCY = "currency"
 
@@ -70,7 +79,7 @@ def expand_groupings(specs: list[str]) -> list[tuple[str, ...]]:
         for name in (part.strip() for part in spec.split(",")):
             if not name:
                 continue
-            if name not in DIMENSIONS or name in chain:
+            if name not in DIMENSION_NAMES or name in chain:
                 raise UnknownDimensionError(name)
             chain.append(name)
             chains[tuple(chain)] = None
@@ -78,9 +87,10 @@ def expand_groupings(specs: list[str]) -> list[tuple[str, ...]]:
     return sorted(chains, key=len)
 
 
-def _grouping(session: Session, trip_id: int, names: tuple[str, ...]) -> StatsGroupOut:
+def _grouping(session: Session, trip: Trip, names: tuple[str, ...]) -> StatsGroupOut:
     """Run one chain's `GROUP BY` and return its rows."""
-    dims = [DIMENSIONS[name] for name in names]
+    registry = dimensions(trip.timezone)
+    dims = [registry[name] for name in names]
     columns = [dim.column for dim in dims]
 
     if any(dim.shares for dim in dims):
@@ -104,7 +114,7 @@ def _grouping(session: Session, trip_id: int, names: tuple[str, ...]) -> StatsGr
         )
     ordinal = [dim.column for dim in dims if dim.ordinal]
     stmt = (
-        stmt.where(LineItem.trip_id == trip_id)
+        stmt.where(LineItem.trip_id == trip.id)
         .group_by(*columns)
         .order_by(*ordinal, total.desc(), *columns)
     )
@@ -125,6 +135,6 @@ def _grouping(session: Session, trip_id: int, names: tuple[str, ...]) -> StatsGr
 def compute_stats(session: Session, trip: Trip, chains: list[tuple[str, ...]]) -> StatsOut:
     """Return one grouping per chain, each summed per currency."""
     return StatsOut(
-        groups=[_grouping(session, trip.id, chain) for chain in chains],
+        groups=[_grouping(session, trip, chain) for chain in chains],
         day_count=_day_count(trip),
     )

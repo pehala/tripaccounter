@@ -61,7 +61,7 @@ def list_items(trip: TripDep, session: SessionDep):
     # of one per day, so the feed's "Before the trip" section gets a real
     # server-summed total too, same as every other day - reported separately
     # below, in before_trip_totals, so day_totals stays real dates only.
-    day = queries.day_of(LineItem.occurred_at)
+    day = queries.day_of(LineItem.occurred_at, trip.timezone)
     day_key = case((day < trip.start_date, "before"), else_=day) if trip.start_date else day
 
     day_rows = session.execute(
@@ -127,7 +127,7 @@ def create_item(body: ItemWrite, trip: TripDep, session: SessionDep, clock: Cloc
         rows = item_service.build_shares(trip, mode, body.shares, body.amount, currency.code)
 
     item = LineItem(trip_id=trip.id, occurred_at=clock, wallet_id=wallet_id, split_mode=mode)
-    item_service.apply_write(item, body)
+    item_service.apply_write(item, body, trip.zone)
     session.add(item)
     session.flush()
 
@@ -154,7 +154,7 @@ def update_item(item_id: int, body: ItemWrite, trip: TripDep, session: SessionDe
 
     with field_errors("wallet_id"):
         item_service.rewrite_wallet(session, item, body)
-    item_service.apply_write(item, body)
+    item_service.apply_write(item, body, trip.zone)
     with field_errors("shares"):
         item_service.rewrite_shares(session, trip, item, body)
 

@@ -4,7 +4,7 @@ import { useStore, reload } from '../store.js';
 import { showCollapse } from '../collapse.js';
 import { itemMatches } from '../filter.js';
 import { t, getLocale } from '../i18n/index.js';
-import { dateRange, dateTime, money } from '../fmt.js';
+import { dateRange, wallClock, money } from '../fmt.js';
 import { Avatar } from '../components/Avatar.js';
 import { CollapsibleSection } from '../components/CollapsibleSection.js';
 import { ItemModal } from '../components/ItemModal.js';
@@ -41,7 +41,7 @@ function keep(item, filters) {
   if (filters.labels.length > 0 && !item.labels.some((name) => filters.labels.includes(name))) {
     return false;
   }
-  const day = item.occurred_at.slice(0, 10);
+  const day = item.day;
   if (filters.from && day < filters.from) return false;
   if (filters.to && day > filters.to) return false;
   return true;
@@ -154,7 +154,7 @@ export function Map() {
                         onClick=${() => setModalEntry({ kind: 'item', row: item })}>
                   <span class="flex-grow-1 min-w-0">
                     <span class="d-block fw-semibold lh-sm">${item.name}</span>
-                    <small class="text-body-secondary d-block lh-sm">${dateTime(item.occurred_at, locale)} · <${Avatar} person=${payerOf(item)} /> ${t('items.paid_by', { name: payerOf(item)?.name || '' })}</small>
+                    <small class="text-body-secondary d-block lh-sm">${wallClock(item.occurred_at, locale)} · <${Avatar} person=${payerOf(item)} /> ${t('items.paid_by', { name: payerOf(item)?.name || '' })}</small>
                   </span>
                   <span class="text-end num text-nowrap fw-semibold">
                     ${money(item.amount, locale)} ${item.currency_code}

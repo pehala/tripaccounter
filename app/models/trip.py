@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import Column, DateTime, UniqueConstraint, func
 from sqlmodel import Field, Relationship, SQLModel
@@ -25,6 +26,7 @@ class Trip(SQLModel, table=True):
     name: str = Field(max_length=200)
     start_date: str | None = Field(default=None, max_length=10)
     end_date: str | None = Field(default=None, max_length=10)
+    timezone: str = Field(default="UTC", max_length=64, sa_column_kwargs={"server_default": "UTC"})
     note: str | None = None
     archived: bool = False
     created_at: datetime = Field(
@@ -33,6 +35,11 @@ class Trip(SQLModel, table=True):
     updated_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     )
+
+    @property
+    def zone(self) -> ZoneInfo:
+        """The trip's time zone: it cuts the days and is the zone every row reads in."""
+        return ZoneInfo(self.timezone)
 
     people: list["Person"] = Relationship(
         back_populates="trip",

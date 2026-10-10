@@ -3,7 +3,6 @@
 import argparse
 import sys
 from collections import Counter
-from zoneinfo import ZoneInfo
 
 from app.db import SessionLocal
 from tools.import_sheet.layout import (
@@ -78,7 +77,9 @@ def build_parser():
     parser.add_argument("--people", nargs="+", required=True, metavar="NAME")
     parser.add_argument("--start-date")
     parser.add_argument("--end-date")
-    parser.add_argument("--tz", default="Europe/Prague")
+    parser.add_argument(
+        "--tz", default="Europe/Prague", help="the zone the sheet's times were typed in"
+    )
     parser.add_argument("--dry-run", action="store_true")
     return parser
 
@@ -86,13 +87,13 @@ def build_parser():
 def main():
     """Read the sheet and import it in one transaction, unless --dry-run rolls it back."""
     args = build_parser().parse_args()
-    plan = build_plan(args.csv_path, args.people, ZoneInfo(args.tz))
+    plan = build_plan(args.csv_path, args.people)
     report(plan)
     if plan.problems:
         return 2
 
     with SessionLocal() as session:
-        trip = create_trip(session, args.trip_name, args.start_date, args.end_date)
+        trip = create_trip(session, args.trip_name, args.start_date, args.end_date, args.tz)
         apply(session, plan, trip)
         slug = trip.slug  # read while attached: a rollback below would detach the instance
         if args.dry_run:

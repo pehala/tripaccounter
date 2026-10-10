@@ -32,6 +32,7 @@ export default {
   'tripnew.title': 'Nový výlet',
   'tripnew.name_placeholder': 'Název výletu',
   'tripnew.start_date_label': 'Datum od',
+  'tripnew.timezone_label': 'Časové pásmo',
   'tripnew.end_date_label': 'Datum do',
   'tripnew.people_label': 'Lidé',
   'tripnew.currencies_label': 'Měny',
@@ -241,6 +242,7 @@ export default {
   'setup.note_label': 'Poznámka',
   'setup.note_placeholder': 'volitelné',
   'setup.dates_label': 'Termín',
+  'setup.timezone_label': 'Časové pásmo',
   'setup.dates_placeholder': 'nenastaveno',
 
   'err.required': 'Zadejte název.',
@@ -252,6 +254,7 @@ export default {
   'err.invalid_datetime': 'Zkontrolujte datum.',
   'err.invalid_date': 'Zkontrolujte datum.',
   'err.invalid_date_range': 'Odjezd nemůže být před příjezdem.',
+  'err.invalid_timezone': 'Neznámé časové pásmo.',
   'err.label_whitespace': 'Štítky nesmí obsahovat mezery — použijte {value}.',
   'err.empty': 'Přidejte aspoň jeden.',
   'err.duplicate_person': 'Někdo musí něco dlužit.',

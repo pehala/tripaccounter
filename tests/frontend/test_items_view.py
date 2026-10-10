@@ -45,13 +45,22 @@ def zero_share_item(fixture_data):
     }
 
 
+def wall_time(wall):
+    """Return the four time fields of a row at `wall`, in the fixture trip's zone."""
+    return {
+        "occurred_at": wall,
+        "trip_occurred_at": wall,
+        "day": wall[:10],
+    }
+
+
 @pytest.fixture
 def before_trip_page(serve_items, zero_share_item, open_trip):
     """Return the Items tab served two items from before the 2026-09-12 start."""
     serve_items(
         [
-            {**zero_share_item, "id": 9998, "occurred_at": "2026-09-10T08:00:00Z"},
-            {**zero_share_item, "id": 9997, "occurred_at": "2026-09-11T20:00:00Z"},
+            {**zero_share_item, "id": 9998, **wall_time("2026-09-10T08:00:00")},
+            {**zero_share_item, "id": 9997, **wall_time("2026-09-11T20:00:00")},
         ],
         day_totals=[],
         transfers=[],

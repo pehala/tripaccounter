@@ -5,11 +5,9 @@ like `test_money.py`.
 """
 
 from decimal import Decimal
-from zoneinfo import ZoneInfo
 
 import pytest
 
-from tests.backend.import_sheet.conftest import PRAGUE
 from tools.import_sheet import canonical_amount, parse_decimal, parse_occurred_at
 
 
@@ -43,22 +41,15 @@ def test_canonical_amount_matches_the_amount_grammar(value, expected):
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
-        pytest.param("9.9.2026 19:45:00", "2026-09-09T17:45:00+00:00", id="date-time-seconds"),
-        pytest.param("7.9.2026", "2026-09-07T10:00:00+00:00", id="date-only-takes-midday"),
-        pytest.param("8.9 10:15", "2026-09-08T08:15:00+00:00", id="year-less"),
-        pytest.param("8.9. 10:15", "2026-09-08T08:15:00+00:00", id="year-less-trailing-dot"),
+        pytest.param("9.9.2026 19:45:00", "2026-09-09T19:45:00", id="date-time-seconds"),
+        pytest.param("7.9.2026", "2026-09-07T12:00:00", id="date-only-takes-midday"),
+        pytest.param("8.9 10:15", "2026-09-08T10:15:00", id="year-less"),
+        pytest.param("8.9. 10:15", "2026-09-08T10:15:00", id="year-less-trailing-dot"),
     ],
 )
-def test_parse_occurred_at_local_wall_clock_to_utc(raw, expected):
-    """Each date shape resolves to the UTC instant its Prague wall clock names."""
-    assert parse_occurred_at(raw, PRAGUE, 2026).isoformat() == expected
-
-
-def test_parse_occurred_at_honours_the_zone():
-    """The same wall clock in a different zone is a different instant."""
-    assert parse_occurred_at("8.9 10:15", ZoneInfo("UTC"), 2026).isoformat() == (
-        "2026-09-08T10:15:00+00:00"
-    )
+def test_parse_occurred_at_keeps_the_wall_time(raw, expected):
+    """Each date shape resolves to the wall time the cell holds, with no zone attached."""
+    assert parse_occurred_at(raw, 2026).isoformat() == expected
 
 
 @pytest.mark.parametrize(
@@ -66,4 +57,4 @@ def test_parse_occurred_at_honours_the_zone():
 )
 def test_parse_occurred_at_unparsable_is_none(raw):
     """A cell the importer cannot read yields None, so the row becomes a reported problem."""
-    assert parse_occurred_at(raw, PRAGUE, 2026) is None
+    assert parse_occurred_at(raw, 2026) is None

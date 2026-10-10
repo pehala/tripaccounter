@@ -153,7 +153,7 @@ def plan_row(number, row, layout, problems):
 
     if len(name) > NAME_MAX_LENGTH:
         report("name_too_long", f"{len(name)} characters")
-    occurred_at = parse_occurred_at(row[COLUMN_DATE], layout.zone, layout.year)
+    occurred_at = parse_occurred_at(row[COLUMN_DATE], layout.year)
     if occurred_at is None:
         report("bad_date", f"{row[COLUMN_DATE]!r}")
     amount = parse_decimal(row[COLUMN_AMOUNT])
@@ -201,11 +201,11 @@ def plan_row(number, row, layout, problems):
     )
 
 
-def build_plan(path, people, zone):
+def build_plan(path, people):
     """Read the sheet and resolve every row, collecting problems rather than stopping."""
     header, rows = read_sheet(path)
     year = dominant_year([row[COLUMN_DATE] for _, row in rows])
-    layout = Layout.for_people(people, zone, year)
+    layout = Layout.for_people(people, year)
     layout.check_fits(rows)
     plan = Plan(layout=layout, header=header, sample=rows[0][1] if rows else [])
 

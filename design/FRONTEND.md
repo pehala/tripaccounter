@@ -239,11 +239,12 @@ Note the dashed arrow: **a write is followed by a re-read, never by a local muta
    - **Adding a language** is: copy `en.js`, translate, add the code to `LANGS`.
      `test_i18n.py` refuses a catalog with a missing or extra key.
 
-**`occurred_at` is tz-aware UTC on the wire, always.** `fmt.date()` / `fmt.dateTime()`
-convert to the viewer's local time as part of formatting, the same way `fmt.money()`
-hides the locale's separators, and the item form converts back before sending. A
-component never parses or formats a date by hand, and the wire string is never treated
-as the viewer's own wall clock.
+**`occurred_at` is a wall time in the trip's zone on the wire.** `fmt.wallTime()` /
+`fmt.wallClock()` read its digits as they are, `toInputValue` / `fromInputValue` hand
+the same digits to and from the datetime input, and `fmt.nowIn(zone)` prefills a new
+entry. A day (`YYYY-MM-DD`) is formatted in UTC so every viewer sees the same date.
+Rows group on `day` and merge on `trip_occurred_at`. A component never parses or
+formats a date by hand, and the viewer's own zone enters nowhere.
 
 ## 5. Call budget per screen
 

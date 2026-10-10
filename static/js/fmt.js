@@ -1,13 +1,19 @@
 // One Intl.*Format instance per locale (perf: design/FRONTEND.md §4 rule 6).
 // Day/month formatted separately and joined "day month" ourselves — Intl's
 // combined order is locale-dependent (US puts month first); this app is always day-first.
+// A day is a bare YYYY-MM-DD with no zone: it is read as UTC midnight and formatted in
+// UTC, so every viewer sees the same calendar day whatever their own zone is.
 const dayFmts = {};
 function dayFmt(locale) {
-  return dayFmts[locale] ??= new Intl.DateTimeFormat(locale, { day: 'numeric' });
+  return dayFmts[locale] ??= new Intl.DateTimeFormat(locale, { day: 'numeric', timeZone: 'UTC' });
 }
 const monthFmts = {};
 function monthFmt(locale) {
-  return monthFmts[locale] ??= new Intl.DateTimeFormat(locale, { month: 'short' });
+  return monthFmts[locale] ??= new Intl.DateTimeFormat(locale, { month: 'short', timeZone: 'UTC' });
+}
+const weekdayFmts = {};
+function weekdayFmt(locale) {
+  return weekdayFmts[locale] ??= new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' });
 }
 
 const numberFmts = {};
@@ -51,37 +57,59 @@ export function parse(text, locale) {
   return cleaned;
 }
 
-export function date(iso, locale) {
-  const d = new Date(iso);
+export function date(day, locale) {
+  const d = new Date(day);
   return `${dayFmt(locale).format(d)} ${monthFmt(locale).format(d)}`;
 }
 
-const timeFmts = {};
-function timeFmt(locale) {
-  return timeFmts[locale] ??= new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' });
+export function weekday(day, locale) {
+  return weekdayFmt(locale).format(new Date(day));
 }
 
+// A real instant (the build time, a `Z` string), shown in the viewer's own zone. Rows
+// never come through here: their times are wall times, read by wallClock below.
+const localDayFmts = {};
+const localMonthFmts = {};
+const timeFmts = {};
 export function dateTime(iso, locale) {
   const d = new Date(iso);
-  return `${date(iso, locale)}, ${timeFmt(locale).format(d)}`;
+  const day = localDayFmts[locale] ??= new Intl.DateTimeFormat(locale, { day: 'numeric' });
+  const month = localMonthFmts[locale] ??= new Intl.DateTimeFormat(locale, { month: 'short' });
+  const time = timeFmts[locale] ??= new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' });
+  return `${day.format(d)} ${month.format(d)}, ${time.format(d)}`;
 }
 
-// UTC instant -> the viewer's local wall-clock value a <input type="datetime-local">
-// wants ("YYYY-MM-DDTHH:mm"). The inverse of fromInputValue. Rule 8: a component
-// never parses or formats a date by hand.
-export function toInputValue(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+// A row's time is a wall time, "YYYY-MM-DDTHH:mm:ss", already in the trip's zone: the
+// digits are read as they are, never through a Date (design/TIMEZONES.md §1).
+export function wallTime(wall) {
+  return wall.slice(11, 16);
 }
 
-// The reverse: a datetime-local value has no offset, so the Date constructor
-// reads it as the browser's own local time — exactly what the picker showed.
+export function wallClock(wall, locale) {
+  return `${date(wall.slice(0, 10), locale)}, ${wallTime(wall)}`;
+}
+
+// The wall time a <input type="datetime-local"> wants ("YYYY-MM-DDTHH:mm") is the
+// row's own string cut to the minute, and what the input holds goes back unchanged:
+// the server resolves it in the trip's zone. Rule 8: a component never parses or
+// formats a date by hand.
+export function toInputValue(wall) {
+  return wall ? wall.slice(0, 16) : '';
+}
+
 export function fromInputValue(value) {
-  if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  return value || null;
+}
+
+const nowFmts = {};
+// The current instant as a wall time in `zone`, in the shape toInputValue returns.
+export function nowIn(zone) {
+  const fmt = nowFmts[zone] ??= new Intl.DateTimeFormat('en-CA', {
+    timeZone: zone, hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+  });
+  const p = Object.fromEntries(fmt.formatToParts(new Date()).map(({ type, value }) => [type, value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
 // error.params values are plain numbers/strings; the numbers still go through
@@ -100,7 +128,7 @@ export function dateRange(startIso, endIso, locale) {
   if (!endIso || endIso === startIso) return date(startIso, locale);
   const start = new Date(startIso);
   const end = new Date(endIso);
-  if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+  if (start.getUTCMonth() === end.getUTCMonth() && start.getUTCFullYear() === end.getUTCFullYear()) {
     return `${dayFmt(locale).format(start)}–${date(endIso, locale)}`;
   }
   return `${date(startIso, locale)} – ${date(endIso, locale)}`;

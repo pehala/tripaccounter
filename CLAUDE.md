@@ -19,6 +19,7 @@ layers, how money moves, and where the two halves meet.
 | [`design/MOCKAPI.md`](design/MOCKAPI.md) | the mock API behind the Playwright suite — fixture grammar, what the engine does with it |
 | [`design/WALLETS.md`](design/WALLETS.md) | wallets and transfers — the shipped design record; the rules themselves live in `ERD.md`/`API.md`/`DECISIONS.md` |
 | [`design/EXCHANGE_RATES.md`](design/EXCHANGE_RATES.md) | per-person effective exchange rates (#37) — the shipped design record; the rules themselves live in `API.md` |
+| [`design/TIMEZONES.md`](design/TIMEZONES.md) | a trip time zone (shipped) and per-item time zones (planned) — phase 1 rules live in `API.md`/`ERD.md`/`DECISIONS.md` |
 | [`tests/frontend/fixtures/trip.json`](tests/frontend/fixtures/trip.json) | the canned trip the Playwright suite renders |
 | [`tests/backend/fixtures/sheet.csv`](tests/backend/fixtures/sheet.csv) | the example sheet `tools/import_sheet/` is tested against, and the format by example |
 
