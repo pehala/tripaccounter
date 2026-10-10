@@ -431,7 +431,8 @@ def open_edit_modal(items_page):
     """Return `open_edit_modal(item_name) -> modal`: click that row, wait for the edit modal."""
 
     def go(item_name):
-        items_page.locator("a.list-group-item-action", has_text=item_name).first.click()
+        row = items_page.locator(".item-row", has_text=item_name).first
+        row.get_by_role("button", name="Edit").click()
         modal = items_page.locator(".modal.show")
         modal.wait_for()
         return modal

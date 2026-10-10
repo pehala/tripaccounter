@@ -163,6 +163,7 @@ export default {
   'rates.total_note': 'Čísla níže používají kurzy výše — ne oficiální.',
 
   'action.save': 'Uložit',
+  'action.edit': 'Upravit',
   'action.cancel': 'Zrušit',
   'action.add': '+ Přidat',
   'action.delete': 'Smazat',

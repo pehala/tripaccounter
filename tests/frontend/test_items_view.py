@@ -14,7 +14,7 @@ import re
 import pytest
 from playwright.sync_api import expect
 
-ROW = "a.list-group-item-action"
+ROW = ".list-group-item"
 
 ITEM_NAMES = [
     "Dinner at Messinn",

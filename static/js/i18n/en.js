@@ -159,6 +159,7 @@ export default {
   'rates.total_note': "Figures below use the rates above — nobody's official exchange rate.",
 
   'action.save': 'Save',
+  'action.edit': 'Edit',
   'action.cancel': 'Cancel',
   'action.add': '+ Add',
   'action.delete': 'Delete',
