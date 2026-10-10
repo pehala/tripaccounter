@@ -25,12 +25,12 @@ def chips(new_item_modal):
 @pytest.mark.parametrize(
     ("typed", "key", "chip"),
     [
-        pytest.param("Beach", "Space", "beach", id="space"),
+        pytest.param("Beach", "Space", "Beach", id="space"),
         pytest.param("street-food", ",", "street-food", id="comma"),
     ],
 )
 def test_commit_key_turns_the_typed_word_into_a_chip(label_input, chips, typed, key, chip):
-    """Pressing a commit key after a word adds it as a lowercased chip and clears the input."""
+    """Pressing a commit key after a word adds it as a chip, casing kept, and clears the input."""
     label_input.fill(typed)
 
     label_input.press(key)

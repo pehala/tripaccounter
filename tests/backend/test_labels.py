@@ -196,3 +196,33 @@ def test_relabelling_an_item_moves_only_the_labels_that_changed(client, trip, it
         "bravo": 1,
         "charlie": 1,
     }
+
+
+def test_item_echoes_the_label_name_as_stored(client, trip, item_body):
+    """An item's labels carry the stored casing, not the matching form, however it was re-typed."""
+    first = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(labels=["Food"])
+    ).json()["item"]
+    second = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(labels=["food"])
+    ).json()["item"]
+
+    assert first["labels"] == ["Food"]
+    assert second["labels"] == ["Food"]
+
+
+def test_rename_label_changing_only_its_casing_is_allowed(client, trip, item_body):
+    """A label can be recased in place without conflicting with itself; items show the new name."""
+    item = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(labels=["food"])
+    ).json()["item"]
+    label_id = client.get(f"/api/v1/trips/{trip['slug']}/labels").json()["labels"][0]["id"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/labels/{label_id}", json={"name": "Food"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["label"]["name"] == "Food"
+    read_back = client.get(f"/api/v1/trips/{trip['slug']}/items/{item['id']}").json()["item"]
+    assert read_back["labels"] == ["Food"]

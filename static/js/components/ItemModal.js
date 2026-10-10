@@ -292,7 +292,7 @@ export function ItemModal({ trip, labels, entry, onClose }) {
     try {
       if (kind === 'item') {
         const body = buildItemBody();
-        const hadNewLabel = state.labels.some((name) => !labels.some((l) => l.name.toLowerCase() === name));
+        const hadNewLabel = state.labels.some((name) => !labels.some((l) => l.name.toLowerCase() === name.toLowerCase()));
         if (isEdit) await api.patch(`/trips/${trip.slug}/items/${item.id}`, body);
         else await api.post(`/trips/${trip.slug}/items`, body);
         await reload('items');

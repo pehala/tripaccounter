@@ -334,7 +334,7 @@ class ItemOut(BaseModel):
             country_id=item.country_id,
             wallet_id=item.wallet_id,
             stay_id=item.stay_id,
-            labels=[label.name_norm for label in item.label_rows],
+            labels=[label.name for label in item.label_rows],
             map_url=item.map_url,
             lat=item.lat,
             lon=item.lon,
