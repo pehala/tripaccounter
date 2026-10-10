@@ -2,7 +2,8 @@
 
 A holiday expense tracker: a group logs what it spent across several countries and
 currencies, and the app says who owes whom when the trip is over. One process, one
-SQLite file, a VPN as the perimeter, no user accounts.
+database — Postgres in production, SQLite for development and tests — a VPN as the
+perimeter, no user accounts.
 
 The whole system is **two halves that share nothing but a contract**: a FastAPI JSON
 API under `/api/v1`, and a static Preact page served from `/`. Neither imports the
@@ -22,7 +23,7 @@ flowchart LR
     subgraph host["One uvicorn process"]
         static["StaticFiles mounted at /"]
         api["FastAPI — /api/v1"]
-        db[("SQLite<br/>(Postgres-compatible schema)")]
+        db[("Postgres or SQLite<br/>(one schema, both supported)")]
     end
 
     ui -- "GET /, /t/{slug}, /t/{slug}/{tab}" --> static
@@ -64,7 +65,7 @@ sequenceDiagram
     participant C as Client
     participant R as routers/
     participant S as services/
-    participant DB as SQLite
+    participant DB as Database
     participant W as schemas/
 
     C->>R: POST /items {"amount": "18400.50", ...}
@@ -256,15 +257,22 @@ Anything under `tests/` follows [`skills/writing-unit-tests`](../skills/writing-
 ```mermaid
 flowchart LR
     vpn(["VPN"]) --> proc["uvicorn<br/>app.main:app"]
-    proc --> vol[("SQLite on a volume")]
+    proc --> db[("Postgres 17")]
     proc --> st["static/"]
-    cron["nightly sqlite3 .backup"] --> vol
 ```
 
 `uv sync --frozen --no-dev && alembic upgrade head && uvicorn app.main:app`. No JS
-toolchain, so `uv sync` is the entire build; the Dockerfile is a convenience, not a
-requirement. Postgres works unchanged — the schema is kept compatible and the share
-view relies only on integer division, which floors identically on both.
+toolchain, so `uv sync` is the entire build. Production runs the published image
+next to a Postgres 17 container — [`DEPLOY.md`](../DEPLOY.md) is the runbook. SQLite
+(`TA_DATABASE_URL`'s default) serves development, the quick single-container setup
+in the README, and the default backend test run.
+
+**Both databases are supported.** Every migration runs on both, and CI runs the
+backend suite against each. A query uses what both have in common — the share view
+relies on integer division, which floors identically on both — or compiles a
+per-dialect form behind one helper in `services/queries.py`. A timestamp is stored
+as its UTC instant; a value that also needs its time zone keeps it in a column of
+its own.
 
 > **No authentication exists.** Anyone who reaches the host can read and modify every
 > trip. That is acceptable only while the VPN is the sole path in. If it ever needs to

@@ -49,7 +49,7 @@ flowchart TD
 | **Countries** | A strict per-trip list, **required on every item**. Managed in Setup like people and currencies; the item form only picks. Independent of currency. |
 | **Labels** | Free-typed, many per item, trip-scoped, auto-created on first use. **Space-separated in the input**, so one label is one token — `street-food`, never `street food`. Always an array on the wire. |
 | **Slug** | Generated from the trip name, `-2`/`-3` on collision, immutable afterwards. |
-| **DB** | SQLite via SQLAlchemy 2.0 + Alembic, schema kept Postgres-compatible. Python ≥ 3.13. |
+| **DB** | **Postgres and SQLite, both supported**, via SQLAlchemy 2.0 + Alembic. Postgres 17 in production; SQLite for development, the single-container setup and the default test run. Every migration and every query runs on both; CI runs the backend suite against each. Python ≥ 3.13. |
 | **Tooling** | **uv** for dependencies and lockfile. **Makefile** as the only UX. **lefthook** hooks: ruff on staged files at commit, lint + backend tests at push. **GitHub Actions** runs the same make targets. |
 
 ---

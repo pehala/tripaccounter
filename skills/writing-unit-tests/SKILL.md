@@ -14,7 +14,7 @@ description: >-
 
 # Writing Backend Tests
 
-Trip Accounter is a FastAPI JSON API over SQLAlchemy 2.0 + SQLite, with a static
+Trip Accounter is a FastAPI JSON API over SQLAlchemy 2.0 + Postgres or SQLite, with a static
 Preact frontend that shares nothing with it but the contract in `design/API.md`.
 
 All backend tests go in `tests/backend/`. They run with no browser, no network, and
