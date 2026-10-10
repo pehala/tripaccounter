@@ -29,10 +29,8 @@ def test_chart_replaces_the_list_without_a_request(stats_page, count_requests):
     "end_date",
     [pytest.param("2026-09-21", id="dated-trip"), pytest.param(None, id="open-ended-trip")],
 )
-def test_day_columns_run_from_the_trip_start_to_the_last_spend(
-    stub, fixture_data, open_trip, end_date
-):
-    """A day with no spend is an empty column; days after ISK's last expense, 14 Sep, are not."""
+def test_day_columns_run_from_the_first_to_the_last_spend(stub, fixture_data, open_trip, end_date):
+    """The axis runs from ISK's first expense, 13 Sep, to its last, 14 Sep."""
     trip = {**fixture_data["trip"]["trip"], "end_date": end_date}
     stub("**/api/v1/trips/iceland-2026", lambda request: (200, {"trip": trip}), method="GET")
     page = open_trip("stats")
@@ -40,7 +38,7 @@ def test_day_columns_run_from_the_trip_start_to_the_last_spend(
 
     config = chart_config(page, ISK_ID)
 
-    assert config["labels"] == ["12 Sep", "13 Sep", "14 Sep"]
+    assert config["labels"] == ["13 Sep", "14 Sep"]
 
 
 @pytest.mark.parametrize(
@@ -107,7 +105,7 @@ def test_the_before_trip_bucket_opens_the_day_axis(before_trip_stats_page):
 
     config = chart_config(before_trip_stats_page, ISK_ID)
 
-    assert config["labels"] == ["Before the trip", "12 Sep", "13 Sep"]
+    assert config["labels"] == ["Before the trip", "13 Sep"]
 
 
 def test_the_total_draws_no_chart_until_every_rate_is_set(stats_page):

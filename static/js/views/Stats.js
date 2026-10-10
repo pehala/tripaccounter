@@ -139,14 +139,14 @@ function keyColor(dim, value, trip) {
   return trip.people.find((p) => p.id === value)?.color ?? null;
 }
 
-// The before-trip bucket (`date: null`) if any row has it, then every trip day
-// inside the picked range up to the last day with spend, plus any row's day after
+// The before-trip bucket (`date: null`) if any row has it, then every day from the
+// range's start (the first expense when it has none) up to the last day with spend, plus any row's day after
 // the trip, so a day with no spend is an empty slot on the axis rather than missing
 // from it — and a trip still under way ends at its last expense, not its end date.
 function axisDays(trip, rows, range) {
   const days = new Set(rows.map((row) => row.keys.date).filter((day) => day !== null));
   const spent = [...days].sort().at(-1);
-  const first = [trip.start_date, range.from].filter(Boolean).sort().at(-1);
+  const first = range.from ? [trip.start_date, range.from].filter(Boolean).sort().at(-1) : [...days].sort()[0];
   const final = [trip.end_date, spent].filter(Boolean).sort()[0];
   if (trip.start_date && spent) {
     const last = new Date(`${final}T00:00:00Z`);
