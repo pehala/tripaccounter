@@ -9,12 +9,11 @@ cell of it, which keeps one source of truth for what a row looks like.
 
 import csv
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import pytest
 
 SAMPLE = Path(__file__).parent.parent / "fixtures" / "sheet.csv"
-PRAGUE = ZoneInfo("Europe/Prague")
+PRAGUE_ZONE = "Europe/Prague"
 PEOPLE = ["Ann", "Bob"]
 
 with SAMPLE.open(encoding="utf-8", newline="") as handle:

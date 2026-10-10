@@ -75,6 +75,12 @@ class InvalidDateRangeError(FieldError):
     code = "invalid_date_range"
 
 
+class InvalidTimezoneError(FieldError):
+    """Not an IANA time zone name the server's zone database knows."""
+
+    code = "invalid_timezone"
+
+
 class InvalidUrlError(FieldError):
     """Not a genuine absolute http(s) URL."""
 

@@ -272,7 +272,7 @@ backend suite against each. A query uses what both have in common — the share 
 relies on integer division, which floors identically on both — or compiles a
 per-dialect form behind one helper in `services/queries.py`. A timestamp is stored
 as its UTC instant; a value that also needs its time zone keeps it in a column of
-its own.
+its own. `trip.timezone` is one: `day_of` in `services/queries.py` cuts a day in it on both.
 
 > **No authentication exists.** Anyone who reaches the host can read and modify every
 > trip. That is acceptable only while the VPN is the sole path in. If it ever needs to

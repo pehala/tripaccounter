@@ -1,8 +1,8 @@
 # Trip Accounter — Time zones
 
-> **Status: planned.** The design record and the implementation plan, in two phases.
-> Once a phase ships, its rules move into `API.md` §Time, `ERD.md` and
-> `DECISIONS.md`, which then win where the two differ.
+> **Status: phase 1 shipped, phase 2 planned.** The design record and the implementation
+> plan, in two phases. Phase 1's rules now live in `API.md` §Time, `ERD.md` and
+> `DECISIONS.md`, which win where they differ; phase 2's move there when it ships.
 
 An item happened at a real moment, in a real place. A coffee bought in Tokyo at
 17:00 reads "17:00" to everyone — to the person who bought it, to the person reading
@@ -64,7 +64,7 @@ the server accepts.
 |---|---|---|---|
 | `trip` | `timezone` | `varchar(64)`, not null | an IANA name `ZoneInfo` loads |
 
-**Migration `0004`** is one Alembic operation:
+**Migration `d431f6f93289`** is one Alembic operation:
 `op.add_column("trip", sa.Column("timezone", sa.String(64), nullable=False,
 server_default="UTC"))`. Every existing trip gets `UTC`, which reproduces today's
 feed exactly; each trip changes when someone sets its zone. `downgrade()` drops the
@@ -150,7 +150,7 @@ phase 2.
 |---|---|---|---|
 | `line_item`, `wallet_transfer` | `occurred_tz` | `varchar(64)`, not null | an IANA name, validated like `trip.timezone` |
 
-**Migration `0005`** is written in Alembic operations and SQLAlchemy Core, so
+**Migration the per-item-zone migration** is written in Alembic operations and SQLAlchemy Core, so
 Alembic compiles it for each database. For `line_item` and `wallet_transfer`:
 
 1. `op.add_column(table, sa.Column("occurred_tz", sa.String(64), nullable=True))`.
@@ -160,9 +160,7 @@ Alembic compiles it for each database. For `line_item` and `wallet_transfer`:
    ```python
    op.execute(
        sa.update(rows).values(
-           occurred_tz=sa.select(trip.c.timezone)
-           .where(trip.c.id == rows.c.trip_id)
-           .scalar_subquery()
+           occurred_tz=sa.select(trip.c.timezone).where(trip.c.id == rows.c.trip_id).scalar_subquery()
        )
    )
    ```
@@ -239,9 +237,9 @@ per trip and country, dry run by default) can be added when that trip comes up.
 | # | PR | Contents |
 |---|---|---|
 | 0 | `docs(design): document postgres and sqlite support, add time zone plan` | `ARCHITECTURE.md`, `DECISIONS.md`, the skill intro, this file |
-| 1 | `feat: add a trip time zone` | all of §2 — migration `0004`, the mixin, backend, frontend, `import_sheet`, `openapi.json`, design docs, tests on SQLite, Postgres and Playwright |
+| 1 | `feat: add a trip time zone` | all of §2 — the `trip.timezone` migration (`d431f6f93289`), the mixin, backend, frontend, `import_sheet`, `openapi.json`, design docs, tests on SQLite, Postgres and Playwright |
 | — | **release; set every trip's zone in Setup** | |
-| 2 | `feat: record a time zone per item` | all of §3 — migration `0005`, backend, frontend, `import_sheet`, `openapi.json`, design docs, the migration chain test covering `0004` and `0005`, tests |
+| 2 | `feat: record a time zone per item` | all of §3 — migration the per-item-zone migration, backend, frontend, `import_sheet`, `openapi.json`, design docs, the migration chain test covering `d431f6f93289` and the per-item-zone migration, tests |
 
 Each phase is one PR. Phase 1 changes `occurred_at`'s wire form, so its backend and
 frontend ship together; phase 2 adds the picker and the server's acceptance of
@@ -263,19 +261,19 @@ declared in the test, one set per revision it touches. Every `command.upgrade` /
 `command.downgrade` targets a named revision. The test therefore keeps checking
 exactly these two migrations as later revisions and model changes land.
 
-1. `command.upgrade(cfg, "0003")`, then insert through the `0003` stubs: two trips,
+1. `command.upgrade(cfg, "deac5897cc75")`, then insert through the `deac5897cc75` stubs: two trips,
    items and transfers in each, with instants on both sides of a DST change (Prague,
    25 Oct 2026) and around midnight UTC. Record every `occurred_at`.
-2. **Migration a** — `command.upgrade(cfg, "0004")`. Assert every trip's `timezone`
+2. **Migration a** — `command.upgrade(cfg, "d431f6f93289")`. Assert every trip's `timezone`
    is `UTC` and every `occurred_at` equals step 1's.
 3. **Set the trip zones**, as users do between the phases: trip one to
-   `Asia/Tokyo`, trip two to `Europe/Prague`, with `sa.update` on the `0004` trip
+   `Asia/Tokyo`, trip two to `Europe/Prague`, with `sa.update` on the `d431f6f93289` trip
    stub.
-4. **Migration b** — `command.upgrade(cfg, "0005")`. Assert:
+4. **Migration b** — `command.upgrade(cfg, the per-item-zone revision)`. Assert:
    - every item's and transfer's `occurred_tz` equals its own trip's zone
    - every `occurred_at` equals step 1's, on both sides of the DST change
    - an insert into each table without `occurred_tz` raises `IntegrityError`
-5. `command.downgrade(cfg, "0003")`, then assert every `occurred_at` equals step 1's.
+5. `command.downgrade(cfg, "deac5897cc75")`, then assert every `occurred_at` equals step 1's.
 
 **Phase 1**
 - a wall time written into a Tokyo trip reads back as the same digits with
@@ -299,7 +297,7 @@ exactly these two migrations as later revisions and model changes land.
   alone keeps the instant
 - an item moved by an edit across a DST change keeps its zone and resolves at the
   new offset
-- migration `0005`: covered by the migration chain test
+- migration the per-item-zone migration: covered by the migration chain test
 - the feed orders by instant across two zones
 
 Frontend: each row prints the time from its own string; grouping follows `day`;

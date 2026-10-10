@@ -3,7 +3,7 @@ import { html } from '../h.js';
 import { api } from '../api.js';
 import { reload, invalidateMoneyViews } from '../store.js';
 import { t, getLocale } from '../i18n/index.js';
-import { parse, money, fmtParams, toInputValue, fromInputValue } from '../fmt.js';
+import { parse, money, fmtParams, toInputValue, fromInputValue, nowIn } from '../fmt.js';
 import { pushFlash } from './Flash.js';
 import { PersonChip } from './PersonChip.js';
 import { LabelInput } from './LabelInput.js';
@@ -65,7 +65,7 @@ function initialItemState(item, trip) {
     stayId: null,
     countryTouched: false,
     cityTouched: false,
-    occurredAt: toInputValue(new Date().toISOString()),
+    occurredAt: nowIn(trip.timezone),
     labels: [],
     city: '',
     mapUrl: '',
@@ -103,7 +103,7 @@ function initialTransferState(transfer, trip) {
     toAmount: '',
     toCurrencyId: primary?.id ?? null,
     toEdited: false,
-    occurredAt: toInputValue(new Date().toISOString()),
+    occurredAt: nowIn(trip.timezone),
     note: '',
   };
 }

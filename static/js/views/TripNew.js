@@ -4,6 +4,7 @@ import { api } from '../api.js';
 import { t, getLocale } from '../i18n/index.js';
 import { pushFlash } from '../components/Flash.js';
 import { fmtParams } from '../fmt.js';
+import { TimezoneSelect } from '../components/TimezoneSelect.js';
 
 function errText(err) {
   return t('err.' + err.code, fmtParams(err.params, getLocale()));
@@ -24,6 +25,8 @@ export function TripNew() {
   const [note, setNote] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  // The browser's own zone is the likeliest guess for where the trip is entered.
+  const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [people, setPeople] = useState([{ name: '', weight: '' }]);
   const [currencies, setCurrencies] = useState([{ code: '', symbol: '', isPrimary: true }]);
   const [countries, setCountries] = useState([{ name: '', code: '' }]);
@@ -45,6 +48,7 @@ export function TripNew() {
     setFieldErrors({});
     const body = {
       name,
+      timezone,
       people: people.filter((p) => p.name.trim()).map((p) => ({
         name: p.name.trim(),
         ...(p.weight ? { default_weight: p.weight } : {}),
@@ -97,6 +101,12 @@ export function TripNew() {
             <label class="form-label small mb-1">${t('tripnew.end_date_label')}</label>
             <input type="date" class="form-control" value=${endDate} onInput=${(e) => setEndDate(e.target.value)} />
           </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small mb-1" for="new-trip-timezone">${t('tripnew.timezone_label')}</label>
+          <${TimezoneSelect} id="new-trip-timezone" value=${timezone} onChange=${setTimezone} />
+          ${fieldErrors.timezone && html`<div class="invalid-feedback d-block">${errText(fieldErrors.timezone)}</div>`}
         </div>
 
         <div class="mb-3">

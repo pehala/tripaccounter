@@ -17,6 +17,7 @@ from app.services.errors.fields import EmptyError
 from app.services.labels import get_or_create as get_or_create_label
 from app.services.roster import country_item_counts
 from app.services.slugs import unique_slug
+from app.services.timezones import DEFAULT_TIMEZONE, timezone_error
 
 router = APIRouter(tags=["trips"])
 
@@ -60,11 +61,18 @@ def create_trip(body: TripCreate, session: SessionDep):
         fields["currencies"] = EmptyError()
     if len(body.countries) == 0:
         fields["countries"] = EmptyError()
+    if zone_error := timezone_error(body.timezone):
+        fields["timezone"] = zone_error
     if fields:
         raise ValidationError(fields)
 
     trip = Trip(
-        slug="", name=body.name, start_date=body.start_date, end_date=body.end_date, note=body.note
+        slug="",
+        name=body.name,
+        start_date=body.start_date,
+        end_date=body.end_date,
+        timezone=body.timezone or DEFAULT_TIMEZONE,
+        note=body.note,
     )
     session.add(trip)
     session.flush()
@@ -104,12 +112,16 @@ def get_trip_route(trip: TripDep, session: SessionDep):
 )
 def update_trip(body: TripUpdate, trip: TripDep, session: SessionDep):
     """Update a trip's fields."""
+    if zone_error := timezone_error(body.timezone):
+        raise ValidationError({"timezone": zone_error})
     if body.name is not None:
         trip.name = body.name
     if body.start_date is not None:
         trip.start_date = body.start_date
     if body.end_date is not None:
         trip.end_date = body.end_date
+    if body.timezone is not None:
+        trip.timezone = body.timezone
     if body.note is not None:
         trip.note = body.note
     if body.archived is not None:

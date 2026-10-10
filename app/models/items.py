@@ -7,6 +7,7 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     DateTime,
+    Index,
     UniqueConstraint,
     func,
 )
@@ -14,13 +15,14 @@ from sqlmodel import Field, Relationship, SQLModel
 
 from app.models.constraints import trip_scoped_fk
 from app.models.labels import ItemLabel, Label
+from app.models.occurred import Occurred
 from app.models.roster import Person, TripCountry, TripCurrency
 from app.models.stays import Stay
 from app.models.trip import Trip
 from app.models.wallets import Wallet
 
 
-class LineItem(SQLModel, table=True):
+class LineItem(Occurred, table=True):
     """A single trip expense: who paid, in what currency, where, and its split shares."""
 
     __tablename__ = "line_item"
@@ -32,14 +34,11 @@ class LineItem(SQLModel, table=True):
         trip_scoped_fk("country_id", "trip_country", "fk_item_country_trip"),
         trip_scoped_fk("wallet_id", "wallet", "fk_item_wallet_trip"),
         trip_scoped_fk("stay_id", "stay", "fk_item_stay_trip"),
+        Index("ix_line_item_occurred_at", "occurred_at"),
     )
 
     id: int | None = Field(default=None, primary_key=True)
     trip_id: int = Field(foreign_key="trip.id", index=True)
-    # Always tz-aware (schemas/fields.py normalizes a naive input to UTC
-    # before it ever reaches here) - timezone=True keeps that explicit in the
-    # column type itself, and is honored for real on Postgres.
-    occurred_at: datetime = Field(sa_column=Column(DateTime(timezone=True), index=True))
     name: str = Field(max_length=200)
     note: str | None = None
     city: str | None = None

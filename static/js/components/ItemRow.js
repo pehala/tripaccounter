@@ -1,6 +1,6 @@
 import { html } from '../h.js';
 import { t } from '../i18n/index.js';
-import { money } from '../fmt.js';
+import { money, wallTime } from '../fmt.js';
 import { Avatar } from './Avatar.js';
 import { EditButton } from './EditButton.js';
 import { LabelBadge } from './LabelBadge.js';
@@ -11,7 +11,7 @@ export function ItemRow({ item, trip, locale, onSelect }) {
   const wallet = (trip.wallets || []).find((w) => w.id === item.wallet_id);
   const stay = (trip.stays || []).find((candidate) => candidate.id === item.stay_id);
   const walletIsPayerDefault = wallet && payer && wallet.person_id === payer.id && wallet.is_default;
-  const time = item.occurred_at.slice(11, 16);
+  const time = wallTime(item.occurred_at);
   const hasMap = Boolean(item.map_url || (item.lat && item.lon));
   const mapHref = item.map_url
     || `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lon}`;

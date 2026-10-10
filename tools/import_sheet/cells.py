@@ -46,7 +46,7 @@ def parse_naive(text, year=None):
         candidates += [(f"{text} {year}", f"{shape} %Y") for shape in FORMATS_WITHOUT_YEAR]
     for value, shape in candidates:
         try:
-            naive = datetime.strptime(value, shape)  # noqa: DTZ007 - localized by the caller
+            naive = datetime.strptime(value, shape)  # noqa: DTZ007 - a wall time, resolved in the trip zone
         except ValueError:
             continue
         return naive if "%H" in shape else naive.replace(hour=DATE_ONLY_HOUR, minute=0)
@@ -61,7 +61,6 @@ def dominant_year(texts):
     return years.most_common(1)[0][0] if years else datetime.now(UTC).year
 
 
-def parse_occurred_at(raw, zone, year):
-    """Read a sheet date as local wall clock and return the UTC instant it names."""
-    naive = parse_naive(raw.strip(), year)
-    return None if naive is None else naive.replace(tzinfo=zone).astimezone(UTC)
+def parse_occurred_at(raw, year):
+    """Read a sheet date as the wall time it holds; the trip's zone resolves it on write."""
+    return parse_naive(raw.strip(), year)

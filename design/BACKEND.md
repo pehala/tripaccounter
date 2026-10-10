@@ -208,6 +208,7 @@ lives, which is rarely where the code that answers it lives.
 | `test_stays.py` | stay CRUD, `null` clears on `PATCH`, the date range, per-currency totals and `per_night` (floored, `null` at 0 nights), delete detaching items, an item's `stay_id` |
 | `test_transfers.py` | transfer CRUD, the plain/exchange mirroring rule, `same_wallet`/`cross_owner_exchange`, exclusion from spend |
 | `test_stats.py` | prefix expansion, nested rows against their parent, each dimension's own column, the deliberate `label` overlap, `person` as owed |
+| `test_timezones.py` | the trip time zone: wall times in and out, gap and repeat, the days it cuts across a clock change, feed order |
 | `test_export.py` | both formats, the pinned CSV header, an empty trip |
 | `test_validation.py` | the `API.md` §4 table, row by row, each as a real request |
 | `test_errors.py` | catalog ↔ contract ↔ wire consistency; no `message` key anywhere |

@@ -35,12 +35,12 @@ def list_transfers(trip: TripDep, session: SessionDep):
 def create_transfer(body: TransferWrite, trip: TripDep, session: SessionDep, clock: ClockDep):
     """Create a new transfer between two wallets."""
     resolved = transfer_service.resolve_write(body, None)
-    fields = transfer_service.validate(session, trip, resolved, creating=True)
+    fields = transfer_service.validate(session, trip, resolved, body.occurred_at, creating=True)
     if fields:
         raise ValidationError(fields)
 
-    transfer = WalletTransfer(trip_id=trip.id)
-    transfer_service.apply_write(transfer, resolved, body.occurred_at or clock, body.note)
+    transfer = WalletTransfer(trip_id=trip.id, occurred_at=clock)
+    transfer_service.apply_write(transfer, resolved, body.occurred_at, body.note, trip.zone)
     session.add(transfer)
     session.flush()
     session.refresh(transfer)
@@ -71,11 +71,11 @@ def update_transfer(transfer_id: int, body: TransferWrite, trip: TripDep, sessio
         session, WalletTransfer, transfer_id, trip.id, "transfer", options=TRANSFER_LOAD_OPTIONS
     )
     resolved = transfer_service.resolve_write(body, transfer)
-    fields = transfer_service.validate(session, trip, resolved, creating=False)
+    fields = transfer_service.validate(session, trip, resolved, body.occurred_at, creating=False)
     if fields:
         raise ValidationError(fields)
 
-    transfer_service.apply_write(transfer, resolved, body.occurred_at, body.note)
+    transfer_service.apply_write(transfer, resolved, body.occurred_at, body.note, trip.zone)
     session.flush()
     session.refresh(transfer)
     return {"transfer": TransferOut.from_transfer(transfer)}

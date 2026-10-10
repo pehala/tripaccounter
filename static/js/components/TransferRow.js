@@ -1,5 +1,5 @@
 import { html } from '../h.js';
-import { money } from '../fmt.js';
+import { money, wallTime } from '../fmt.js';
 import { Avatar } from './Avatar.js';
 import { EditButton } from './EditButton.js';
 
@@ -14,7 +14,7 @@ export function TransferRow({ transfer, trip, locale, onSelect }) {
   const toWallet = wallet(transfer.to_wallet_id);
   const fromOwner = owner(transfer.from_wallet_id);
   const toOwner = owner(transfer.to_wallet_id);
-  const time = transfer.occurred_at.slice(11, 16);
+  const time = wallTime(transfer.occurred_at);
   const isExchange = transfer.from_currency_code !== transfer.to_currency_code;
 
   return html`

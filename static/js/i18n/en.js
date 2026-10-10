@@ -31,6 +31,7 @@ export default {
   'tripnew.title': 'New trip',
   'tripnew.name_placeholder': 'Trip name',
   'tripnew.start_date_label': 'Start date',
+  'tripnew.timezone_label': 'Time zone',
   'tripnew.end_date_label': 'End date',
   'tripnew.people_label': 'People',
   'tripnew.currencies_label': 'Currencies',
@@ -234,6 +235,7 @@ export default {
   'setup.note_label': 'Note',
   'setup.note_placeholder': 'optional',
   'setup.dates_label': 'Dates',
+  'setup.timezone_label': 'Time zone',
   'setup.dates_placeholder': 'not set',
 
   'err.required': 'Give it a name.',
@@ -245,6 +247,7 @@ export default {
   'err.invalid_datetime': 'Check the date.',
   'err.invalid_date': 'Check the date.',
   'err.invalid_date_range': 'Check-out can’t be before check-in.',
+  'err.invalid_timezone': 'Unknown time zone.',
   'err.label_whitespace': "Labels can't contain spaces — use {value}.",
   'err.empty': 'Add at least one.',
   'err.duplicate_person': 'Somebody has to owe something.',

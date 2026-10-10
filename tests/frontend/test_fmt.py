@@ -6,6 +6,8 @@ signed() puts + only on credits; rate() keeps six significant digits ungrouped s
 parse() reads it back; the formatter cache returns one instance per locale.
 """
 
+import re
+
 import pytest
 
 
@@ -81,3 +83,46 @@ def test_formatter_cache_reuses_one_instance_per_locale(page, mockserver):
         }"""
     )
     assert construction_count == 2
+
+
+@pytest.mark.parametrize(
+    ("name", "args", "expected"),
+    [
+        pytest.param("wallTime", ["2026-09-14T17:05:00"], "17:05", id="wall-time-is-its-digits"),
+        pytest.param("wallClock", ["2026-09-14T17:05:00", "en"], "14 Sep, 17:05", id="wall-clock"),
+        pytest.param("toInputValue", ["2026-09-14T17:05:00"], "2026-09-14T17:05", id="to-input"),
+        pytest.param("toInputValue", [None], "", id="to-input-empty"),
+        pytest.param("fromInputValue", ["2026-09-14T17:05"], "2026-09-14T17:05", id="from-input"),
+        pytest.param("fromInputValue", [""], None, id="from-input-empty"),
+        pytest.param("weekday", ["2026-09-14", "en"], "Mon", id="weekday"),
+    ],
+)
+def test_wall_times_are_read_as_their_digits(js, name, args, expected):
+    """A wall time prints and round-trips as the digits it carries, never through a zone."""
+    assert js("fmt.js", name, *args) == expected
+
+
+def test_a_day_reads_the_same_in_a_browser_west_of_utc(browser, mockserver):
+    """A bare date formats as itself in Los Angeles: no shift to the evening before."""
+    context = browser.new_context(timezone_id="America/Los_Angeles")
+    page = context.new_page()
+    page.goto(f"{mockserver}/")
+
+    shown = page.evaluate(
+        """async () => {
+            const { date, weekday, dateRange } = await import('/js/fmt.js');
+            return [
+                weekday('2026-09-14', 'en'),
+                date('2026-09-14', 'en'),
+                dateRange('2026-09-12', '2026-09-21', 'en'),
+            ];
+        }"""
+    )
+    context.close()
+
+    assert shown == ["Mon", "14 Sep", "12–21 Sep"]
+
+
+def test_now_in_a_zone_is_a_minute_precision_wall_time(js):
+    """nowIn() answers the datetime-local shape, `YYYY-MM-DDTHH:mm`, for any zone."""
+    assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d", js("fmt.js", "nowIn", "Asia/Tokyo"))

@@ -42,6 +42,7 @@ erDiagram
         string   name
         date     start_date "nullable"
         date     end_date "nullable"
+        string   timezone "IANA name, default UTC; cuts the trip days"
         string   note "nullable"
         bool     archived "default false"
         datetime created_at
@@ -94,7 +95,7 @@ erDiagram
     LINE_ITEM {
         int      id PK
         int      trip_id FK "denormalized for fast listing"
-        datetime occurred_at "tz-aware, stored/echoed as UTC; naive input assumed UTC"
+        datetime occurred_at "tz-aware UTC instant; read and written as a wall time in the trip timezone"
         string   name
         string   note "nullable"
         string   city "nullable, freeform"
@@ -150,7 +151,7 @@ erDiagram
     WALLET_TRANSFER {
         int      id PK
         int      trip_id FK
-        datetime occurred_at "tz-aware UTC, like LINE_ITEM"
+        datetime occurred_at "UTC instant, like LINE_ITEM"
         int      from_wallet_id FK "-> WALLET"
         int      from_currency_id FK
         bigint   from_amount_minor "hundredths, > 0, what left"

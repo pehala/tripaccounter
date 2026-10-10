@@ -8,7 +8,8 @@
       "collection": "#/items/items",
       "item": "item",
       "insert": "head",
-      "defaults": {"currency_code": "ISK", "split": {"mode": "equal", "shares": []}},
+      "defaults": {"currency_code": "ISK", "occurred_tz": "UTC", "split": {"mode": "equal", "shares": []}},
+      "wall_time": "occurred_at",
       "extra": {
         "day_totals": "#/items/day_totals",
         "before_trip_totals": "#/items/before_trip_totals",
@@ -19,7 +20,8 @@
       "collection": "#/items/transfers",
       "item": "transfer",
       "insert": "head",
-      "defaults": {"from_currency_code": "ISK", "to_currency_code": "ISK", "note": null}
+      "defaults": {"from_currency_code": "ISK", "to_currency_code": "ISK", "occurred_tz": "UTC", "note": null},
+      "wall_time": "occurred_at"
     },
     "/api/v1/trips/{slug}/wallets": {
       "collection": "#/trip/trip/wallets",

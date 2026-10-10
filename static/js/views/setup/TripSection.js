@@ -7,9 +7,10 @@ import { api, attempt } from '../../api.js';
 import { pushFlash } from '../../components/Flash.js';
 import { errText } from '../../components/errText.js';
 import { FieldError } from '../../components/FieldError.js';
+import { TimezoneSelect } from '../../components/TimezoneSelect.js';
 
 export function TripSection({ trip, locale }) {
-  const [field, setField] = useState(null); // 'name' | 'note' | 'dates' | null
+  const [field, setField] = useState(null); // 'name' | 'note' | 'dates' | 'timezone' | null
   const [draft, setDraft] = useState('');
   const [draftStart, setDraftStart] = useState('');
   const [draftEnd, setDraftEnd] = useState('');
@@ -97,6 +98,21 @@ export function TripSection({ trip, locale }) {
               : html`<span class="text-body-secondary" style="cursor:pointer" onClick=${startDates}>${dateRange(trip.start_date, trip.end_date, locale) || t('setup.dates_placeholder')}</span>`}
           </div>
           ${field === 'dates' && html`<${FieldError} error=${error} locale=${locale} />`}
+        </li>
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between align-items-center">
+            <span>${t('setup.timezone_label')}</span>
+            ${field === 'timezone'
+              ? html`
+                  <span class="d-inline-flex gap-1 align-items-center">
+                    <${TimezoneSelect} small id="setup-timezone" value=${draft} onChange=${setDraft} />
+                    <button type="button" class="btn btn-sm btn-primary" onClick=${save}>${t('action.save')}</button>
+                    <button type="button" class="btn btn-sm btn-link" onClick=${() => setField(null)}>${t('action.cancel')}</button>
+                  </span>
+                `
+              : html`<span style="cursor:pointer" onClick=${() => start('timezone', trip.timezone)}>${trip.timezone}</span>`}
+          </div>
+          ${field === 'timezone' && html`<${FieldError} error=${error} locale=${locale} />`}
         </li>
         <li class="list-group-item d-flex justify-content-between">
           <span>${t('setup.link')} <small class="text-body-secondary">${t('setup.link_note')}</small></span><code>/t/${trip.slug}</code>

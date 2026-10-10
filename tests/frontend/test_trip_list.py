@@ -11,6 +11,7 @@ from playwright.sync_api import expect
 MINTED_TRIP = {"trip": {"id": 999, "slug": "new-trip-slug"}}
 EXPECTED_BODY = {
     "name": "Norway 2027",
+    "timezone": "UTC",
     "people": [{"name": "Petr"}],
     "currencies": [{"code": "NOK", "is_primary": True}],
     "countries": [{"name": "Norway"}],

@@ -194,6 +194,7 @@ class TripOut(BaseModel):
     name: str
     start_date: str | None
     end_date: str | None
+    timezone: str
     note: str | None
     archived: bool
     people: list[PersonOut]
@@ -213,6 +214,7 @@ class TripOut(BaseModel):
             name=trip.name,
             start_date=trip.start_date,
             end_date=trip.end_date,
+            timezone=trip.timezone,
             note=trip.note,
             archived=trip.archived,
             people=[PersonOut.from_person(p) for p in trip.people],
@@ -235,6 +237,7 @@ class TripSummaryOut(BaseModel):
     name: str
     start_date: str | None
     end_date: str | None
+    timezone: str
     note: str | None
     archived: bool
     people_count: int
@@ -251,6 +254,7 @@ class TripSummaryOut(BaseModel):
             name=trip.name,
             start_date=trip.start_date,
             end_date=trip.end_date,
+            timezone=trip.timezone,
             note=trip.note,
             archived=trip.archived,
             people_count=people_count,
@@ -301,6 +305,9 @@ class ItemOut(BaseModel):
     note: str | None
     city: str | None
     occurred_at: str
+    occurred_tz: str
+    trip_occurred_at: str
+    day: str
     currency_code: str
     currency_id: int
     amount: Number
@@ -326,7 +333,7 @@ class ItemOut(BaseModel):
             name=item.name,
             note=item.note,
             city=item.city,
-            occurred_at=iso_z(item.occurred_at),
+            **item.wire_times(),
             currency_code=item.currency.code,
             currency_id=item.currency_id,
             amount=to_wire(item.amount_minor, AMOUNT_SCALE),
@@ -349,6 +356,9 @@ class TransferOut(BaseModel):
 
     id: int
     occurred_at: str
+    occurred_tz: str
+    trip_occurred_at: str
+    day: str
     from_wallet_id: int
     from_amount: Number
     from_currency_id: int
@@ -366,7 +376,7 @@ class TransferOut(BaseModel):
         """Build a TransferOut from a WalletTransfer model instance."""
         return cls(
             id=transfer.id,
-            occurred_at=iso_z(transfer.occurred_at),
+            **transfer.wire_times(),
             from_wallet_id=transfer.from_wallet_id,
             from_amount=to_wire(transfer.from_amount_minor, AMOUNT_SCALE),
             from_currency_id=transfer.from_currency_id,

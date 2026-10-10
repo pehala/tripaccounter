@@ -6,6 +6,7 @@ committed here, so the caller decides between a dry run and an import.
 """
 
 from app.models.items import ItemShare, LineItem
+from app.models.occurred import Occurred
 from app.models.trip import Trip
 from app.schemas.requests import ItemWrite
 from app.services import labels as label_service
@@ -13,10 +14,14 @@ from app.services import roster, slugs, splits
 from app.services.money import to_hundredths
 
 
-def create_trip(session, name, start_date, end_date):
-    """Create an empty trip with a unique slug derived from its name."""
+def create_trip(session, name, start_date, end_date, timezone):
+    """Create an empty trip in `timezone` with a unique slug derived from its name."""
     trip = Trip(
-        slug=slugs.unique_slug(session, name), name=name, start_date=start_date, end_date=end_date
+        slug=slugs.unique_slug(session, name),
+        name=name,
+        start_date=start_date,
+        end_date=end_date,
+        timezone=timezone,
     )
     session.add(trip)
     session.flush()
@@ -69,7 +74,7 @@ def apply(session, plan, trip):
             name=body.name,
             note=body.note,
             city=body.city,
-            occurred_at=body.occurred_at,
+            occurred_at=Occurred.resolve(body.occurred_at, trip.zone),
             currency_id=currency.id,
             amount_minor=to_hundredths(body.amount),
             payer_id=payer.id,

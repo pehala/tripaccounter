@@ -5,6 +5,8 @@ options and a service can wrap it in an aggregate.
 """
 
 from sqlalchemy import BigInteger, String, cast, func, literal, select, union_all
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.expression import FunctionElement, bindparam
 
 from app.db_views import share_owed_view
 from app.models.items import LineItem
@@ -18,9 +20,32 @@ def int_sum(column):
     return cast(func.sum(column), BigInteger)
 
 
-def day_of(column):
-    """Return `column`'s calendar day as a `YYYY-MM-DD` string, on every dialect."""
-    return cast(func.date(column), String)
+class day_of(FunctionElement):
+    """`column`'s calendar day in the zone `tz`, as a `YYYY-MM-DD` string, on every dialect.
+
+    The zone is rendered into the statement as a literal, so the select list and the
+    `GROUP BY` carry the same text and Postgres accepts the one as the other.
+    """
+
+    type = String()
+    name = "day_of"
+    inherit_cache = True
+
+    def __init__(self, column, tz: str):
+        super().__init__(column, bindparam(None, tz, type_=String, literal_execute=True))
+
+
+@compiles(day_of, "postgresql")
+def _day_of_postgresql(element, compiler, **kw):
+    column, tz = element.clauses
+    local = f"{compiler.process(column, **kw)} AT TIME ZONE {compiler.process(tz, **kw)}"
+    return f"CAST(CAST(({local}) AS DATE) AS VARCHAR)"
+
+
+@compiles(day_of)
+def _day_of_default(element, compiler, **kw):
+    column, tz = element.clauses
+    return f"tz_date({compiler.process(column, **kw)}, {compiler.process(tz, **kw)})"
 
 
 def items_for_trip(trip_id: int, *, newest_first: bool = True):

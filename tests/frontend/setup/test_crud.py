@@ -3,6 +3,8 @@
 Deleting (confirmation, in-use refusals) lives in `test_delete.py`.
 """
 
+import re
+
 import pytest
 from playwright.sync_api import expect
 
@@ -66,6 +68,19 @@ def test_trip_dates_edit_updates_the_shown_range(setup_card):
     expect(section.get_by_text("10–25 Sep")).to_be_visible()
 
 
+def test_trip_timezone_edit_patches_the_picked_zone_and_shows_it(setup_card, count_requests):
+    """Picking a zone in the Trip card PATCHes `timezone` alone and shows the new name."""
+    section = setup_card("Trip")
+    patched = count_requests("*/trips/iceland-2026", method="PATCH")
+    section.get_by_text("Atlantic/Reykjavik").click()
+    section.locator("#setup-timezone").fill("Asia/Tokyo")
+
+    section.get_by_role("button", name="Save", exact=True).click()
+
+    expect(section.get_by_text("Asia/Tokyo")).to_be_visible()
+    assert [call.post_data_json for call in patched] == [{"timezone": "Asia/Tokyo"}]
+
+
 # --- wallets ----------------------------------------------------------------
 
 
@@ -98,3 +113,16 @@ def test_make_default_moves_the_default_flag(setup_card):
 
     expect(row).to_contain_text("default")
     expect(row.get_by_label("Delete")).to_have_count(0)
+
+
+def test_trip_timezone_field_flags_a_name_outside_the_zone_list(setup_card):
+    """The zone field is typed into: a name no zone carries is marked invalid before saving."""
+    section = setup_card("Trip")
+    section.get_by_text("Atlantic/Reykjavik").click()
+    field = section.locator("#setup-timezone")
+
+    field.fill("Mars/Olympus")
+    expect(field).to_have_class(re.compile(r"is-invalid"))
+
+    field.fill("Asia/Tokyo")
+    expect(field).not_to_have_class(re.compile(r"is-invalid"))

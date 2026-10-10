@@ -12,6 +12,7 @@ dependencies = [
   "sqlmodel>=0.0.42",
   "psycopg[binary]>=3.3.5",
   "fastapi-cli-slim>=0.0.23",
+  "tzdata>=2026.1",
 ]
 
 [dependency-groups]

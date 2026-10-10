@@ -1,13 +1,13 @@
 """Parse and validate raw request values into the canonical types the models carry.
 
 These helpers back the `Annotated` field aliases below: pydantic runs them as
-`BeforeValidator`/`AfterValidator`s, and a `FieldError` from
+`BeforeValidator`s, and a `FieldError` from
 `app/services/parsing.py` becomes the `PydanticCustomError` the error envelope
 renders (design/API.md §4).
 """
 
 import re
-from datetime import UTC, datetime
+from datetime import datetime
 from decimal import Decimal
 from typing import Annotated
 
@@ -17,6 +17,7 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     HttpUrl,
+    NaiveDatetime,
     PlainSerializer,
 )
 from pydantic_core import PydanticCustomError
@@ -89,21 +90,6 @@ def parse_lon(v: object) -> str | None:
     return v
 
 
-def normalize_to_utc(dt: datetime | None) -> datetime | None:
-    """occurred_at is always stored and returned tz-aware, in UTC (API.md §1 "Time").
-
-    pydantic's own datetime parsing already produced a `datetime`
-    from the ISO string, aware or not; a naive one is assumed to already be
-    UTC (no ambient server timezone ever enters this), an aware one is
-    converted. Either way the result carries an explicit `tzinfo`.
-    """
-    if dt is None:
-        return None
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=UTC)
-    return dt.astimezone(UTC)
-
-
 def parse_label(v: object) -> str:
     """Validate a label token: a stripped, whitespace-free string of 1-40 characters."""
     if not isinstance(v, str):
@@ -120,7 +106,9 @@ Amount = Annotated[Decimal, BeforeValidator(parse_amount)]
 Weight = Annotated[Decimal, BeforeValidator(parse_weight)]
 LatStr = Annotated[str | None, BeforeValidator(parse_lat)]
 LonStr = Annotated[str | None, BeforeValidator(parse_lon)]
-OccurredAt = Annotated[datetime | None, AfterValidator(normalize_to_utc)]
+# A wall time in the trip's zone: an offset is an error, and the zone is applied
+# by `Occurred.resolve` once the trip is known (API.md §1 "Time").
+OccurredAt = NaiveDatetime | None
 LabelToken = Annotated[str, BeforeValidator(parse_label)]
 # HttpUrl normalizes (trailing slash, host case, ...); a URL isn't required
 # to survive a round trip byte-for-byte, only to be a genuine absolute

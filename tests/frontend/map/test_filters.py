@@ -1,7 +1,7 @@
 """Tests for the map tab's filters (components/MapFilters.js).
 
 Three filters narrow the same set of pins: the feed's own needle over name and
-labels, label chips that OR together, and a date range over occurred_at. They
+labels, label chips that OR together, and a date range over the row's day. They
 compose, they are undone by Clear, and a filter that matches nothing says so rather
 than leaving an empty map to be read as "no coordinates".
 """
@@ -26,7 +26,9 @@ def dated_map_page(serve_items, fixture_data, open_trip):
         **items[0],
         "id": 99,
         "name": "Harbour parking",
-        "occurred_at": "2026-09-12T08:15:00Z",
+        "occurred_at": "2026-09-12T08:15:00",
+        "trip_occurred_at": "2026-09-12T08:15:00",
+        "day": "2026-09-12",
         "city": "Keflavík",
         "lat": "63.99790",
         "lon": "-22.56280",
