@@ -15,16 +15,23 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Name the build
+        id: version
+        run: |
+          echo "id=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
       - uses: redhat-actions/buildah-build@719e3c40d8af9790c23eca13f7daa339f2867034 # v3.1.0
         id: build
         with:
           image: ${{ github.repository }}
           tags: latest
           containerfiles: Dockerfile
-          # Versions the static asset URLs so nginx can cache them as immutable
-          # (DEPLOY.md §6.2). Without it every asset is served unversioned.
+          # The id versions the static asset URLs so nginx can cache them as immutable
+          # (DEPLOY.md §6.2) and is what the settings menu shows, so it is the short sha. Without
+          # it every asset is served unversioned.
           build-args: |
-            BUILD_ID=${{ github.sha }}
+            BUILD_ID=${{ steps.version.outputs.id }}
+            BUILD_TIME=${{ steps.version.outputs.time }}
       - uses: redhat-actions/push-to-registry@94ade333c38ecc0e60e94785125d9a52ca423b37 # v3.0.0
         with:
           image: ${{ steps.build.outputs.image }}

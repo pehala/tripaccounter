@@ -168,7 +168,7 @@ and a typo in a route shows up as a failing test instead of an echoed body.
 | `trip_url` | `{mockserver}/t/{slug}` |
 | `open_trip(hash)` / `items_page` … `setup_page` | the trip loaded on a tab, waited for; the factory form lets a test stub a baseline `GET` first |
 | `stub(pattern, responder)` | a `page.route` interceptor; a responder returning `None` lets the request through to the mock |
-| `count_requests(path_glob, method)` | a live list of the requests the page made, for the call budget |
+| `count_requests(path_glob, method)` | a live list of the requests the page made, for the call budget; the shell's `/api/v1/version` is left out unless the glob is exactly that path |
 
 **Two data mechanisms.** Baseline `GET`s and the round-trip writes of the Setup tab
 come from the mock. Error envelopes, `preview-split` numbers a test asserts, and slow

@@ -13,6 +13,7 @@ from playwright.sync_api import expect
 from tests.frontend.conftest import fill_card_to_cash_transfer
 
 API_CALLS = "*/api/v1/*"
+VERSION_CALL = "/api/v1/version"
 
 
 @pytest.fixture
@@ -154,3 +155,14 @@ def test_saving_a_transfer_makes_exactly_two_calls(new_item_modal, count_request
     expect(new_item_modal).to_be_hidden()
 
     assert len(calls) == 2
+
+
+def test_shell_asks_for_the_version_once_per_page_load(count_requests, open_trip, open_tab):
+    """The build id is chrome, not a screen: one call at load, none on a tab switch."""
+    calls = count_requests(VERSION_CALL)
+
+    open_trip()
+    open_tab("Balances")
+    open_tab("Setup")
+
+    assert len(calls) == 1

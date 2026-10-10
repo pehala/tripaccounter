@@ -27,10 +27,24 @@ function useRecentTrips() {
   return [trips || [], toggleRef];
 }
 
+// The running build, asked for once per page load and named at the foot of the
+// settings menu. It is chrome: if the call fails, or an older backend has no such
+// route, the menu just omits the line.
+function useVersion() {
+  const [version, setVersion] = useState(null);
+
+  useEffect(() => {
+    api.get('/version').then(setVersion).catch(() => setVersion(null));
+  }, []);
+
+  return version;
+}
+
 // `children` is everything route-specific (trip list, new-trip form, a
 // trip's own header and tabs), drawn by app.js underneath this nav.
 export function Shell({ children }) {
   const [recentTrips, toggleRef] = useRecentTrips();
+  const version = useVersion();
 
   return html`
     <nav class="navbar navbar-expand bg-body border-bottom shell-bar py-1 small">
@@ -52,7 +66,7 @@ export function Shell({ children }) {
           </li>
           <li class="nav-item"><a class="nav-link py-1" href="/trips/new">${t('trips.new')}</a></li>
         </ul>
-        <${ThemeLangMenu} />
+        <${ThemeLangMenu} version=${version} />
       </div>
     </nav>
     ${children}

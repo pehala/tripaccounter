@@ -520,6 +520,15 @@ editing the same item in the same second is not a holiday problem worth solving.
 
 ---
 
+### The running build
+
+`GET /api/v1/version` answers `{ "version", "built_at" }` for the process serving it.
+`version` is the build id the image was built with (`TA_BUILD_ID`) — a short commit
+sha or a release name, shown as given — or `"dev"` when the process has none.
+`built_at` is the UTC build instant with `Z`, or `null` when the image was built
+without one. It touches no table, so it answers when the database does not, and
+it is the one route that is not under a trip.
+
 ## 5. Static files
 
 The backend mounts `static/` at `/` as a deployment convenience so one process

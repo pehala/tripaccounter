@@ -36,10 +36,13 @@ COPY --chown=app:app Makefile ./
 # permanently without ever serving a stale one (design/STATIC_CACHING.md). Unset, the
 # assets are served unversioned and uncacheable.
 ARG BUILD_ID=""
+# When the image was built (UTC, ISO 8601 with a `Z`); the settings menu shows it beside the id.
+ARG BUILD_TIME=""
 
 ENV PATH="/app/.venv/bin:$PATH" \
     UV_NO_SYNC=1 \
-    TA_BUILD_ID=${BUILD_ID}
+    TA_BUILD_ID=${BUILD_ID} \
+    TA_BUILD_TIME=${BUILD_TIME}
 
 USER app
 EXPOSE 8000

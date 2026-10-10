@@ -1,6 +1,7 @@
 {
   "_comment": "Routes and error bodies every trip fixture serves; conftest.load_fixture merges them under the fixture's own `routes`, `{slug}` replaced by its trip's slug.",
   "routes": {
+    "/api/v1/version": {"GET": {"version": "a1b2c3d", "built_at": "2026-09-14T12:00:00Z"}},
     "/api/v1/trips": {"GET": "#/trips", "POST": {"trip": "$echo"}},
     "/api/v1/trips/{slug}": {"GET": "#/trip", "PATCH": "#/trip"},
     "/api/v1/trips/{slug}/items": {
