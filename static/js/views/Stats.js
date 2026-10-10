@@ -292,6 +292,12 @@ function StatsPicker({
           <label class="col-form-label col-form-label-sm" for="stats-to">${t('stats.to')}</label>
           <input id="stats-to" type="date" class="form-control form-control-sm w-auto" value=${range.to ?? ''}
                  min=${range.from ?? ''} onChange=${(e) => onRangeChange({ ...range, to: e.target.value || null })} />
+          ${startDate && range.from !== startDate && html`
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    onClick=${() => onRangeChange({ ...range, from: startDate })}>
+              ${t('stats.trip_start')}
+            </button>
+          `}
           ${startDate && (range.from !== startDate || range.to !== endDate) && html`
             <button type="button" class="btn btn-sm btn-outline-secondary"
                     onClick=${() => onRangeChange({ from: startDate, to: endDate })}>
