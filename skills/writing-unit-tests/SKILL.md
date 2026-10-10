@@ -423,7 +423,7 @@ make lint                                          # ruff check + format check +
 | File | Content | Read it when |
 |---|---|---|
 | [common-pitfalls.md](references/common-pitfalls.md) | Pitfalls P-1 … P-12, before/after | a test fails oddly, or the setup feels awkward |
-| [anti-patterns.md](references/anti-patterns.md) | Anti-patterns AP-1 … AP-6, before/after | deciding the shape of a new test file |
+| [anti-patterns.md](references/anti-patterns.md) | Anti-patterns AP-1 … AP-7, before/after | deciding the shape of a new test file |
 | [review-conventions.md](references/review-conventions.md) | Review conventions C-1 … C-28 | before opening a PR that touches `tests/`, and when reviewing one |
 
 | Workflow | Purpose |

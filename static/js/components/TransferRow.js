@@ -1,7 +1,7 @@
 import { html } from '../h.js';
-import { t } from '../i18n/index.js';
 import { money } from '../fmt.js';
 import { Avatar } from './Avatar.js';
+import { EditButton } from './EditButton.js';
 
 // Same shell as ItemRow, so the two kinds of feed row line up - the amount is
 // muted rather than bold, so it never reads as spending (design/WALLETS.md §1.8).
@@ -30,9 +30,7 @@ export function TransferRow({ transfer, trip, locale, onSelect }) {
         ${money(transfer.from_amount, locale)} ${transfer.from_currency_code}
         ${isExchange && html` <i class="bi bi-arrow-right"></i> ${money(transfer.to_amount, locale)} ${transfer.to_currency_code}`}
       </span>
-      <button type="button" class="btn btn-sm btn-outline-secondary py-0" onClick=${() => onSelect?.(transfer)}>
-        <i class="bi bi-pencil"></i> ${t('action.edit')}
-      </button>
+      <${EditButton} onClick=${() => onSelect?.(transfer)} />
     </div>
   `;
 }

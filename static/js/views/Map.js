@@ -4,7 +4,7 @@ import { useStore, reload } from '../store.js';
 import { showCollapse } from '../collapse.js';
 import { itemMatches } from '../filter.js';
 import { t, getLocale } from '../i18n/index.js';
-import { dateTime, money } from '../fmt.js';
+import { dateRange, dateTime, money } from '../fmt.js';
 import { Avatar } from '../components/Avatar.js';
 import { CollapsibleSection } from '../components/CollapsibleSection.js';
 import { ItemModal } from '../components/ItemModal.js';
@@ -25,6 +25,14 @@ const CONTROLS = 'map-controls';
 
 function placedItems(items) {
   return items.filter((item) => item.lat && item.lon);
+}
+
+// A stay with coordinates is a pin of its own, drawn apart from the expenses:
+// the map's filters narrow expenses, and a stay is not one.
+function stayPoints(stays) {
+  return stays
+    .filter((stay) => stay.lat && stay.lon)
+    .map((stay) => ({ key: `stay-${stay.id}`, lat: Number(stay.lat), lon: Number(stay.lon), items: [], stay }));
 }
 
 function keep(item, filters) {
@@ -88,13 +96,14 @@ export function Map() {
   }, [store.items]);
 
   const placed = useMemo(() => placedItems(store.items || []), [store.items]);
+  const stays = useMemo(() => stayPoints(store.trip.stays || []), [store.trip]);
   const points = useMemo(
-    () => groupByCoordinate(placed.filter((item) => keep(item, filters))),
-    [placed, filters],
+    () => [...groupByCoordinate(placed.filter((item) => keep(item, filters))), ...stays],
+    [placed, filters, stays],
   );
 
   if (!store.items) return html`<${Loading} />`;
-  if (placed.length === 0) return html`<p class="text-body-secondary">${t('map.empty')}</p>`;
+  if (placed.length === 0 && stays.length === 0) return html`<p class="text-body-secondary">${t('map.empty')}</p>`;
 
   const shown = points.reduce((count, point) => count + point.items.length, 0);
   const selected = points.find((point) => point.key === selectedKey) || null;
@@ -111,7 +120,23 @@ export function Map() {
 
         ${shown === 0 && html`<p class="text-body-secondary mb-0">${t('map.no_matches')}</p>`}
 
-        ${selected && html`
+        ${selected?.stay && html`
+          <div class="card shadow-sm map-stay">
+            <div class="card-header d-flex align-items-center gap-2 py-1">
+              <i class="bi bi-house-door-fill text-success"></i>
+              <span class="fw-semibold">${selected.stay.name}</span>
+              <button type="button" class="btn btn-sm btn-link ms-auto py-0" aria-label=${t('map.zoom')}
+                      onClick=${() => setFocus({ key: selected.key, at: Date.now() })}>
+                <i class="bi bi-zoom-in"></i></button>
+              <button type="button" class="btn-close" aria-label=${t('map.close')}
+                      onClick=${() => setSelectedKey(null)}></button>
+            </div>
+            <div class="card-body py-2 small">
+              ${dateRange(selected.stay.check_in, selected.stay.check_out, locale)} · ${t('stays.nights', { n: selected.stay.nights })}${selected.stay.city ? ` · ${selected.stay.city}` : ''}
+            </div>
+          </div>`}
+
+        ${selected && !selected.stay && html`
           <div class="card shadow-sm">
             <div class="card-header d-flex align-items-center gap-2 py-1">
               <i class="bi bi-geo-alt-fill text-primary"></i>

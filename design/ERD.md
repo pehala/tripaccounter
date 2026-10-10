@@ -14,6 +14,9 @@ erDiagram
     TRIP ||--o{ LABEL : "has"
     TRIP ||--o{ LINE_ITEM : "has"
     TRIP ||--o{ WALLET_TRANSFER : "has"
+    TRIP ||--o{ STAY : "has"
+    STAY |o--o{ LINE_ITEM : "groups"
+    TRIP_COUNTRY |o--o{ STAY : "located in"
 
     TRIP_CURRENCY ||--o{ LINE_ITEM : "denominates"
     TRIP_COUNTRY  ||--|{ LINE_ITEM : "located in"
@@ -101,6 +104,7 @@ erDiagram
         int      payer_id FK "-> PERSON"
         int      wallet_id FK "-> WALLET, owned by payer_id"
         int      country_id FK "-> TRIP_COUNTRY, NOT NULL — required"
+        int      stay_id FK "-> STAY, nullable"
         string   map_url "nullable, google maps / OSM link"
         decimal  lat "nullable, -90..90"
         decimal  lon "nullable, -180..180"
@@ -125,6 +129,23 @@ erDiagram
         bool     tracked "false = unlimited, no balance (the default Card)"
         bool     is_default "exactly one per person; an item's fallback wallet"
         datetime created_at
+    }
+
+    STAY {
+        int      id PK
+        int      trip_id FK
+        string   name "1-200 chars"
+        date     check_in
+        date     check_out ">= check_in"
+        string   url "nullable, booking link"
+        string   note "nullable"
+        int      country_id FK "nullable, -> TRIP_COUNTRY"
+        string   city "nullable, freeform"
+        string   map_url "nullable"
+        decimal  lat "nullable, -90..90"
+        decimal  lon "nullable, -180..180"
+        datetime created_at
+        datetime updated_at
     }
 
     WALLET_TRANSFER {
@@ -291,9 +312,12 @@ from a suggestion, though — a suggestion is never recorded, a transfer always 
   appears in a transfer; offer `active = false` instead, which hides them from
   new-item forms but keeps history intact.
 - Currency → blocked if referenced by an item or a transfer.
-- Country → blocked if referenced. Never soft-deleted: an item always has a real one.
+- Country → blocked if referenced by an item or a stay. Never soft-deleted: an item
+  always has a real one.
 - Line item → cascades its shares and its `ITEM_LABEL` rows.
 - Label → cascades `ITEM_LABEL` rows only.
+- Stay → detaches its items (`stay_id` set to `NULL` in the service, not by the FK,
+  which would null the shared `trip_id` too); the items survive.
 - Wallet → blocked if it is a person's `is_default` wallet, or if any item or
   transfer still references it (`in_use`, count = items + transfers).
 - Person → wallets cascade (a person's wallets go with them). Trip → transfers cascade.
@@ -317,6 +341,16 @@ from a suggestion, though — a suggestion is never recorded, a transfer always 
   `spent` sums `LINE_ITEM.amount_minor` where `wallet_id` matches. Negative is the
   overcharge signal — the client renders the sign, the server just computes it.
 
+**Stays**
+- A place the trip slept, grouping the items charged there (room, city tax,
+  breakfast). **It stores no money**: its totals are `GROUP BY currency_id` over its
+  items, and each total's `per_night` is that sum floored over
+  `check_out − check_in` at micro-units — `null` for a 0-night stay.
+- `LINE_ITEM.stay_id` is nullable and trip-scoped (`(stay_id, trip_id)` →
+  `stay(id, trip_id)`). An item joins at most one stay, on any date.
+- Optional location as on an item: `country_id`, `city`, `map_url`/`lat`/`lon`,
+  coordinates parsed from `map_url` the same way.
+
 **`PERSON.sort_order` is the only stored order.** People are the one roster a user
 has a reason to arrange by hand, so that column stays and `PATCH /people/{id}`
 writes it. Every other list orders on columns that already carry the meaning, so
@@ -328,6 +362,7 @@ the order is a function of the data and stays correct as rows come and go.
 | `TRIP_CURRENCY` | `is_primary DESC, code` | `trip_currency(trip_id, code)` is UNIQUE |
 | `TRIP_COUNTRY` | `is_default DESC, name` | `trip_country(trip_id, name)` is UNIQUE |
 | `WALLET` | `is_default DESC, name` | `wallet(person_id, name)` is UNIQUE |
+| `STAY` | `check_in, name, id` | `id` is the primary key |
 
 Every key is a total order, so each list is deterministic on the key alone.
 `PERSON.sort_order` is assigned on create as the current roster size and keeps that
@@ -350,9 +385,11 @@ wallet(person_id, name) UNIQUE          wallet(id, trip_id) UNIQUE
 wallet(person_id)                       wallet(trip_id)
 wallet_transfer(trip_id, occurred_at)   wallet_transfer(from_wallet_id)
 wallet_transfer(to_wallet_id)
+stay(id, trip_id) UNIQUE                stay(trip_id)           stay(country_id)
+line_item(stay_id)
 share_owed                              VIEW — not a table, no index of its own
 ```
 
-`Trip.people`, `Trip.currencies`, `Trip.countries` and `Person.wallets` declare
+`Trip.people`, `Trip.currencies`, `Trip.countries`, `Trip.stays` and `Person.wallets` declare
 `order_by` on the relationship, so every load of one sorts on its ordering key. A
 trip holds a handful of each, so those sorts run unindexed.

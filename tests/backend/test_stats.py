@@ -158,6 +158,23 @@ def test_city_groups_on_the_typed_string(client, trip, item_body):
     }
 
 
+def test_stay_groups_on_the_stay_an_item_belongs_to(client, trip, item_body, stay_body):
+    """A stay dimension sums each stay's items; an item in no stay lands under null."""
+    stay = client.post(f"/api/v1/trips/{trip['slug']}/stays", json=stay_body()).json()["stay"]
+    for stay_id in (stay["id"], stay["id"], None):
+        client.post(
+            f"/api/v1/trips/{trip['slug']}/items",
+            json=item_body(amount="10.00", stay_id=stay_id),
+        )
+
+    groups = get_stats(client, trip["slug"], "stay")
+
+    assert {row["keys"]["stay_id"]: row["amount"] for row in groups[("currency", "stay")]} == {
+        stay["id"]: 20,
+        None: 10,
+    }
+
+
 def test_a_currency_with_no_spend_has_no_rows(client, trip, currencies, scenario_items):
     """The trip's second currency was never spent, so it appears in no grouping."""
     groups = get_stats(client, trip["slug"], "day")

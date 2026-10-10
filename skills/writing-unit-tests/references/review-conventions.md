@@ -71,8 +71,13 @@ If a timeout or interval is the subject, inject it as an argument.
 ### C-6: No real paths, no real hosts, no production data
 
 `sqlite:///dev.db`, a path under `~`, a live maps URL fetched instead of parsed, the
-deployment host: all couple a test to a machine. Use `tmp_path`, the in-memory
-engine, and obviously-fake hosts in the `geo` corpus.
+deployment host: all couple a test to a machine. Use `tmp_path` and the in-memory
+engine.
+
+Every URL literal — a booking link, a `map_url`, anything in `tests/`, the frontend
+fixtures or `app/seed.py` — is `https://example.com/<path>`: no real site
+(`booking.com`, `maps.google.com`) and no invented `*.example` host. `geo` matches the
+path, not the host, so `https://example.com/@63.4186,-19.0060,15z` still parses.
 
 ### C-7: Do not assert presentation
 

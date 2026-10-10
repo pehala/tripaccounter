@@ -26,6 +26,7 @@ const DIMENSIONS = {
   country: 'country_id',
   city: 'city',
   wallet: 'wallet_id',
+  stay: 'stay_id',
 };
 
 function pct(amount, whole) {
@@ -103,7 +104,7 @@ function KeyLabel({ dim, row, trip }) {
   const muted = (text) => html`<span class="text-body-secondary fst-italic">${text}</span>`;
 
   if (dim === 'label') return value === null ? muted(t('stats.unlabelled')) : html`<${LabelBadge} name=${value} />`;
-  if (dim === 'city' && value === null) return muted(t('stats.unset'));
+  if ((dim === 'city' || dim === 'stay') && value === null) return muted(t('stats.unset'));
   if (dim === 'wallet') {
     const wallet = trip.wallets.find((w) => w.id === value);
     const owner = trip.people.find((p) => p.id === wallet?.person_id);
@@ -129,6 +130,7 @@ function keyText(dim, value, trip, locale) {
     const owner = trip.people.find((p) => p.id === wallet?.person_id);
     return `${wallet?.name} · ${owner?.name}`;
   }
+  if (dim === 'stay' && value !== null) return (trip.stays || []).find((stay) => stay.id === value)?.name;
   if (dim === 'day') return value === null ? t('day.before_trip') : fmtDate(value, locale);
   return value ?? t('stats.unset');
 }

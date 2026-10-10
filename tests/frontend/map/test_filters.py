@@ -9,7 +9,7 @@ than leaving an empty map to be read as "no coordinates".
 import pytest
 from playwright.sync_api import expect
 
-from tests.frontend.map.conftest import FUEL_PIN, MESSINN_PIN, NEEDLE
+from tests.frontend.map.conftest import EXPENSE_PINS, FUEL_PIN, MESSINN_PIN, NEEDLE
 
 PARKING_PIN = '[data-pin="63.99790,-22.56280"]'
 
@@ -50,7 +50,7 @@ def test_needle_keeps_only_the_pins_whose_expense_matches(map_page, needle, expe
     """The search box reaches an expense's name and its labels, and nothing else."""
     map_page.get_by_placeholder(NEEDLE).fill(needle)
 
-    expect(map_page.locator("path.map-pin")).to_have_count(len(expected))
+    expect(map_page.locator(EXPENSE_PINS)).to_have_count(len(expected))
     for pin in expected:
         expect(map_page.locator(pin)).to_be_visible()
 
@@ -68,12 +68,12 @@ def test_label_chip_narrows_to_that_label_and_toggling_it_off_restores(map_page)
     chip = map_page.get_by_role("button", name="restaurant", exact=True)
 
     chip.click()
-    expect(map_page.locator("path.map-pin")).to_have_count(1)
+    expect(map_page.locator(EXPENSE_PINS)).to_have_count(1)
     expect(map_page.locator(MESSINN_PIN)).to_be_visible()
     expect(chip).to_have_attribute("aria-pressed", "true")
 
     chip.click()
-    expect(map_page.locator("path.map-pin")).to_have_count(2)
+    expect(map_page.locator(EXPENSE_PINS)).to_have_count(2)
 
 
 def test_two_label_chips_are_an_or(map_page):
@@ -81,7 +81,7 @@ def test_two_label_chips_are_an_or(map_page):
     map_page.get_by_role("button", name="restaurant", exact=True).click()
     map_page.get_by_role("button", name="fuel", exact=True).click()
 
-    expect(map_page.locator("path.map-pin")).to_have_count(2)
+    expect(map_page.locator(EXPENSE_PINS)).to_have_count(2)
 
 
 @pytest.mark.parametrize(
@@ -99,7 +99,7 @@ def test_date_range_keeps_the_expenses_that_fall_inside_it(
     dated_map_page.get_by_label("From").fill(from_day)
     dated_map_page.get_by_label("To").fill(to_day)
 
-    expect(dated_map_page.locator("path.map-pin")).to_have_count(len(expected))
+    expect(dated_map_page.locator(EXPENSE_PINS)).to_have_count(len(expected))
     for pin in expected:
         expect(dated_map_page.locator(pin)).to_be_visible()
 
@@ -108,9 +108,9 @@ def test_clear_undoes_every_filter_at_once(dated_map_page):
     """Clear appears once anything is filtering and puts every pin back in one click."""
     dated_map_page.get_by_placeholder(NEEDLE).fill("parking")
     dated_map_page.get_by_label("From").fill("2026-09-12")
-    expect(dated_map_page.locator("path.map-pin")).to_have_count(1)
+    expect(dated_map_page.locator(EXPENSE_PINS)).to_have_count(1)
 
     dated_map_page.get_by_role("button", name="Clear filters").click()
 
-    expect(dated_map_page.locator("path.map-pin")).to_have_count(3)
+    expect(dated_map_page.locator(EXPENSE_PINS)).to_have_count(3)
     expect(dated_map_page.get_by_placeholder(NEEDLE)).to_have_value("")

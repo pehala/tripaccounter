@@ -15,6 +15,7 @@ from app.schemas.responses import (
     LabelOut,
     Number,
     PersonOut,
+    StayReportOut,
     TransferOut,
     TripOut,
     TripSummaryOut,
@@ -116,6 +117,18 @@ class LabelListEnvelope(BaseModel):
     """`{ "labels": [Label] }`."""
 
     labels: list[LabelOut]
+
+
+class StayEnvelope(BaseModel):
+    """`{ "stay": StayReport }`."""
+
+    stay: StayReportOut
+
+
+class StayListEnvelope(BaseModel):
+    """`{ "stays": [StayReport] }`, each stay with what its items add up to."""
+
+    stays: list[StayReportOut]
 
 
 class BalancesEnvelope(BaseModel):

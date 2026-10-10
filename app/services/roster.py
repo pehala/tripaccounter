@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.items import ItemShare, LineItem
 from app.models.roster import Person, TripCountry, TripCurrency
+from app.models.stays import Stay
 from app.models.trip import Trip
 from app.models.wallets import Wallet, WalletTransfer
 from app.services.errors.fields import (
@@ -226,9 +227,11 @@ def update_country(session: Session, country: TripCountry, name, code, is_defaul
 
 
 def delete_country(session: Session, country: TripCountry) -> None:
-    """Delete a country, raising if any item still uses it."""
+    """Delete a country, raising if any item or stay still uses it."""
     visited = select(func.count()).select_from(LineItem).where(LineItem.country_id == country.id)
-    assert_free(reference_count(session, visited), country.name)
+    slept = select(func.count()).select_from(Stay).where(Stay.country_id == country.id)
+    total = reference_count(session, visited) + reference_count(session, slept)
+    assert_free(total, country.name)
     session.delete(country)
     session.flush()
 

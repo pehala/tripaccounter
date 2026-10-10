@@ -6,6 +6,7 @@ import { dateRange } from '../fmt.js';
 import { Items } from './Items.js';
 import { Balances } from './Balances.js';
 import { Wallets } from './Wallets.js';
+import { Stays } from './Stays.js';
 import { Stats } from './Stats.js';
 import { Map } from './Map.js';
 import { Setup } from './Setup.js';
@@ -16,6 +17,7 @@ const TABS = [
   ['items', 'nav.items'],
   ['balances', 'nav.balances'],
   ['wallets', 'nav.wallets'],
+  ['stays', 'nav.stays'],
   ['stats', 'nav.stats'],
   ['map', 'nav.map'],
   ['setup', 'nav.setup'],
@@ -91,6 +93,7 @@ export function Trip({ slug, tab }) {
       ${tab === 'items' && html`<${Items} />`}
       ${tab === 'balances' && html`<${Balances} />`}
       ${tab === 'wallets' && html`<${Wallets} />`}
+      ${tab === 'stays' && html`<${Stays} />`}
       ${tab === 'stats' && html`<${Stats} />`}
       ${tab === 'map' && html`<${Map} />`}
       ${tab === 'setup' && html`<${Setup} />`}

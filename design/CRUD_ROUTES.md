@@ -1,6 +1,6 @@
 # Trip-scoped CRUD routes — `app/routers/crud.py`
 
-**Owns**: the four list/create/update/delete routes that five roster entities publish
+**Owns**: the four list/create/update/delete routes that six roster entities publish
 under `/trips/{slug}`, and the declaration format those entities are written in.
 
 **Owns nothing else.** It holds no business rules. Every route body is one call into
@@ -8,7 +8,7 @@ under `/trips/{slug}`, and the declaration format those entities are written in.
 path words, response envelopes, the OpenAPI identity of each handler, and the error
 translation seam.
 
-The five entities are people, currencies, countries, labels and wallets. Items and
+The six entities are people, currencies, countries, labels, wallets and stays. Items and
 transfers are not among them: their writes are not a single service call and they keep
 hand-written routers.
 
@@ -168,7 +168,7 @@ raises `TypeError` at import.
 ### Missing routes
 
 A kind with no decorated method is not published. The subclass simply carries fewer
-routes, and nothing in the spec mentions them. All five current entities declare all
+routes, and nothing in the spec mentions them. All six current entities declare all
 four.
 
 Declaring one kind twice in a subclass raises `TypeError` at import.
@@ -229,7 +229,7 @@ knows which request field a service argument came from.
 
 ---
 
-## 4. The five entities
+## 4. The six entities
 
 | Module | Deviates from the plain case by |
 |---|---|
@@ -238,6 +238,7 @@ knows which request field a service argument came from.
 | `countries.py` | `serialize` adds the item count; `serialize_list` reads the counts once for the collection |
 | `labels.py` | `rows` orders by use count, not sort order; `statuses=(404,)` — a label is never in use |
 | `wallets.py` | `rows` returns the balances report; `serialize` passes it through; create resolves the owning person first |
+| `stays.py` | `serialize` and `serialize_list` add each stay's per-currency totals and per-night figures, one grouped query for the collection; `statuses=(404,)` — a delete detaches items instead of refusing |
 
 `wallets.py` is the one entity whose list route answers with a different shape than its
 create and update routes — hence the separately declared `list_envelope`.
@@ -259,7 +260,7 @@ transfer write it drops its cached wallets and refetches the report.
 |---|---|
 | what a route answers with | `app/schemas/envelopes.py`, `app/schemas/responses.py` |
 | what a route accepts | `app/schemas/requests.py` |
-| what a write does | `app/services/roster.py`, `app/services/labels.py` |
+| what a write does | `app/services/roster.py`, `app/services/labels.py`, `app/services/stays.py` |
 | what an error means | `app/services/errors/fields.py`, `design/API.md` §4 |
 | the published shapes | `openapi.json`, or `/docs` on a running server |
 

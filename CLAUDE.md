@@ -13,7 +13,7 @@ layers, how money moves, and where the two halves meet.
 | [`design/API.md`](design/API.md) | the contract. Shared; changing it is a joint decision |
 | [`design/ERD.md`](design/ERD.md) | entities, invariants, indexes |
 | [`design/BACKEND.md`](design/BACKEND.md) | `app/` — what belongs in which layer, `tests/backend/` |
-| [`design/CRUD_ROUTES.md`](design/CRUD_ROUTES.md) | `app/routers/crud.py` — how the five roster entities declare their four routes |
+| [`design/CRUD_ROUTES.md`](design/CRUD_ROUTES.md) | `app/routers/crud.py` — how the six roster entities declare their four routes |
 | [`design/FRONTEND.md`](design/FRONTEND.md) | `static/` — the seven rules, `tests/frontend/` |
 | [`DEPLOY.md`](DEPLOY.md) | the runbook: quadlets, host nginx, TLS, upgrades, backups |
 | [`design/MOCKAPI.md`](design/MOCKAPI.md) | the mock API behind the Playwright suite — fixture grammar, what the engine does with it |
@@ -44,7 +44,7 @@ references:
 | Reference | Content |
 |---|---|
 | [common-pitfalls.md](skills/writing-unit-tests/references/common-pitfalls.md) | P-1 … P-12 — the specific mistakes, with fixes |
-| [anti-patterns.md](skills/writing-unit-tests/references/anti-patterns.md) | AP-1 … AP-6 — shapes that prove nothing |
+| [anti-patterns.md](skills/writing-unit-tests/references/anti-patterns.md) | AP-1 … AP-7 — shapes that prove nothing |
 | [review-conventions.md](skills/writing-unit-tests/references/review-conventions.md) | C-1 … C-28 — what a PR touching `tests/` is measured against |
 
 Writing a test and reviewing it are one job, not two: apply the review conventions
@@ -83,7 +83,15 @@ make lint            # ruff check + format check + uv lock --check
 make coverage        # tests/backend + tests/tools with coverage: report + coverage.json
 make openapi         # regenerate the committed openapi.json from app.openapi()
 make openapi-check   # what CI runs: fails if that file is stale
+make migration m="add foo"  # alembic revision --autogenerate against the models
+make migrate-check   # fails if the models drifted from the migrations
 ```
+
+**Migrations are generated, never hand-written.** Change the model, then
+`make migration` against a database at the previous head. Edit the generated file
+only for what autogenerate cannot express — the `share_owed` view blocks SQLite's
+batch rebuild of `line_item`, so a migration altering that table drops and recreates
+the view around the batch block — and mark that edit with a comment.
 
 Dependencies are `uv` only: `pyproject.toml` + committed `uv.lock`, `uv sync
 --frozen` everywhere. No `requirements.txt`, no manual venv, no Node, no npm.

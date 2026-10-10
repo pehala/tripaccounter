@@ -2,12 +2,14 @@ import { html } from '../h.js';
 import { t } from '../i18n/index.js';
 import { money } from '../fmt.js';
 import { Avatar } from './Avatar.js';
+import { EditButton } from './EditButton.js';
 import { LabelBadge } from './LabelBadge.js';
 
 export function ItemRow({ item, trip, locale, onSelect }) {
   const payer = trip.people.find((p) => p.id === item.payer_id);
   const country = trip.countries.find((c) => c.id === item.country_id);
   const wallet = (trip.wallets || []).find((w) => w.id === item.wallet_id);
+  const stay = (trip.stays || []).find((candidate) => candidate.id === item.stay_id);
   const walletIsPayerDefault = wallet && payer && wallet.person_id === payer.id && wallet.is_default;
   const time = item.occurred_at.slice(11, 16);
   const hasMap = Boolean(item.map_url || (item.lat && item.lon));
@@ -18,7 +20,7 @@ export function ItemRow({ item, trip, locale, onSelect }) {
     <div class="list-group-item item-row d-flex gap-3 py-2 px-3">
       <span class="flex-grow-1 min-w-0">
         <span class="d-block fw-semibold lh-sm">${item.name}</span>
-        <small class="text-body-secondary d-block lh-sm">${country ? `${country.flag} ${country.name} · ` : ''}${item.city ? `${item.city} · ` : ''}${time} · <${Avatar} person=${payer} /> ${t('items.paid_by', { name: payer?.name || '' })}${wallet && !walletIsPayerDefault ? ` · ${wallet.name}` : ''}${hasMap ? html` · <a href=${mapHref} target="_blank" rel="noopener noreferrer"><i class="bi bi-geo-alt-fill"></i> ${t('items.map')}</a>` : ''}${item.labels.length > 0 ? html` · ${item.labels.map((name) => html`<${LabelBadge} key=${name} name=${name} />`)}` : ''}</small>
+        <small class="text-body-secondary d-block lh-sm">${country ? `${country.flag} ${country.name} · ` : ''}${item.city ? `${item.city} · ` : ''}${time} · <${Avatar} person=${payer} /> ${t('items.paid_by', { name: payer?.name || '' })}${wallet && !walletIsPayerDefault ? ` · ${wallet.name}` : ''}${stay ? html` · <a class="item-stay" href="/t/${trip.slug}/stays#stay-${stay.id}"><i class="bi bi-house-door"></i> ${stay.name}</a>` : ''}${hasMap ? html` · <a href=${mapHref} target="_blank" rel="noopener noreferrer"><i class="bi bi-geo-alt-fill"></i> ${t('items.map')}</a>` : ''}${item.labels.length > 0 ? html` · ${item.labels.map((name) => html`<${LabelBadge} key=${name} name=${name} />`)}` : ''}</small>
         <small class="owed num d-block lh-base">
           ${trip.people.map((person) => {
             const share = item.split.shares.find((s) => s.person_id === person.id);
@@ -33,9 +35,7 @@ export function ItemRow({ item, trip, locale, onSelect }) {
       </span>
       <span class="d-flex flex-column align-items-end gap-1">
         <span class="text-end num text-nowrap fw-semibold">${money(item.amount, locale)} ${item.currency_code}</span>
-        <button type="button" class="btn btn-sm btn-outline-secondary py-0" onClick=${() => onSelect?.(item)}>
-          <i class="bi bi-pencil"></i> ${t('action.edit')}
-        </button>
+        <${EditButton} onClick=${() => onSelect?.(item)} />
       </span>
     </div>
   `;
