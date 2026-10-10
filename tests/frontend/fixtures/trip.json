@@ -117,7 +117,7 @@
         "wallet_id": 5,
         "country_id": 1,
         "labels": ["food", "restaurant"],
-        "map_url": "https://maps.app.goo.gl/Kx9mNq2",
+        "map_url": "https://maps.example.test/messinn",
         "lat": "64.14930",
         "lon": "-21.94030",
         "split": {
@@ -201,7 +201,7 @@
         "wallet_id": 4,
         "country_id": 1,
         "labels": ["lodging"],
-        "map_url": "https://maps.app.goo.gl/Vik42",
+        "map_url": "https://maps.example.test/vik",
         "lat": null,
         "lon": null,
         "split": {

@@ -2,7 +2,8 @@
 
 Open modal, type name+amount, pick payer,
 Save -> the POST body is asserted whole, the mock answers 201, the
-re-read GET /items returns the item and the row appears; click a row -> edit mode,
+re-read GET /items returns the item and the row appears; a row's Edit button -> edit mode,
+clicking the row itself opens nothing,
 prefilled, header amber; PATCH sends the built body; Delete removes it; "Save &
 add another" keeps the modal open, clears name and amount, and holds date, payer
 and currency.
@@ -44,9 +45,7 @@ def test_save_posts_the_built_body_and_the_row_appears(items_page, new_item_moda
         "split_mode": "equal",
         "shares": [{"person_id": 1}, {"person_id": 2}, {"person_id": 3}, {"person_id": 4}],
     }
-    expect(items_page.locator("a.list-group-item-action", has_text="Sushi night")).to_contain_text(
-        "Bangkok"
-    )
+    expect(items_page.locator(".item-row", has_text="Sushi night")).to_contain_text("Bangkok")
 
 
 def test_edit_mode_shows_amber_header_and_delete(open_edit_modal):
@@ -57,6 +56,29 @@ def test_edit_mode_shows_amber_header_and_delete(open_edit_modal):
     expect(modal.get_by_role("heading", name="Editing expense")).to_be_visible()
     expect(modal.get_by_role("button", name="Delete")).to_be_visible()
     expect(modal.get_by_role("button", name="Transfer")).to_have_count(0)
+
+
+@pytest.mark.parametrize(
+    ("row_selector", "body"),
+    [
+        pytest.param(".item-row:has-text('Dinner at Messinn')", "span.fw-semibold", id="expense"),
+        pytest.param(".transfer-row:has-text('20,000 ISK')", "small", id="transfer"),
+    ],
+)
+def test_clicking_a_row_body_opens_nothing(items_page, row_selector, body):
+    """Clicking an expense's or a transfer's text no longer opens the edit modal."""
+    items_page.locator(row_selector).locator(body).first.click()
+
+    expect(items_page.locator(".modal.show")).to_have_count(0)
+
+
+def test_transfer_edit_button_opens_the_transfer_in_edit_mode(items_page):
+    """A transfer row's Edit button opens the modal titled "Editing transfer"."""
+    row = items_page.locator(".transfer-row", has_text="20,000 ISK")
+
+    row.get_by_role("button", name="Edit").click()
+
+    expect(items_page.get_by_role("heading", name="Editing transfer")).to_be_visible()
 
 
 @pytest.mark.parametrize(
@@ -120,7 +142,7 @@ def test_patch_sends_the_built_body_on_save(open_edit_modal, count_requests):
         "occurred_at": body["occurred_at"],
         "labels": ["food", "restaurant"],
         "city": "Reykjavík",
-        "map_url": "https://maps.app.goo.gl/Kx9mNq2",
+        "map_url": "https://maps.example.test/messinn",
         "lat": "64.14930",
         "lon": "-21.94030",
         "split_mode": "equal",

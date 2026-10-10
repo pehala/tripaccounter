@@ -43,8 +43,8 @@ def test_page_errors_never_fire_with_unknown_fields(page, open_trip, open_tab):
         ),
         pytest.param(
             "items",
-            'a.list-group-item-action:has-text("Dinner at Messinn")',
-            lambda page: page.locator("a.list-group-item-action", has_text="Dinner at Messinn"),
+            '.item-row:has-text("Dinner at Messinn")',
+            lambda page: page.locator(".item-row", has_text="Dinner at Messinn"),
             "unknown_item_field",
             id="item-row",
         ),
