@@ -58,7 +58,7 @@ def set_item_labels(session: Session, item: LineItem, tokens: list[str]) -> None
         seen_norms.add(norm)
         wanted.append(get_or_create(session, item.trip_id, token))
 
-    previous = list(item.label_rows)
+    previous = item.label_rows
     item.label_rows = wanted
     session.flush()
     prune_unused(session, [label for label in previous if label not in wanted])

@@ -170,7 +170,7 @@ def update_item(item_id: int, body: ItemWrite, trip: TripDep, session: SessionDe
 def delete_item(item_id: int, trip: TripDep, session: SessionDep):
     """Delete an item from a trip."""
     item = require_in_trip(session, LineItem, item_id, trip.id, "item", options=ITEM_LOAD_OPTIONS)
-    labels = list(item.label_rows)
+    labels = item.label_rows
     session.delete(item)
     session.flush()
     prune_unused(session, labels)
