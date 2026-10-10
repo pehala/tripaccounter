@@ -52,7 +52,7 @@ app/
 │   ├── exchange_rates.py  spent and leftover rate per person and exchanged pair,
 │   │                   first in first out: sums in SQL, the lot queue in Python
 │   ├── transfers.py     the plain/exchange resolve + validate rules for a transfer
-│   ├── labels.py       normalize, get-or-create, use_count
+│   ├── labels.py       normalize, get-or-create, use_counts
 │   ├── countries.py    flag from ISO code
 │   ├── slugs.py        slugify + collision suffix
 │   ├── geo.py          parse lat/lon out of a maps URL when not given

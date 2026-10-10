@@ -83,7 +83,6 @@ erDiagram
         string   name "as typed, single token, e.g. 'street-food'"
         string   name_norm "lowercased+trimmed, UNIQUE per trip"
         string   color "hex, auto-assigned from a palette"
-        int      use_count "denormalized, drives suggestion order"
         datetime created_at
     }
 
@@ -262,8 +261,9 @@ erDiagram
 - **The server seeds no labels.** `POST /trips` accepts an optional `labels` list;
   the bundled frontend sends a fixed starter set the user can untick. Labels are
   user data and are never translated, so the set is the same in every locale.
-- `use_count` maintained on attach/detach; a label with `use_count = 0` is
-  suggestable but can be deleted with no consequences.
+- `use_count` is not stored: the label routes count `ITEM_LABEL` rows per label on
+  every read. A label with `use_count = 0` is suggestable but can be deleted with
+  no consequences.
 - Deleting a label removes its `ITEM_LABEL` rows only — items survive untouched.
 
 **Balances** (per trip, per currency)

@@ -59,7 +59,7 @@ class Trip(SQLModel, table=True):
         back_populates="trip",
         sa_relationship_kwargs={
             "cascade": "all, delete-orphan",
-            "order_by": "(Label.use_count.desc(), Label.name)",
+            "order_by": "Label.name",
         },
     )
     stays: list["Stay"] = Relationship(
