@@ -65,7 +65,7 @@ export default {
   'stay.name_placeholder': 'Guesthouse Vík',
   'stay.check_in': 'Příjezd',
   'stay.check_out': 'Odjezd',
-  'stay.url_label': 'Odkaz na rezervaci',
+  'stay.url_label': 'Odkaz',
   'stay.note_label': 'Poznámka',
   'stay.none': '—',
   'stay.delete_confirm': 'Smazat toto ubytování? Jeho výdaje zůstanou, jen už pod ním nebudou.',
