@@ -264,7 +264,7 @@ it opens; landing straight on a tab via a direct link or a hard refresh pays for
 | Changing the shown currency | 0 | every grouping already carries every currency; the first switch to Total costs 1, `GET /exchange-rates`, unless Balances or Wallets loaded it |
 | Changing the date range | 0 | every level already came grouped by day; the days are filtered |
 | Map tab, any open | 0 | it reads `store.items`, which the feed already loaded, and `trip.stays` |
-| Setup tab, first open | 0 or 1 | `GET /labels`, unless Items already loaded them |
+| Setup tab, any open | 1 | `GET /labels` — the usage counts it shows move with item writes, so it refetches every time |
 | Balances/Wallets/Stats/Setup, cold (direct link) | 2, or 3 for Balances/Wallets | `GET /trips/{slug}` plus that tab's own endpoints |
 | Revisiting a loaded tab | 0 | already in the store |
 | Open the edit modal | 0 | the item or transfer is already in `store.items`/`store.transfers` |
