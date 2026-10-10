@@ -92,6 +92,25 @@ def test_editing_a_stay_patches_every_field_with_null_for_emptied_ones(
     ]
 
 
+def test_stay_date_pickers_are_limited_to_the_trip_dates(stays_page):
+    """Both pickers stop at the trip's first and last day; check-out also starts at check-in."""
+    stays_page.locator(".stays-content .btn-primary").click()
+    modal = stays_page.locator(".modal.show")
+    # Bootstrap focuses the dialog once shown; a fill before that has its focus stolen mid-way.
+    expect(modal).to_be_focused()
+    check_in = modal.locator("#stay-check-in")
+    check_out = modal.locator("#stay-check-out")
+
+    expect(check_in).to_have_attribute("min", "2026-09-12")
+    expect(check_in).to_have_attribute("max", "2026-09-21")
+    expect(check_out).to_have_attribute("min", "2026-09-12")
+    expect(check_out).to_have_attribute("max", "2026-09-21")
+
+    check_in.fill("2026-09-14")
+
+    expect(check_out).to_have_attribute("min", "2026-09-14")
+
+
 def test_picking_a_stay_keeps_a_city_the_user_typed(new_item_modal):
     """A city typed before the stay is picked survives the pick."""
     new_item_modal.locator('input[name="city"]').fill("Reykjavík")

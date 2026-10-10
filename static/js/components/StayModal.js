@@ -120,13 +120,15 @@ export function StayModal({ trip, stay, onSaved, onClose }) {
               <div class="col-6">
                 <label class="form-label small mb-1" for="stay-check-in">${t('stay.check_in')}</label>
                 <input type="date" id="stay-check-in" name="check_in" required
+                       min=${trip.start_date || undefined} max=${trip.end_date || undefined}
                        class="form-control ${invalid('check_in')}"
                        value=${state.checkIn} onChange=${(e) => set({ checkIn: e.target.value })} />
                 ${fieldError('check_in')}
               </div>
               <div class="col-6">
                 <label class="form-label small mb-1" for="stay-check-out">${t('stay.check_out')}</label>
-                <input type="date" id="stay-check-out" name="check_out" required min=${state.checkIn}
+                <input type="date" id="stay-check-out" name="check_out" required
+                       min=${[trip.start_date, state.checkIn].filter(Boolean).sort().at(-1)} max=${trip.end_date || undefined}
                        class="form-control ${invalid('check_out')}"
                        value=${state.checkOut} onChange=${(e) => set({ checkOut: e.target.value })} />
                 ${fieldError('check_out')}
