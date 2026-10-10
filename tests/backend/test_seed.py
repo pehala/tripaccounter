@@ -30,7 +30,7 @@ def test_seed_demo_items_envelope_carries_every_seeded_row(client, session):
 
     envelope = client.get(f"/api/v1/trips/{SLUG}/items").json()
 
-    assert len(envelope["items"]) == 5
+    assert len(envelope["items"]) == 7
     assert len(envelope["transfers"]) == 3
 
 
