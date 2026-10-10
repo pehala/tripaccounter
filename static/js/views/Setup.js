@@ -15,7 +15,8 @@ export function Setup() {
   const locale = getLocale();
 
   useEffect(() => {
-    if (!store.labels) reload('labels');
+    // Always refetched: the usage counts shown here go stale as items are written elsewhere.
+    reload('labels');
   }, [store.slug]);
 
   if (!store.labels) return html`<${Loading} />`;

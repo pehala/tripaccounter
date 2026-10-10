@@ -21,13 +21,23 @@ class LabelRoutes(TripChildRoutes):
     list_envelope = LabelListEnvelope
 
     def serialize(self, label: Label, session: Session) -> LabelOut:
-        """Return the label's wire form."""
-        return LabelOut.model_validate(label)
+        """Return the label's wire form, counting its items."""
+        count = labels_service.use_counts(session, [label.id])[label.id]
+        return LabelOut(id=label.id, name=label.name, color=label.color, use_count=count)
+
+    def serialize_list(
+        self, rows: list[tuple[Label, int]], session: Session, trip: Trip
+    ) -> list[LabelOut]:
+        """Return the wire forms of the counted labels `rows` produced."""
+        return [
+            LabelOut(id=label.id, name=label.name, color=label.color, use_count=count)
+            for label, count in rows
+        ]
 
     @route(Route.LIST)
-    def rows(self, session: Session, trip: Trip) -> list[Label]:
+    def rows(self, session: Session, trip: Trip) -> list[tuple[Label, int]]:
         """List a trip's labels, most used first."""
-        return trip.labels
+        return labels_service.list_with_use_counts(session, trip.id)
 
     @route(Route.CREATE)
     def create(self, session: Session, trip: Trip, body: LabelCreate) -> Label:

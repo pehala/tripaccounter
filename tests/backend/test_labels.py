@@ -32,21 +32,38 @@ def test_label_list_orders_by_use_count_desc_then_name(client, trip, scenario_it
     assert [label["name"] for label in labels] == ["Food", "b", "a", "dining", "fun"]
 
 
-def test_use_count_tracks_detach_and_item_delete(client, trip, item_body):
-    """use_count decreases when a label is removed from an item, and on item delete."""
-    item = client.post(
-        f"/api/v1/trips/{trip['slug']}/items", json=item_body(labels=["food"])
-    ).json()["item"]
-    assert client.get(f"/api/v1/trips/{trip['slug']}/labels").json()["labels"][0]["use_count"] == 1
+def test_label_is_deleted_when_its_last_item_stops_using_it(client, trip, item_body):
+    """Detaching a label from its only item, or deleting that item, removes the label."""
+    slug = trip["slug"]
+    item = client.post(f"/api/v1/trips/{slug}/items", json=item_body(labels=["food"])).json()[
+        "item"
+    ]
+    assert [
+        label["use_count"] for label in client.get(f"/api/v1/trips/{slug}/labels").json()["labels"]
+    ] == [1]
 
-    client.patch(f"/api/v1/trips/{trip['slug']}/items/{item['id']}", json={"labels": []})
-    assert client.get(f"/api/v1/trips/{trip['slug']}/labels").json()["labels"][0]["use_count"] == 0
+    client.patch(f"/api/v1/trips/{slug}/items/{item['id']}", json={"labels": []})
+    assert client.get(f"/api/v1/trips/{slug}/labels").json()["labels"] == []
 
-    item2 = client.post(
-        f"/api/v1/trips/{trip['slug']}/items", json=item_body(labels=["food"])
-    ).json()["item"]
-    client.delete(f"/api/v1/trips/{trip['slug']}/items/{item2['id']}")
-    assert client.get(f"/api/v1/trips/{trip['slug']}/labels").json()["labels"][0]["use_count"] == 0
+    item2 = client.post(f"/api/v1/trips/{slug}/items", json=item_body(labels=["food"])).json()[
+        "item"
+    ]
+    client.delete(f"/api/v1/trips/{slug}/items/{item2['id']}")
+    assert client.get(f"/api/v1/trips/{slug}/labels").json()["labels"] == []
+
+
+def test_label_survives_while_another_item_uses_it(client, trip, item_body):
+    """A label dropped from one item stays, with its count lowered, while another item has it."""
+    slug = trip["slug"]
+    item = client.post(f"/api/v1/trips/{slug}/items", json=item_body(labels=["food"])).json()[
+        "item"
+    ]
+    client.post(f"/api/v1/trips/{slug}/items", json=item_body(labels=["food"]))
+
+    client.patch(f"/api/v1/trips/{slug}/items/{item['id']}", json={"labels": []})
+
+    labels = client.get(f"/api/v1/trips/{slug}/labels").json()["labels"]
+    assert [(label["name"], label["use_count"]) for label in labels] == [("food", 1)]
 
 
 def test_delete_label_leaves_items_untouched(client, trip, item_body):
@@ -181,7 +198,7 @@ def test_one_item_carrying_a_label_twice_counts_it_once(client, trip, item_body)
 
 
 def test_relabelling_an_item_moves_only_the_labels_that_changed(client, trip, item_body):
-    """Re-labelling drops the use count of what left, raises what arrived, keeps what stayed."""
+    """Re-labelling deletes what left unused, adds what arrived and keeps what stayed."""
     item = client.post(
         f"/api/v1/trips/{trip['slug']}/items", json=item_body(labels=["alpha", "bravo"])
     ).json()["item"]
@@ -192,7 +209,36 @@ def test_relabelling_an_item_moves_only_the_labels_that_changed(client, trip, it
 
     labels = client.get(f"/api/v1/trips/{trip['slug']}/labels").json()["labels"]
     assert {label["name"]: label["use_count"] for label in labels} == {
-        "alpha": 0,
         "bravo": 1,
         "charlie": 1,
     }
+
+
+def test_item_echoes_the_label_name_as_stored(client, trip, item_body):
+    """An item's labels carry the stored casing, not the matching form, however it was re-typed."""
+    first = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(labels=["Food"])
+    ).json()["item"]
+    second = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(labels=["food"])
+    ).json()["item"]
+
+    assert first["labels"] == ["Food"]
+    assert second["labels"] == ["Food"]
+
+
+def test_rename_label_changing_only_its_casing_is_allowed(client, trip, item_body):
+    """A label can be recased in place without conflicting with itself; items show the new name."""
+    item = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(labels=["food"])
+    ).json()["item"]
+    label_id = client.get(f"/api/v1/trips/{trip['slug']}/labels").json()["labels"][0]["id"]
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/labels/{label_id}", json={"name": "Food"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["label"]["name"] == "Food"
+    read_back = client.get(f"/api/v1/trips/{trip['slug']}/items/{item['id']}").json()["item"]
+    assert read_back["labels"] == ["Food"]

@@ -1,10 +1,10 @@
-"""Label normalization, lookup, and use-count bookkeeping."""
+"""Label normalization, lookup, and per-label item counts."""
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.items import LineItem
-from app.models.labels import Label
+from app.models.labels import ItemLabel, Label
 from app.services.errors.fields import DuplicateError
 
 PALETTE = [
@@ -41,7 +41,6 @@ def get_or_create(session: Session, trip_id: int, token: str) -> Label:
         name=token,
         name_norm=norm,
         color=PALETTE[count % len(PALETTE)],
-        use_count=0,
     )
     session.add(label)
     session.flush()
@@ -49,7 +48,7 @@ def get_or_create(session: Session, trip_id: int, token: str) -> Label:
 
 
 def set_item_labels(session: Session, item: LineItem, tokens: list[str]) -> None:
-    """Replace the item's labels with those for the given tokens, adjusting use counts."""
+    """Replace the item's labels with those for the given tokens; labels it leaves unused go."""
     wanted: list[Label] = []
     seen_norms: set[str] = set()
     for token in tokens:
@@ -59,23 +58,43 @@ def set_item_labels(session: Session, item: LineItem, tokens: list[str]) -> None
         seen_norms.add(norm)
         wanted.append(get_or_create(session, item.trip_id, token))
 
-    current_ids = {label.id for label in item.label_rows}
-    wanted_ids = {label.id for label in wanted}
-
-    for label in item.label_rows:
-        if label.id not in wanted_ids:
-            label.use_count = max(0, label.use_count - 1)
-    for label in wanted:
-        if label.id not in current_ids:
-            label.use_count += 1
-
+    previous = item.label_rows
     item.label_rows = wanted
+    session.flush()
+    prune_unused(session, [label for label in previous if label not in wanted])
 
 
-def release_item_labels(item: LineItem) -> None:
-    """Decrement the use count of each label attached to this item."""
-    for label in item.label_rows:
-        label.use_count = max(0, label.use_count - 1)
+def prune_unused(session: Session, labels: list[Label]) -> None:
+    """Delete each of the given labels that no item carries any more."""
+    counts = use_counts(session, [label.id for label in labels])
+    for label in labels:
+        if counts[label.id] == 0:
+            session.delete(label)
+    session.flush()
+
+
+def use_counts(session: Session, label_ids: list[int]) -> dict[int, int]:
+    """Return how many items carry each of the given labels; unused labels map to 0."""
+    rows = session.execute(
+        select(ItemLabel.label_id, func.count())
+        .where(ItemLabel.label_id.in_(label_ids))
+        .group_by(ItemLabel.label_id)
+    ).all()
+    counts = dict(rows)
+    return {label_id: counts.get(label_id, 0) for label_id in label_ids}
+
+
+def list_with_use_counts(session: Session, trip_id: int) -> list[tuple[Label, int]]:
+    """Return the trip's labels with their item counts, most used first, in one query."""
+    uses = func.count(ItemLabel.item_id)
+    rows = session.execute(
+        select(Label, uses)
+        .outerjoin(ItemLabel, ItemLabel.label_id == Label.id)
+        .where(Label.trip_id == trip_id)
+        .group_by(Label.id)
+        .order_by(uses.desc(), Label.name)
+    ).all()
+    return [(label, count) for label, count in rows]
 
 
 def create_label(session: Session, trip_id: int, name: str) -> Label:

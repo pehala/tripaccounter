@@ -67,13 +67,12 @@ def test_opening_the_edit_modal_makes_no_calls(items_page, count_requests, open_
     [
         pytest.param("Statistics", 1, id="stats"),
         pytest.param("Map", 0, id="map"),
-        pytest.param("Setup", 0, id="setup"),
     ],
 )
 def test_first_visit_to_a_derived_tab_costs_only_its_own_resource(
     items_page, count_requests, open_tab, tab, expected_calls
 ):
-    """Statistics costs one GET; Map and Setup reuse what Items loaded."""
+    """Statistics costs one GET; Map reuses what Items loaded."""
     calls = count_requests(API_CALLS)
 
     open_tab(tab)
@@ -105,13 +104,13 @@ def test_showing_the_stats_total_fetches_the_exchange_rates_once(stats_page, cou
     assert len(calls) == 1
 
 
-def test_setup_after_items_makes_no_calls(items_page, count_requests, open_tab):
-    """Setup only needs labels, and Items already loaded them — opening it fetches nothing."""
+def test_setup_after_items_refetches_only_the_labels(items_page, count_requests, open_tab):
+    """Setup's label counts move with item writes, so opening it re-reads labels — one call."""
     calls = count_requests(API_CALLS)
 
     open_tab("Setup")
 
-    assert len(calls) == 0
+    assert len(calls) == 1
 
 
 def test_first_visit_to_setup_without_items_makes_exactly_two_calls(count_requests, open_trip):

@@ -9,7 +9,7 @@ from app.models.trip import Trip
 
 
 class Label(SQLModel, table=True):
-    """A trip-scoped tag applied to items, tracking how many items currently use it."""
+    """A trip-scoped tag applied to items."""
 
     __tablename__ = "label"
     __table_args__ = (UniqueConstraint("trip_id", "name_norm", name="uq_label_trip_norm"),)
@@ -19,7 +19,6 @@ class Label(SQLModel, table=True):
     name: str = Field(max_length=40)
     name_norm: str = Field(max_length=40, index=True)
     color: str = Field(max_length=7)
-    use_count: int = 0
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())
     )

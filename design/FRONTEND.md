@@ -264,13 +264,13 @@ it opens; landing straight on a tab via a direct link or a hard refresh pays for
 | Changing the shown currency | 0 | every grouping already carries every currency; the first switch to Total costs 1, `GET /exchange-rates`, unless Balances or Wallets loaded it |
 | Changing the date range | 0 | every level already came grouped by day; the days are filtered |
 | Map tab, any open | 0 | it reads `store.items`, which the feed already loaded, and `trip.stays` |
-| Setup tab, first open | 0 or 1 | `GET /labels`, unless Items already loaded them |
+| Setup tab, any open | 1 | `GET /labels` — the usage counts it shows move with item writes, so it refetches every time |
 | Balances/Wallets/Stats/Setup, cold (direct link) | 2, or 3 for Balances/Wallets | `GET /trips/{slug}` plus that tab's own endpoints |
 | Revisiting a loaded tab | 0 | already in the store |
 | Open the edit modal | 0 | the item or transfer is already in `store.items`/`store.transfers` |
 | Type in the modal | 0 | labels filtered from `store.labels` client-side |
 | Change amount or split | 1 | `preview-split` on `change`, not on input — expense mode only, never for a transfer |
-| Save an item or a transfer | 2 | the write, then `GET /items` (plus `/labels` if a new label was typed); a transfer or item write also invalidates `store.wallets`/`store.balances`/`store.exchangeRates` so those refetch on next open |
+| Save an item or a transfer | 2 | the write, then `GET /items` (plus `/labels` if the save changed the item's label set); a transfer or item write also invalidates `store.wallets`/`store.balances`/`store.exchangeRates` so those refetch on next open |
 | Setup edit | 2 | the write, then `GET /trips/{slug}` (or `/labels`) |
 | Save or delete a stay | 3, or 4 | the write, then `GET /stays` and `GET /trips/{slug}` for the item form's picker, plus `GET /items` once the feed is loaded — a delete detaches items |
 

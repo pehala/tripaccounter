@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import { html } from '../../h.js';
-import { reload } from '../../store.js';
+import { invalidateLabelViews, reload } from '../../store.js';
 import { t } from '../../i18n/index.js';
 import { api, attempt } from '../../api.js';
 import { pushFlash } from '../../components/Flash.js';
@@ -16,6 +16,7 @@ function LabelChip({ label, slug, locale }) {
     const err = await attempt(api.patch(`/trips/${slug}/labels/${label.id}`, { name: draft }));
     if (err) pushFlash(errText(err, locale));
     setRenaming(false);
+    invalidateLabelViews();
     await reload('labels');
   }
 
@@ -23,7 +24,10 @@ function LabelChip({ label, slug, locale }) {
     if (!window.confirm(t('setup.label_delete_confirm', { name: label.name, n: label.use_count }))) return;
     const err = await attempt(api.del(`/trips/${slug}/labels/${label.id}`));
     if (err) pushFlash(errText(err, locale));
-    else await reload('labels');
+    else {
+      invalidateLabelViews();
+      await reload('labels');
+    }
   }
 
   if (renaming) {

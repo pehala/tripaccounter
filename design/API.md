@@ -165,10 +165,9 @@ survives a rename. `PATCH` cannot move it. Deleting a trip cascades everything.
 
 Creating a trip requires **at least one person, one currency and one country** —
 otherwise the item form would be unusable. `labels` on create is optional and makes
-those labels with `use_count 0`; **the server seeds nothing on its own.** The bundled
-frontend offers a fixed starter set (`food lodging transport fun groceries drinks`,
-the same words in every locale — labels are user data and are never translated) as
-pre-ticked chips the user can untick. A `curl` client gets an empty label list.
+those labels with `use_count 0`; omitted, the trip starts with an empty label list
+and labels appear as items and the label routes create them. Labels are user data
+and are never translated.
 
 ### Roster
 `initial` and `color` on a person are **server-assigned**, so every client draws the
@@ -204,8 +203,10 @@ A label name is **one token** — no whitespace inside it, ever. Typing `street 
 yields two labels unless the user writes `street-food`; a token containing whitespace
 is a `422`, not a silent join. Matching is case-insensitive, so `Food`, `food` and
 `" food "` are one row, and `name` keeps the first-typed casing. Unknown labels on an
-item write are created on the fly and the response echoes the normalized set. An
-item's `labels` array is sorted alphabetically, deduplicated and lowercased.
+item write are created on the fly, a label an item write or delete leaves unused is
+deleted, and the response echoes the set. An
+item's `labels` array holds each label's `name` as stored, sorted alphabetically
+(case-insensitively) and deduplicated.
 
 Deleting a label leaves its items alone — only the association goes.
 

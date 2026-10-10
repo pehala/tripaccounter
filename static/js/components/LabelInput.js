@@ -4,7 +4,9 @@ import { t } from '../i18n/index.js';
 
 // A label is one token with no whitespace inside it — anything typed with a
 // space or comma is folded into one with dashes, same as the mockup's JS.
-const normalize = (raw) => raw.trim().toLowerCase().replace(/[\s,]+/g, '-').replace(/^-+|-+$/g, '');
+const normalize = (raw) => raw.trim().replace(/[\s,]+/g, '-').replace(/^-+|-+$/g, '');
+
+const has = (names, name) => names.some((n) => n.toLowerCase() === name.toLowerCase());
 
 // Space- or comma-separated chips. Enter is left alone so it submits the form
 // like any other input (design/FRONTEND.md §2).
@@ -15,7 +17,7 @@ export function LabelInput({ value, onChange, suggestions = [], listId = 'label-
     const tokens = raw.split(/[\s,]+/).map(normalize).filter(Boolean);
     if (!tokens.length) return;
     const next = [...value];
-    for (const tok of tokens) if (!next.includes(tok)) next.push(tok);
+    for (const tok of tokens) if (!has(next, tok)) next.push(tok);
     onChange(next);
     setTyped('');
   }
@@ -47,7 +49,7 @@ export function LabelInput({ value, onChange, suggestions = [], listId = 'label-
              onBlur=${(e) => { if (e.target.value.trim()) commit(e.target.value); }} />
     </div>
     <datalist id=${listId}>
-      ${suggestions.filter((name) => !value.includes(name)).map((name) => html`<option key=${name} value=${name} />`)}
+      ${suggestions.filter((name) => !has(value, name)).map((name) => html`<option key=${name} value=${name} />`)}
     </datalist>
   `;
 }

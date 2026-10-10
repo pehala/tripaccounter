@@ -8,7 +8,7 @@ See also: [anti-patterns.md](anti-patterns.md) and [review-conventions.md](revie
 ## P-1: Sharing a Database Between Tests
 
 A module-level engine or `Session` leaks rows into the next test. Slugs collide,
-`use_count` is wrong, and the failure lands in whichever test happens to run second.
+label counts are wrong, and the failure lands in whichever test happens to run second.
 
 ❌ **Bad:**
 ```python

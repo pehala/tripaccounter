@@ -292,11 +292,14 @@ export function ItemModal({ trip, labels, entry, onClose }) {
     try {
       if (kind === 'item') {
         const body = buildItemBody();
-        const hadNewLabel = state.labels.some((name) => !labels.some((l) => l.name.toLowerCase() === name));
+        // The server creates labels an item names and drops ones it leaves unused, so the
+        // trip's label list is stale exactly when this save changed the item's label set.
+        const lowered = (names) => names.map((name) => name.toLowerCase()).sort().join(',');
+        const labelsChanged = lowered(state.labels) !== lowered(isEdit ? item.labels : []);
         if (isEdit) await api.patch(`/trips/${trip.slug}/items/${item.id}`, body);
         else await api.post(`/trips/${trip.slug}/items`, body);
         await reload('items');
-        if (hadNewLabel) await reload('labels');
+        if (labelsChanged) await reload('labels');
       } else {
         const body = buildTransferBody();
         if (isEdit) await api.patch(`/trips/${trip.slug}/transfers/${transfer.id}`, body);
@@ -327,6 +330,7 @@ export function ItemModal({ trip, labels, entry, onClose }) {
       if (kind === 'item') await api.del(`/trips/${trip.slug}/items/${item.id}`);
       else await api.del(`/trips/${trip.slug}/transfers/${transfer.id}`);
       await reload('items');
+      if (kind === 'item' && item.labels.length > 0) await reload('labels');
       invalidateMoneyViews();
       onClose();
     } catch (err) {

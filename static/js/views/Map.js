@@ -115,7 +115,7 @@ export function Map() {
       <${CollapsibleSection} id=${CONTROLS} icon="bi-funnel" title=${t('map.controls')}
                              defaultOpen=${true}
                              summary=${t('map.placed', { n: shown, total: store.items.length })}>
-        <${MapFilters} filters=${filters} labels=${[...new Set(placed.flatMap((item) => item.labels))].sort()}
+        <${MapFilters} filters=${filters} labels=${[...new Set(placed.flatMap((item) => item.labels))].sort((a, b) => a.localeCompare(b))}
                        onChange=${(patch) => setFilters((current) => ({ ...current, ...patch }))} />
 
         ${shown === 0 && html`<p class="text-body-secondary mb-0">${t('map.no_matches')}</p>`}

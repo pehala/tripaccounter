@@ -35,7 +35,6 @@ export default {
   'tripnew.people_label': 'People',
   'tripnew.currencies_label': 'Currencies',
   'tripnew.countries_label': 'Countries',
-  'tripnew.labels_label': 'Starter labels',
   'tripnew.create': 'Create trip',
 
   'notfound.title': 'Trip not found',

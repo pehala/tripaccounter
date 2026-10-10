@@ -83,6 +83,14 @@ export function invalidateMoneyViews() {
   notify();
 }
 
+// Items and stats carry label names, so renaming or deleting a label leaves the
+// cached copies stale; the next visit refetches them.
+export function invalidateLabelViews() {
+  state.items = null;
+  state.stats = null;
+  notify();
+}
+
 export async function load(slug) {
   state.slug = slug;
   state.trip = state.labels = state.items = state.dayTotals = state.beforeTripTotals = null;

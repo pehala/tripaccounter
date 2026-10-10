@@ -43,18 +43,17 @@ CURRENCIES = (("ISK", "kr", True), ("EUR", "€", False), ("DKK", "kr.", False))
 # (name, ISO code, is_default)
 COUNTRIES = (("Iceland", "IS", True), ("Denmark", "DK", False))
 
-# (name, use_count)
 LABELS = (
-    ("food", 2),
-    ("restaurant", 1),
-    ("transport", 2),
-    ("fuel", 1),
-    ("fun", 2),
-    ("spa", 1),
-    ("lodging", 1),
-    ("airport", 1),
-    ("groceries", 0),
-    ("drinks", 0),
+    "food",
+    "restaurant",
+    "transport",
+    "fuel",
+    "fun",
+    "spa",
+    "lodging",
+    "airport",
+    "groceries",
+    "drinks",
 )
 
 
@@ -497,10 +496,7 @@ def seed_demo(session: Session) -> Trip:
     ids = add_roster(session, trip.id)
 
     labels = {
-        name: Label(
-            trip_id=trip.id, name=name, name_norm=name, color="#6c757d", use_count=use_count
-        )
-        for name, use_count in LABELS
+        name: Label(trip_id=trip.id, name=name, name_norm=name, color="#6c757d") for name in LABELS
     }
     session.add_all(labels.values())
     session.flush()

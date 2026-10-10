@@ -36,7 +36,6 @@ export default {
   'tripnew.people_label': 'Lidé',
   'tripnew.currencies_label': 'Měny',
   'tripnew.countries_label': 'Země',
-  'tripnew.labels_label': 'Výchozí štítky',
   'tripnew.create': 'Vytvořit výlet',
 
   'notfound.title': 'Výlet nenalezen',
