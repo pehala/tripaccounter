@@ -150,7 +150,7 @@ export default {
   'stats.chart_failed': 'Graf se nepodařilo načíst. Zkuste stránku načíst znovu.',
   'stats.from': 'Od',
   'stats.to': 'Do',
-  'stats.trip_start': 'Začátek výletu',
+  'stats.entire_trip': 'Celý výlet',
   'stats.reset': 'Resetovat',
   'stats.no_spend': 'V těchto dnech se nic neutratilo.',
 

@@ -146,7 +146,7 @@ export default {
   'stats.chart_failed': 'The chart could not load. Reload the page to try again.',
   'stats.from': 'From',
   'stats.to': 'To',
-  'stats.trip_start': 'Trip start',
+  'stats.entire_trip': 'Entire trip',
   'stats.reset': 'Reset',
   'stats.no_spend': 'Nothing was spent in these dates.',
 

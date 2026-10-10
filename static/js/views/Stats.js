@@ -139,14 +139,14 @@ function keyColor(dim, value, trip) {
   return trip.people.find((p) => p.id === value)?.color ?? null;
 }
 
-// The before-trip bucket (`date: null`) if any row has it, then every trip day
-// inside the picked range up to the last day with spend, plus any row's day after
+// The before-trip bucket (`date: null`) if any row has it, then every day from the
+// range's start (the first expense when it has none) up to the last day with spend, plus any row's day after
 // the trip, so a day with no spend is an empty slot on the axis rather than missing
 // from it — and a trip still under way ends at its last expense, not its end date.
 function axisDays(trip, rows, range) {
   const days = new Set(rows.map((row) => row.keys.date).filter((day) => day !== null));
   const spent = [...days].sort().at(-1);
-  const first = [trip.start_date, range.from].filter(Boolean).sort().at(-1);
+  const first = range.from ? [trip.start_date, range.from].filter(Boolean).sort().at(-1) : [...days].sort()[0];
   const final = [trip.end_date, spent].filter(Boolean).sort()[0];
   if (trip.start_date && spent) {
     const last = new Date(`${final}T00:00:00Z`);
@@ -255,7 +255,7 @@ function StatSection({ id, code, badgeLabel = code, index, dims, trip, locale, v
 // currency is a filter over rows already in the store — every grouping carries
 // every currency — so changing it costs no request, unlike changing the chain.
 function StatsPicker({
-  shown, options, onShownChange, dims, onDimsChange, view, onViewChange, range, onRangeChange, startDate,
+  shown, options, onShownChange, dims, onDimsChange, view, onViewChange, range, onRangeChange, startDate, endDate,
 }) {
   const available = Object.keys(DIMENSIONS).filter((dim) => !dims.includes(dim));
 
@@ -292,10 +292,10 @@ function StatsPicker({
           <label class="col-form-label col-form-label-sm" for="stats-to">${t('stats.to')}</label>
           <input id="stats-to" type="date" class="form-control form-control-sm w-auto" value=${range.to ?? ''}
                  min=${range.from ?? ''} onChange=${(e) => onRangeChange({ ...range, to: e.target.value || null })} />
-          ${startDate && range.from !== startDate && html`
+          ${startDate && (range.from !== startDate || range.to !== endDate) && html`
             <button type="button" class="btn btn-sm btn-outline-secondary"
-                    onClick=${() => onRangeChange({ ...range, from: startDate })}>
-              ${t('stats.trip_start')}
+                    onClick=${() => onRangeChange({ from: startDate, to: endDate })}>
+              ${t('stats.entire_trip')}
             </button>
           `}
           ${isDated(range) && html`
@@ -407,7 +407,7 @@ export function Stats() {
     <div class="stats-content">
       <${StatsPicker} shown=${picked} options=${options} onShownChange=${onShownChange}
                       dims=${dims} onDimsChange=${onDimsChange} view=${view} onViewChange=${onViewChange}
-                      range=${range} onRangeChange=${onRangeChange} startDate=${trip.start_date} />
+                      range=${range} onRangeChange=${onRangeChange} startDate=${trip.start_date} endDate=${trip.end_date ?? null} />
       ${picked === 'total' && html`
         <${TotalSection} groups=${groups} dims=${dims} trip=${trip} ratesState=${ratesState}
                          onTargetChange=${onTargetChange} onRateChange=${onRateChange} locale=${locale} view=${view}
