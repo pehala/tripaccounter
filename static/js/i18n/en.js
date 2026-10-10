@@ -44,7 +44,7 @@ export default {
   'day.before_trip': 'Before the trip',
   'items.filter_placeholder': 'filter by name or label',
   'items.paid_by': '{name} paid',
-  'items.map': 'map',
+  'items.map': 'Google Maps',
   'items.add': 'Expense',
   'items.add_expense': 'Add expense',
 

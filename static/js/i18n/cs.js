@@ -45,7 +45,7 @@ export default {
   'day.before_trip': 'Před výletem',
   'items.filter_placeholder': 'filtrovat podle jména nebo štítku',
   'items.paid_by': 'zaplatil/a {name}',
-  'items.map': 'mapa',
+  'items.map': 'Google Maps',
   'items.add': 'Výdaj',
   'items.add_expense': 'Přidat výdaj',
 

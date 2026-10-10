@@ -142,7 +142,7 @@ def test_patch_sends_the_built_body_on_save(open_edit_modal, count_requests):
         "occurred_at": body["occurred_at"],
         "labels": ["food", "restaurant"],
         "city": "Reykjavík",
-        "map_url": "https://maps.app.goo.gl/Kx9mNq2",
+        "map_url": "https://maps.example.test/messinn",
         "lat": "64.14930",
         "lon": "-21.94030",
         "split_mode": "equal",

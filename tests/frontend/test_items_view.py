@@ -197,3 +197,41 @@ def test_item_row_hides_wallet_name_when_it_is_the_payers_default(shared_items_p
     row = shared_items_page.locator(ROW, has_text="Fuel")
 
     expect(row.locator("small").first).not_to_contain_text("Card")
+
+
+def test_map_link_targets_the_map_url_in_a_new_tab(shared_items_page):
+    """The link reads "Google Maps" and targets the item's map_url in a new tab."""
+    link = shared_items_page.locator(ROW, has_text="Dinner at Messinn").get_by_role("link")
+
+    expect(link).to_have_text("Google Maps")
+    expect(link).to_have_attribute("href", "https://maps.example.test/messinn")
+    expect(link).to_have_attribute("target", "_blank")
+    expect(link).to_have_attribute("rel", "noopener noreferrer")
+
+
+def test_map_link_without_a_map_url_is_built_from_the_coordinates(shared_items_page):
+    """An item with only coordinates still gets the same link text, opening a new tab with them."""
+    link = shared_items_page.locator(ROW, has_text="Fuel").get_by_role("link")
+
+    expect(link).to_have_text("Google Maps")
+    expect(link).to_have_attribute("href", re.compile(r"63\.93330,-20\.99000"))
+    expect(link).to_have_attribute("target", "_blank")
+
+
+def test_item_without_a_map_has_no_link(shared_items_page):
+    """An item with neither map_url nor coordinates renders no map link."""
+    row = shared_items_page.locator(ROW, has_text="Blue Lagoon tickets")
+
+    expect(row.get_by_role("link")).to_have_count(0)
+
+
+def test_clicking_the_map_link_opens_a_tab_and_not_the_editor(items_page):
+    """Clicking the map link opens the map_url in a new tab and leaves the edit modal closed."""
+    items_page.context.route("https://maps.example.test/**", lambda route: route.fulfill(body=""))
+    link = items_page.locator(ROW, has_text="Dinner at Messinn").get_by_role("link")
+
+    with items_page.context.expect_page() as popup:
+        link.click()
+
+    assert popup.value.url == "https://maps.example.test/messinn"
+    expect(items_page.locator(".modal.show")).to_have_count(0)
