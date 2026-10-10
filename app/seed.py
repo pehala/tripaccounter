@@ -414,6 +414,9 @@ def add_stays(session: Session, trip_id: int, ids: SeedIds) -> list[int]:
     return [stay.id for stay in stays]
 
 
+DEMO_TIMEZONE = "Atlantic/Reykjavik"
+
+
 def add_item(  # noqa: PLR0913, PLR0917
     session: Session,
     trip_id: int,
@@ -426,6 +429,7 @@ def add_item(  # noqa: PLR0913, PLR0917
     item = LineItem(
         trip_id=trip_id,
         occurred_at=spec.occurred_at,
+        occurred_tz=DEMO_TIMEZONE,
         name=spec.name,
         note=None,
         city=spec.city,
@@ -466,6 +470,7 @@ def add_transfer(
     transfer = WalletTransfer(
         trip_id=trip_id,
         occurred_at=spec.occurred_at,
+        occurred_tz=DEMO_TIMEZONE,
         from_wallet_id=resolve(ids.wallets, spec.from_wallet_key),
         from_currency_id=resolve(ids.currencies, spec.from_currency_key),
         from_amount_minor=spec.from_amount_minor,
@@ -485,7 +490,7 @@ def seed_demo(session: Session) -> Trip:
         name="Iceland 2026",
         start_date="2026-09-12",
         end_date="2026-09-21",
-        timezone="Atlantic/Reykjavik",
+        timezone=DEMO_TIMEZONE,
         note=None,
         archived=False,
         created_at=datetime(2026, 9, 1, 8, 12, 0, tzinfo=UTC),

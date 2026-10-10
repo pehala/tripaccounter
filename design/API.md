@@ -94,26 +94,31 @@ through untouched.
 
 ### Time
 `occurred_at` is a **wall time without an offset**, `YYYY-MM-DDTHH:MM:SS`, in both
-directions: the digits a person sees and types. On input it is read in the trip's
-`timezone` (an IANA name) and the server resolves it to the stored UTC instant; an
+directions: the digits a person sees and types. On input it is read in the write's
+zone, `occurred_tz` (an IANA name), and the server resolves it to the stored UTC
+instant. The write's zone is the body's `occurred_tz`; when the body omits it, the
+row's own zone on `PATCH`, the trip's `timezone` on `POST`. An unknown name is
+`invalid_timezone`. An
 input with an offset (`Z`, `+02:00`, …) is `invalid_datetime`. A wall time the zone
 skips (a spring-forward gap) is `invalid_datetime`; one that happens twice (the
 autumn repeat) is the earlier instant. An omitted `occurred_at` is now. `PATCH`
-without `occurred_at` leaves the instant as it is.
+with `occurred_tz` alone keeps the instant and changes the zone it reads in; with
+`occurred_at` alone it reads the wall time in the row's zone; with both it stores the
+typed time in the given zone; with neither it leaves both as they are.
 
 Every item and transfer answers four time fields:
 
 | Field | Meaning |
 |---|---|
-| `occurred_at` | the wall time in the trip's zone, `"2026-09-14T17:00:00"` |
-| `occurred_tz` | the zone it is written in, the trip's `timezone`, `"Asia/Tokyo"` |
+| `occurred_at` | the wall time in the row's own zone, `"2026-09-14T17:00:00"` |
+| `occurred_tz` | the zone the row happened in, `"Asia/Tokyo"` |
 | `trip_occurred_at` | the wall time in the trip's zone, the key clients merge items and transfers on |
 | `day` | `YYYY-MM-DD`, the date part of `trip_occurred_at`, the key `day_totals` sums under |
 
 The trip's `timezone` cuts days for the whole trip: item `day`, `day_totals`,
-`before_trip_totals` and the statistics `day` dimension. Changing it re-reads every row
-in the new zone; the stored instants stay. A client sending `occurred_tz` is tolerated
-and ignored. `created_at` / `updated_at` are UTC instants with `Z`.
+`before_trip_totals` and the statistics `day` dimension. Changing it re-cuts the days
+and moves `trip_occurred_at` and `day`; each row keeps its own `occurred_tz`, its
+`occurred_at` and its instant. `created_at` / `updated_at` are UTC instants with `Z`.
 
 ### IDs
 Integers, unique per table. `slug` is the only external string identifier.

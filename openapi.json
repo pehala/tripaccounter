@@ -996,6 +996,17 @@
             ],
             "title": "Occurred At"
           },
+          "occurred_tz": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred Tz"
+          },
           "payer_id": {
             "anyOf": [
               {
@@ -2345,6 +2356,17 @@
               }
             ],
             "title": "Occurred At"
+          },
+          "occurred_tz": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred Tz"
           },
           "to_amount": {
             "anyOf": [

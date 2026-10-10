@@ -107,7 +107,7 @@ Status follows the method unless `$status` says otherwise:
 | `defaults` | keys a created row gets when the request leaves them out (optional) |
 | `insert` | `"head"` prepends a created row; the default appends (optional) |
 | `extra` | sibling keys merged into the `GET` list response only — each value a pointer or a literal (optional) |
-| `wall_time` | the row field holding a wall time; a created or patched row gets `trip_occurred_at` equal to it and `day` its date part, as the real server answers them (optional) |
+| `wall_time` | the row field holding a wall time; a created or patched row gets `trip_occurred_at` equal to it (the mock reads every row in the trip's zone) and `day` its date part, as the real server answers them (optional) |
 
 Any other field on a collection is refused at server build with a `KeyError`, so a
 misspelt `defaults` cannot pass silently.

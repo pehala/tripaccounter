@@ -14,7 +14,7 @@ export function TransferRow({ transfer, trip, locale, onSelect }) {
   const toWallet = wallet(transfer.to_wallet_id);
   const fromOwner = owner(transfer.from_wallet_id);
   const toOwner = owner(transfer.to_wallet_id);
-  const time = wallTime(transfer.occurred_at);
+  const time = wallTime(transfer.occurred_at) + (transfer.occurred_tz !== trip.timezone ? ` ${transfer.occurred_tz}` : '');
   const isExchange = transfer.from_currency_code !== transfer.to_currency_code;
 
   return html`

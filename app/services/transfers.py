@@ -28,7 +28,7 @@ from app.services.errors.fields import (
 )
 from app.services.money import AMOUNT_SCALE, to_hundredths
 from app.services.scope import in_trip, ref_error
-from app.services.timezones import occurred_error
+from app.services.timezones import time_errors
 
 
 @dataclass
@@ -90,16 +90,16 @@ def validate(
     session: Session,
     trip: Trip,
     resolved: ResolvedTransfer,
-    occurred_at: datetime | None,
+    body: TransferWrite,
     *,
-    creating: bool,
+    existing: WalletTransfer | None = None,
 ) -> dict[str, FieldError]:
-    """Validate a resolved write's refs, wall time and cross-field rules; return its errors."""
-    fields: dict[str, FieldError] = {}
+    """Validate a resolved write's refs, time and cross-field rules; return its errors.
 
-    when_error = occurred_error(occurred_at, trip.zone)
-    if when_error:
-        fields["occurred_at"] = when_error
+    `existing` is the row an update writes onto; a create passes none.
+    """
+    creating = existing is None
+    fields = time_errors(body.occurred_at, body.occurred_tz, existing, trip)
 
     # Both wallets are required on every write; a currency only on create, since
     # `resolve_write` carries the stored one forward on a patch.
@@ -154,7 +154,8 @@ def apply_write(
 ) -> None:
     """Write a validated, resolved transfer's fields onto the model instance.
 
-    `occurred_at` is a wall time in `zone`, or None to leave the instant as it is.
+    `occurred_at` is a wall time in `zone`, the zone the transfer then records; None
+    leaves the instant as it is.
     """
     transfer.from_wallet_id = resolved.from_wallet_id
     transfer.from_currency_id = resolved.from_currency_id
@@ -164,5 +165,6 @@ def apply_write(
     transfer.to_amount_minor = to_hundredths(resolved.to_amount)
     if occurred_at is not None:
         transfer.occurred_at = Occurred.resolve(occurred_at, zone)
+    transfer.occurred_tz = zone.key
     if note is not None:
         transfer.note = note

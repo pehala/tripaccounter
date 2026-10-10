@@ -23,6 +23,7 @@ from app.services.errors.fields import NotInTripError
 from app.services.labels import prune_unused, set_item_labels
 from app.services.money import AMOUNT_SCALE, to_hundredths, to_wire
 from app.services.scope import in_trip, require_in_trip
+from app.services.timezones import write_zone
 
 router = APIRouter(tags=["items"])
 
@@ -115,7 +116,7 @@ def get_item(item_id: int, trip: TripDep, session: SessionDep):
 )
 def create_item(body: ItemWrite, trip: TripDep, session: SessionDep, clock: ClockDep):
     """Create a new item on a trip."""
-    fields = item_service.validate_write(session, trip, body, creating=True)
+    fields = item_service.validate_write(session, trip, body)
     if fields:
         raise ValidationError(fields)
 
@@ -127,7 +128,7 @@ def create_item(body: ItemWrite, trip: TripDep, session: SessionDep, clock: Cloc
         rows = item_service.build_shares(trip, mode, body.shares, body.amount, currency.code)
 
     item = LineItem(trip_id=trip.id, occurred_at=clock, wallet_id=wallet_id, split_mode=mode)
-    item_service.apply_write(item, body, trip.zone)
+    item_service.apply_write(item, body, write_zone(body.occurred_tz, None, trip))
     session.add(item)
     session.flush()
 
@@ -148,13 +149,13 @@ def update_item(item_id: int, body: ItemWrite, trip: TripDep, session: SessionDe
     """Update an item's fields, and its shares if the split changed."""
     item = require_in_trip(session, LineItem, item_id, trip.id, "item", options=ITEM_LOAD_OPTIONS)
 
-    fields = item_service.validate_write(session, trip, body, creating=False)
+    fields = item_service.validate_write(session, trip, body, item=item)
     if fields:
         raise ValidationError(fields)
 
     with field_errors("wallet_id"):
         item_service.rewrite_wallet(session, item, body)
-    item_service.apply_write(item, body, trip.zone)
+    item_service.apply_write(item, body, write_zone(body.occurred_tz, item, trip))
     with field_errors("shares"):
         item_service.rewrite_shares(session, trip, item, body)
 
