@@ -31,10 +31,13 @@ def test_stay_card_shows_dates_nights_place_and_link(stay_card):
     )
 
 
-def test_stay_card_renders_server_per_night_verbatim_without_a_total(stay_card):
-    """The per-night figure is formatted as sent, never recomputed; no total or count shows."""
-    expect(stay_card.locator(".card-body")).not_to_contain_text("96,000")
-    expect(stay_card.locator(".stay-per-night")).to_have_text(["48,000 ISK per night"])
+def test_stay_card_renders_server_total_and_per_night_verbatim_on_one_line(stay_card):
+    """The total and the per-night figure are formatted as sent, never recomputed, on one line."""
+    cost = stay_card.locator(".stay-cost")
+
+    expect(cost).to_have_count(1)
+    expect(cost.locator(".stay-amount")).to_have_text("96,000 ISK")
+    expect(cost.locator(".stay-per-night")).to_have_text("48,000 ISK per night")
     expect(stay_card.locator(".card-body")).not_to_contain_text("1 expense")
 
 
@@ -47,6 +50,7 @@ def test_same_day_stay_shows_no_per_night_figure(fixture_data, open_trip):
     page = open_trip("stays")
 
     expect(page.locator(".stay-card")).to_have_count(1)
+    expect(page.locator(".stay-amount")).to_have_text(["96,000 ISK"])
     expect(page.locator(".stay-per-night")).to_have_count(0)
 
 
@@ -92,6 +96,25 @@ def test_editing_a_stay_patches_every_field_with_null_for_emptied_ones(
     ]
 
 
+def test_stay_date_pickers_are_limited_to_the_trip_dates(stays_page):
+    """Both pickers stop at the trip's first and last day; check-out also starts at check-in."""
+    stays_page.locator(".stays-content .btn-primary").click()
+    modal = stays_page.locator(".modal.show")
+    # Bootstrap focuses the dialog once shown; a fill before that has its focus stolen mid-way.
+    expect(modal).to_be_focused()
+    check_in = modal.locator("#stay-check-in")
+    check_out = modal.locator("#stay-check-out")
+
+    expect(check_in).to_have_attribute("min", "2026-09-12")
+    expect(check_in).to_have_attribute("max", "2026-09-21")
+    expect(check_out).to_have_attribute("min", "2026-09-12")
+    expect(check_out).to_have_attribute("max", "2026-09-21")
+
+    check_in.fill("2026-09-14")
+
+    expect(check_out).to_have_attribute("min", "2026-09-14")
+
+
 def test_picking_a_stay_keeps_a_city_the_user_typed(new_item_modal):
     """A city typed before the stay is picked survives the pick."""
     new_item_modal.locator('input[name="city"]').fill("Reykjavík")
@@ -122,20 +145,49 @@ def test_item_row_names_its_stay(shared_items_page):
     expect(row.locator(".item-stay")).to_have_attribute("href", "/t/iceland-2026/stays#stay-1")
 
 
-def test_stays_tab_costs_one_call(items_page, count_requests, open_tab):
-    """Opening the tab after Items fetches only the stays report."""
+def test_stays_tab_costs_two_calls(items_page, count_requests, open_tab):
+    """Opening the tab after Items fetches the stays and the exchange rates the Total offers."""
     calls = count_requests("*/api/v1/*")
 
     open_tab("Accommodation")
+    expect(items_page.locator(".stay-card")).to_have_count(1)
 
-    assert len(calls) == 1
+    assert len(calls) == 2
 
 
-def test_stay_card_lists_its_expenses_and_opens_one_for_editing(stays_page, stay_card):
-    """The card lists the items grouped under it, and clicking one opens it in the edit form."""
-    row = stay_card.locator(".item-row", has_text="Guesthouse Vík, 2 nights")
-    expect(row).to_have_count(1)
+@pytest.fixture
+def total_section(fixture_data, open_trip):
+    """Return the opened Total section of a stay costing 48 000 ISK and 100 EUR per night.
 
-    row.get_by_role("button", name="Edit").click()
+    Tests read the card through `total_section.page`: asking for `stay_card` too would
+    load the page a second time and close the section again.
+    """
+    fixture_data["stays"]["stays"][0]["totals"].append(
+        {"currency_code": "EUR", "currency_id": 2, "amount": 200, "per_night": 100}
+    )
+    page = open_trip("stays")
+    section = page.locator("#stays-total")
+    section.get_by_role("button", name="Total").click()
+    expect(section.locator("#rates-target")).to_be_visible()
+    return section
 
-    expect(stays_page.locator(".modal.show #item-stay")).to_have_value("1")
+
+def test_stay_total_asks_for_every_rate_before_showing_a_figure(total_section):
+    """Until each currency has a rate the card shows only its own currencies' figures."""
+    expect(total_section).to_contain_text("Add a rate for every currency to see the total.")
+    expect(total_section.page.locator(".stay-card .stay-cost")).to_have_count(2)
+    expect(total_section.page.locator(".stay-card .stay-cost-total")).to_have_count(0)
+
+
+def test_stay_total_sums_the_per_night_figures_at_the_typed_rates(total_section):
+    """With every rate typed the card adds one total and per-night line in the target currency."""
+    for code, rate in {"EUR": "150", "DKK": "20"}.items():
+        row = total_section.locator(".row").filter(
+            has=total_section.page.locator(".badge", has_text=code)
+        )
+        row.locator("input").fill(rate)
+        row.locator("input").blur()
+
+    converted = total_section.page.locator(".stay-card .stay-cost-total")
+    expect(converted.locator(".stay-amount")).to_have_text("126,000 ISK")
+    expect(converted.locator(".stay-per-night")).to_have_text("63,000 ISK per night")

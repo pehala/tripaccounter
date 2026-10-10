@@ -4,17 +4,40 @@ import { useStore, reload } from '../store.js';
 import { t, getLocale } from '../i18n/index.js';
 import { dateRange, money } from '../fmt.js';
 import { stayMatches } from '../filter.js';
+import { getRatesState, setTargetCurrency, setRateValue } from '../rates.js';
+import { rateFor, convert } from '../convert.js';
+import { RatesForm } from '../components/RatesForm.js';
 import { ItemRow } from '../components/ItemRow.js';
 import { ItemModal } from '../components/ItemModal.js';
 import { EditButton } from '../components/EditButton.js';
+import { CollapsibleSection } from '../components/CollapsibleSection.js';
 import { Loading } from '../components/Loading.js';
 import { StayModal } from '../components/StayModal.js';
 
-// Per-night figures come from the server, one per currency
-// (design/FRONTEND.md §4 rule 1); nothing here divides or adds an amount.
-function StayCard({ stay, trip, items, locale, onEdit, onSelectItem }) {
+// Totals and per-night figures come from the server, one pair per currency
+// (design/FRONTEND.md §4 rule 1); nothing here divides an amount. `total`, when
+// given, is the Total switch's `{target, values}`: the same typed rates as on
+// Balances and Statistics, applied to those figures and summed.
+function Cost({ amount, perNight, code, locale, cls }) {
+  return html`
+    <div class="${cls}">
+      <span class="num fw-semibold stay-amount">${money(amount, locale)} ${code}</span>
+      ${perNight !== null && html`
+        <small class="num text-body-secondary ms-2 stay-per-night">
+          ${t('stays.per_night', { amount: `${money(perNight, locale)} ${code}` })}</small>
+      `}
+    </div>
+  `;
+}
+
+function StayCard({ stay, trip, items, locale, total, onEdit, onSelectItem }) {
   const country = trip.countries.find((c) => c.id === stay.country_id);
   const where = country && `${country.flag ?? ''} ${country.name}`.trim();
+  const sum = (key) => stay.totals.reduce(
+    (acc, row) => acc + convert(row[key], rateFor(row.currency_id, total.target.id, total.values, locale)), 0);
+  const converted = total && stay.totals.some((row) => row.currency_id !== total.target.id)
+    ? { amount: sum('amount'), perNight: stay.nights > 0 ? sum('per_night') : null }
+    : null;
   return html`
     <div id="stay-${stay.id}" class="card shadow-sm mb-3 stay-card">
       <div class="card-header d-flex align-items-center gap-2">
@@ -33,11 +56,14 @@ function StayCard({ stay, trip, items, locale, onEdit, onSelectItem }) {
         </div>
         ${stay.note && html`<div class="small mt-1">${stay.note}</div>`}
         <div class="mt-2">
-          ${stay.totals.filter((total) => total.per_night !== null).map((total) => html`
-            <div key=${total.currency_id} class="num fw-semibold stay-per-night">
-              ${t('stays.per_night', { amount: `${money(total.per_night, locale)} ${total.currency_code}` })}
-            </div>
+          ${stay.totals.map((row) => html`
+            <${Cost} key=${row.currency_id} amount=${row.amount} perNight=${row.per_night}
+                     code=${row.currency_code} locale=${locale} cls="stay-cost" />
           `)}
+          ${converted && html`
+            <${Cost} amount=${converted.amount} perNight=${converted.perNight}
+                     code=${total.target.code} locale=${locale} cls="stay-cost stay-cost-total" />
+          `}
         </div>
       </div>
       ${items.length > 0 && html`
@@ -57,6 +83,7 @@ export function Stays() {
   const [stayModal, setStayModal] = useState(undefined); // undefined = closed, null = new, stay = edit
   const [editEntry, setEditEntry] = useState(null);
   const [filter, setFilter] = useState('');
+  const [ratesState, setRatesState] = useState(() => getRatesState(store.slug));
 
   // An item save clears store.stays (invalidateMoneyViews), so a total the
   // modal just changed is refetched while the tab is still open.
@@ -84,6 +111,13 @@ export function Stays() {
     await Promise.all([reload('stays'), reload('trip'), store.items && reload('items')]);
   }
 
+  const trip = store.trip;
+  const primary = trip.currencies.find((c) => c.is_primary) || trip.currencies[0];
+  const target = trip.currencies.find((c) => c.id === ratesState.target) || primary;
+  const multiCurrency = trip.currencies.length > 1;
+  const allRatesSet = trip.currencies.every((c) => rateFor(c.id, target.id, ratesState.values, locale) !== null);
+  const total = multiCurrency && allRatesSet ? { target, values: ratesState.values } : null;
+
   const needle = filter.trim().toLowerCase();
   const stayItems = (stay) => store.items.filter((item) => item.stay_id === stay.id);
   const visible = needle
@@ -101,11 +135,20 @@ export function Stays() {
                value=${filter} onInput=${(e) => setFilter(e.target.value)} />
       </div>
     </div>
+    ${multiCurrency && store.stays.length > 0 && html`
+      <${CollapsibleSection} id="stays-total" icon="bi-calculator" title=${t('nav.total')}>
+        <${RatesForm} trip=${trip} target=${target} values=${ratesState.values}
+                      onTargetChange=${(id) => setRatesState(setTargetCurrency(store.slug, id))}
+                      onRateChange=${(id, value) => setRatesState(setRateValue(store.slug, id, value))} />
+        ${!allRatesSet && html`<div class="alert alert-secondary py-2 px-3 small mb-0">${t('rates.missing')}</div>`}
+        ${allRatesSet && html`<div class="small text-body-secondary">${t('rates.total_note')}</div>`}
+      <//>
+    `}
     ${store.stays.length === 0 && html`<p class="text-body-secondary">${t('stays.empty')}</p>`}
     ${store.stays.length > 0 && visible.length === 0 && html`<p class="text-body-secondary">${t('stays.no_match')}</p>`}
     ${visible.map((stay) => html`
       <${StayCard} key=${stay.id} stay=${stay} trip=${store.trip} locale=${locale}
-                   items=${stayItems(stay)}
+                   items=${stayItems(stay)} total=${total}
                    onSelectItem=${(item) => setEditEntry({ kind: 'item', row: item })}
                    onEdit=${() => setStayModal(stay)} />
     `)}

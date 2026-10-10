@@ -74,7 +74,8 @@ static/
     │   ├── Balances.js   per-currency + Total, collapsible sections, jump-to sidebar
     │   ├── Wallets.js    one card per person, a balance row per tracked wallet's currency
     │   ├── Stays.js      one card per stay: city in the title, dates, country, website link, search, server
-    │   │                 per-night figures; add a stay, or an expense under one
+    │   │                 totals with the per-night figure beside each, and, on a multi-currency trip, the Total's
+    │   │                 rate form and a converted total line per card; add a stay, or an expense under one
     │   ├── Stats.js      per-currency + Total, collapsible sections, jump-to sidebar
     │   ├── Map.js        pins from the items' and stays' coordinates, filters, the
     │   │                 selected pin's expense list
@@ -171,15 +172,15 @@ Note the dashed arrow: **a write is followed by a re-read, never by a local muta
      them. A level is never summed from the one below it, so overlapping labels stay
      exact.
 
-   The exception is each page's own Total — on both statistics and balances: a switch
+   The exception is each page's own Total — on statistics, balances and accommodation: a switch
    alongside the currencies that multiplies each grouped total (statistics) or each
    person's net and each settle-up suggestion (balances, netted by unordered person
-   pair) by a rate the user typed, **rounds each product to two places**, and sums
+   pair) or each stay's total and per-night figure (accommodation) by a rate the user typed, **rounds each product to two places**, and sums
    those rounded figures across currencies. It is all-or-nothing — the Total renders
    nothing but the rate form until every currency has a positive rate, never a partial
    sum quietly missing one. That sum is the only place the frontend adds two amounts,
    and every operand is already the user's own guesswork. The rates live in
-   `localStorage`, shared between the two pages so one typed rate set serves both, are
+   `localStorage`, shared between the three pages so one typed rate set serves all, are
    never posted back, and never come near a currency's own balance, settle-up figure,
    or statistics — only its Total. The rate form offers each person's average
    rate of what they spent, from `GET /exchange-rates`, as a link that fills the input;
@@ -258,7 +259,7 @@ it opens; landing straight on a tab via a direct link or a hard refresh pays for
 | Open a trip (Items tab) | 3, parallel | `GET /trips/{slug}`, `/items`, `/labels` |
 | Balances tab, first open | 2 | `GET /balances`, then `/exchange-rates` for the Total's rate form — `trip` is already in the store |
 | Wallets tab, first open | 2, parallel | `GET /wallets` and `/exchange-rates` — `trip` is already in the store |
-| Accommodation tab, first open | 1 | `GET /stays` — `trip` is already in the store; an item write clears `store.stays`, so an open tab refetches its totals |
+| Accommodation tab, first open | 2 (1 on a single-currency trip) | `GET /stays`, then `/exchange-rates` for the Total's rate form — `trip` is already in the store; an item write clears `store.stays`, so an open tab refetches its totals |
 | Stats tab, first open | 1 | `GET /stats?group_by=…` — `trip` is already in the store |
 | Changing the breakdown | 1 | the chain is a new `group_by`, so the answer is refetched |
 | Changing the shown currency | 0 | every grouping already carries every currency; the first switch to Total costs 1, `GET /exchange-rates`, unless Balances or Wallets loaded it |
