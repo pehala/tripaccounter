@@ -258,9 +258,8 @@ erDiagram
 - Creating an item with an unknown label creates the label on the fly.
 - The input suggests existing trip labels ordered by `use_count DESC, name ASC`.
   The server order is what clients show; there is no locale-aware re-sort.
-- **The server seeds no labels.** `POST /trips` accepts an optional `labels` list;
-  the bundled frontend sends a fixed starter set the user can untick. Labels are
-  user data and are never translated, so the set is the same in every locale.
+- A trip starts with no labels. `POST /trips` accepts an optional `labels` list;
+  the bundled frontend omits it. Labels are user data and are never translated.
 - `use_count` is not stored: the label routes count `ITEM_LABEL` rows per label on
   every read. When an item write or delete leaves a label with no items, the server
   deletes that label. A label created directly (`POST /labels`, or `labels` on

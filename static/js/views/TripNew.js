@@ -5,10 +5,6 @@ import { t, getLocale } from '../i18n/index.js';
 import { pushFlash } from '../components/Flash.js';
 import { fmtParams } from '../fmt.js';
 
-// Same six words in every locale — labels are user data, never translated
-// (API.md §3 "POST /trips"). Unticking one drops it from the request body.
-const STARTER_LABELS = ['food', 'lodging', 'transport', 'fun', 'groceries', 'drinks'];
-
 function errText(err) {
   return t('err.' + err.code, fmtParams(err.params, getLocale()));
 }
@@ -31,7 +27,6 @@ export function TripNew() {
   const [people, setPeople] = useState([{ name: '', weight: '' }]);
   const [currencies, setCurrencies] = useState([{ code: '', symbol: '', isPrimary: true }]);
   const [countries, setCountries] = useState([{ name: '', code: '' }]);
-  const [labels, setLabels] = useState(() => Object.fromEntries(STARTER_LABELS.map((l) => [l, true])));
   const [fieldErrors, setFieldErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -65,7 +60,6 @@ export function TripNew() {
         name: c.name.trim(),
         ...(c.code ? { code: c.code.trim().toUpperCase() } : {}),
       })),
-      labels: STARTER_LABELS.filter((l) => labels[l]),
     };
     if (note) body.note = note;
     if (startDate) body.start_date = startDate;
@@ -160,19 +154,6 @@ export function TripNew() {
             `)}
             ${fieldErrors.countries && html`<div class="invalid-feedback d-block">${errText(fieldErrors.countries)}</div>`}
             <button type="button" class="btn btn-sm btn-outline-primary" onClick=${() => setCountries([...countries, { name: '', code: '' }])}>${t('action.add')}</button>
-          </div>
-        </div>
-
-        <div class="card shadow-sm mb-3">
-          <div class="card-header fw-semibold">${t('tripnew.labels_label')}</div>
-          <div class="card-body d-flex flex-wrap gap-2">
-            ${STARTER_LABELS.map((l) => html`
-              <div key=${l} class="form-check">
-                <input class="form-check-input" type="checkbox" id="starter-label-${l}" checked=${labels[l]}
-                       onChange=${(e) => setLabels({ ...labels, [l]: e.target.checked })} />
-                <label class="form-check-label" for="starter-label-${l}">${l}</label>
-              </div>
-            `)}
           </div>
         </div>
 

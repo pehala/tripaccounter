@@ -165,10 +165,9 @@ survives a rename. `PATCH` cannot move it. Deleting a trip cascades everything.
 
 Creating a trip requires **at least one person, one currency and one country** —
 otherwise the item form would be unusable. `labels` on create is optional and makes
-those labels with `use_count 0`; **the server seeds nothing on its own.** The bundled
-frontend offers a fixed starter set (`food lodging transport fun groceries drinks`,
-the same words in every locale — labels are user data and are never translated) as
-pre-ticked chips the user can untick. A `curl` client gets an empty label list.
+those labels with `use_count 0`; omitted, the trip starts with an empty label list
+and labels appear as items and the label routes create them. Labels are user data
+and are never translated.
 
 ### Roster
 `initial` and `color` on a person are **server-assigned**, so every client draws the
