@@ -255,7 +255,7 @@ function StatSection({ id, code, badgeLabel = code, index, dims, trip, locale, v
 // currency is a filter over rows already in the store — every grouping carries
 // every currency — so changing it costs no request, unlike changing the chain.
 function StatsPicker({
-  shown, options, onShownChange, dims, onDimsChange, view, onViewChange, range, onRangeChange, startDate, endDate,
+  shown, options, onShownChange, dims, onDimsChange, view, onViewChange, range, onRangeChange, startDate,
 }) {
   const available = Object.keys(DIMENSIONS).filter((dim) => !dims.includes(dim));
 
@@ -296,12 +296,6 @@ function StatsPicker({
             <button type="button" class="btn btn-sm btn-outline-secondary"
                     onClick=${() => onRangeChange({ ...range, from: startDate })}>
               ${t('stats.trip_start')}
-            </button>
-          `}
-          ${startDate && (range.from !== startDate || range.to !== endDate) && html`
-            <button type="button" class="btn btn-sm btn-outline-secondary"
-                    onClick=${() => onRangeChange({ from: startDate, to: endDate })}>
-              ${t('stats.entire_trip')}
             </button>
           `}
           ${isDated(range) && html`
@@ -413,7 +407,7 @@ export function Stats() {
     <div class="stats-content">
       <${StatsPicker} shown=${picked} options=${options} onShownChange=${onShownChange}
                       dims=${dims} onDimsChange=${onDimsChange} view=${view} onViewChange=${onViewChange}
-                      range=${range} onRangeChange=${onRangeChange} startDate=${trip.start_date} endDate=${trip.end_date ?? null} />
+                      range=${range} onRangeChange=${onRangeChange} startDate=${trip.start_date} />
       ${picked === 'total' && html`
         <${TotalSection} groups=${groups} dims=${dims} trip=${trip} ratesState=${ratesState}
                          onTargetChange=${onTargetChange} onRateChange=${onRateChange} locale=${locale} view=${view}

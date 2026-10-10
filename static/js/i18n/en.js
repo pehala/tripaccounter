@@ -147,7 +147,6 @@ export default {
   'stats.from': 'From',
   'stats.to': 'To',
   'stats.trip_start': 'Trip start',
-  'stats.entire_trip': 'Entire trip',
   'stats.reset': 'Reset',
   'stats.no_spend': 'Nothing was spent in these dates.',
 

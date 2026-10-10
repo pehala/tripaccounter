@@ -151,7 +151,6 @@ export default {
   'stats.from': 'Od',
   'stats.to': 'Do',
   'stats.trip_start': 'Začátek výletu',
-  'stats.entire_trip': 'Celý výlet',
   'stats.reset': 'Resetovat',
   'stats.no_spend': 'V těchto dnech se nic neutratilo.',
 

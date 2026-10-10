@@ -124,22 +124,11 @@ def test_trip_start_sets_the_range_to_begin_with_the_trip(stats_page):
     expect(trip_start).to_have_count(0)
 
 
-def test_entire_trip_sets_the_range_to_the_trips_dates(stats_page):
-    """Entire trip fills From and To with the trip's dates, then hides until one moves."""
-    entire_trip = stats_page.get_by_role("button", name="Entire trip")
-
-    entire_trip.click()
-
-    expect(stats_page.locator("#stats-from")).to_have_value("2026-09-12")
-    expect(stats_page.locator("#stats-to")).to_have_value("2026-09-21")
-    expect(entire_trip).to_have_count(0)
-
-
-def test_entire_trip_axis_starts_at_the_trip_start(stats_page):
-    """With no range the axis starts at the first expense; Entire trip widens it to the start."""
+def test_the_day_axis_starts_at_the_first_expense_until_from_is_set(stats_page):
+    """With no range the axis starts at the first expense; Trip start widens it to the start."""
     chart_view(stats_page)
     assert chart_config(stats_page, ISK_ID)["labels"] == ["13 Sep", "14 Sep"]
 
-    stats_page.get_by_role("button", name="Entire trip").click()
+    stats_page.get_by_role("button", name="Trip start").click()
 
     assert chart_config(stats_page, ISK_ID)["labels"] == ["12 Sep", "13 Sep", "14 Sep"]
