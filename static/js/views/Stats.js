@@ -266,7 +266,7 @@ function StatsPicker({
         <div class="btn-group btn-group-sm" role="group">
           ${['list', 'chart'].map((option) => html`
             <button key=${option} type="button" aria-pressed=${option === view}
-                    class="btn ${option === view ? 'btn-secondary' : 'btn-outline-secondary'}"
+                    class="btn ${option === view ? 'btn-primary' : 'btn-secondary'}"
                     onClick=${() => onViewChange(option)}>
               <i class="bi ${option === 'list' ? 'bi-list-ul' : 'bi-bar-chart'}"></i> ${t(`stats.view.${option}`)}
             </button>
@@ -293,13 +293,13 @@ function StatsPicker({
           <input id="stats-to" type="date" class="form-control form-control-sm w-auto" value=${range.to ?? ''}
                  min=${range.from ?? ''} onChange=${(e) => onRangeChange({ ...range, to: e.target.value || null })} />
           ${startDate && range.from !== startDate && html`
-            <button type="button" class="btn btn-sm btn-outline-secondary"
+            <button type="button" class="btn btn-sm btn-secondary"
                     onClick=${() => onRangeChange({ ...range, from: startDate })}>
               ${t('stats.trip_start')}
             </button>
           `}
           ${isDated(range) && html`
-            <button type="button" class="btn btn-sm btn-outline-secondary"
+            <button type="button" class="btn btn-sm btn-secondary"
                     onClick=${() => onRangeChange({ from: null, to: null })}>
               ${t('stats.reset')}
             </button>

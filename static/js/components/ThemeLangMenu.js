@@ -35,7 +35,7 @@ export function ThemeLangMenu() {
         <li><hr class="dropdown-divider" /></li>
         <li>
           <button class="dropdown-item" type="button" onClick=${toggleTheme}>
-            <i class="bi ${theme === 'dark' ? 'bi-sun' : 'bi-moon'}"></i>
+            <i class="bi me-2 ${theme === 'dark' ? 'bi-sun' : 'bi-moon'}"></i>
             ${theme === 'dark' ? t('theme.light') : t('theme.dark')}
           </button>
         </li>

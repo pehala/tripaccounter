@@ -31,7 +31,7 @@ export function MapFilters({ filters, labels, onChange }) {
       <div class="d-flex flex-wrap gap-1 mb-3" role="group" aria-label=${t('map.labels')}>
         ${labels.map((name) => html`
           <button key=${name} type="button" aria-pressed=${filters.labels.includes(name)}
-                  class="btn btn-sm rounded-pill ${filters.labels.includes(name) ? 'btn-primary' : 'btn-outline-secondary'}"
+                  class="btn btn-sm rounded-pill ${filters.labels.includes(name) ? 'btn-primary' : 'btn-secondary'}"
                   onClick=${() => onChange({ labels: toggled(filters.labels, name) })}>${name}</button>
         `)}
       </div>`}

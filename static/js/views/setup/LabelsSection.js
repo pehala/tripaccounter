@@ -38,7 +38,7 @@ function LabelChip({ label, slug, locale }) {
   }
 
   return html`
-    <span class="badge rounded-pill bg-body-secondary text-body border d-inline-flex align-items-center gap-1 ${label.use_count === 0 ? 'opacity-50' : ''}">
+    <span class="badge rounded-pill bg-body-secondary ${label.use_count === 0 ? 'text-body-secondary' : 'text-body'} border border-secondary d-inline-flex align-items-center gap-1">
       <span style="cursor:pointer" onClick=${() => { setDraft(label.name); setRenaming(true); }}>${label.name}</span>
       <small class="text-body-secondary">${label.use_count}</small>
       <button type="button" class="btn-close" style="font-size:.5rem" aria-label=${t('action.remove')} onClick=${remove}></button>
