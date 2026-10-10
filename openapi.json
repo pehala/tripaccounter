@@ -2736,6 +2736,32 @@
         "title": "TripUpdate",
         "type": "object"
       },
+      "VersionOut": {
+        "description": "Wire representation of the running build: its id, and when the image was built.",
+        "properties": {
+          "built_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Built At"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "built_at"
+        ],
+        "title": "VersionOut",
+        "type": "object"
+      },
       "WalletBalanceOut": {
         "description": "Wire representation of one wallet's activity in one currency.",
         "properties": {
@@ -6116,6 +6142,28 @@
         "summary": "Update Wallet",
         "tags": [
           "wallets"
+        ]
+      }
+    },
+    "/api/v1/version": {
+      "get": {
+        "description": "Get the running build's id and build time.",
+        "operationId": "get_version_api_v1_version_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Version",
+        "tags": [
+          "version"
         ]
       }
     }

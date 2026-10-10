@@ -274,6 +274,11 @@ it opens; landing straight on a tab via a direct link or a hard refresh pays for
 | Setup edit | 2 | the write, then `GET /trips/{slug}` (or `/labels`) |
 | Save or delete a stay | 3, or 4 | the write, then `GET /stays` and `GET /trips/{slug}` for the item form's picker, plus `GET /items` once the feed is loaded — a delete detaches items |
 
+The shell also asks `GET /version` once per page load, for the build id the settings menu shows.
+It is chrome, not a screen — a tab switch or route change never repeats it — so the
+table above does not count it, `count_requests` skips it unless a test names it, and
+a failed or missing answer just leaves the menu without a build.
+
 Anything above this is a bug, and `test_call_budget.py` says so. A cold `GET
 /trips/{slug}` may still come back as a 304 (see `design/ARCHITECTURE.md` §1,
 `ETagMiddleware`) — that saves bytes, not the request itself, so it still counts

@@ -21,6 +21,7 @@ from tests.frontend.mockapi import MockServer
 # user-supplied string for escaping, one file per error envelope. Every value in
 # them is written out by hand, copied from what the backend actually produced.
 FIXTURES = Path(__file__).parent / "fixtures"
+VERSION_PATH = "/api/v1/version"
 
 # Tab link text -> (URL path segment, locator visible once that tab has finished rendering).
 # The landmarks are visible at every viewport width, so phone-width tests can use them.
@@ -206,15 +207,18 @@ def count_requests(page):
 
     Matches `fnmatch` against the URL path: "*/api/v1/*" is every API call, "*/items"
     is the collection and not "*/items/preview-split". Attach it right before the
-    action under test; earlier requests are not counted.
+    action under test; earlier requests are not counted. The shell's `/version` call
+    belongs to no screen's budget, so only a glob naming it exactly sees it.
     """
 
     def attach(path_glob, method=None):
         seen = []
 
         def record(request):
-            path_matches = fnmatchcase(urlsplit(request.url).path, path_glob)
-            if path_matches and method in (None, request.method):
+            path = urlsplit(request.url).path
+            if path == VERSION_PATH and path_glob != VERSION_PATH:
+                return
+            if fnmatchcase(path, path_glob) and method in (None, request.method):
                 seen.append(request)
 
         page.on("request", record)

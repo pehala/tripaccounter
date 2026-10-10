@@ -1,14 +1,16 @@
 import { useState } from 'preact/hooks';
 import { html } from '../h.js';
 import { t, LANGS, getLocale, setLocale } from '../i18n/index.js';
+import { date, dateTime } from '../fmt.js';
 
 function currentTheme() {
   return document.documentElement.dataset.bsTheme === 'dark' ? 'dark' : 'light';
 }
 
 // Language + theme controls, identical on every page (trip list, new-trip form,
-// every trip tab) — not tied to a trip being loaded.
-export function ThemeLangMenu() {
+// every trip tab) — not tied to a trip being loaded. `version` is the running build
+// ({ version, built_at }) or null; the menu ends with it when there is one.
+export function ThemeLangMenu({ version }) {
   const [theme, setTheme] = useState(currentTheme());
   const locale = getLocale();
 
@@ -39,6 +41,15 @@ export function ThemeLangMenu() {
             ${theme === 'dark' ? t('theme.light') : t('theme.dark')}
           </button>
         </li>
+        ${version?.version && html`
+          <li><hr class="dropdown-divider" /></li>
+          <li>
+            <span class="dropdown-item-text small text-body-secondary" data-testid="build-version"
+                  title=${version.built_at ? dateTime(version.built_at, locale) : undefined}>
+              ${version.version}${version.built_at && ` · ${date(version.built_at, locale)}`}
+            </span>
+          </li>
+        `}
       </ul>
     </div>
   `;

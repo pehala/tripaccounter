@@ -437,3 +437,10 @@ class PreviewSplitOut(BaseModel):
 
     split: SplitOut
     total: Number
+
+
+class VersionOut(BaseModel):
+    """Wire representation of the running build: its id, and when the image was built."""
+
+    version: str
+    built_at: str | None

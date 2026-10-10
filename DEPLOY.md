@@ -74,10 +74,15 @@ Every push to `main` publishes `ghcr.io/pehala/tripaccounter` (`.github/workflow
 as `latest`, the only tag it ever gets. The package is public, so the host pulls it
 with no registry login, and `tripaccounter.container` tracks that tag.
 
-CI builds with `BUILD_ID` set to the commit sha. It becomes `TA_BUILD_ID` in the
-image and is what mounts the static assets under `/s/<build-id>/`, so nginx can cache
-them forever without ever serving a stale one. An image built without it serves
-static files unversioned at `/`, which is correct but uncacheable.
+CI builds with `BUILD_ID` set to the short commit sha and `BUILD_TIME` to the UTC
+build instant. `BUILD_ID` becomes `TA_BUILD_ID` in the image and is what mounts the
+static assets under `/s/<build-id>/`, so nginx can cache them forever without ever
+serving a stale one. An image built without it serves static files unversioned at
+`/`, which is correct but uncacheable.
+
+Both also reach the page: `GET /api/v1/version` reports them and the settings menu shows
+the id with the build date. `BUILD_TIME` is only for that display, and an image built
+without it shows the id alone; without `BUILD_ID` the menu reads `dev`.
 
 To run a local build instead, build it as the deploying user — rootless images live
 in that user's storage — and point `Image=` at it (dropping `AutoUpdate=`, which only
@@ -86,6 +91,7 @@ works against a registry):
 ```bash
 podman build -t localhost/tripaccounter:latest \
              --build-arg BUILD_ID=$(git rev-parse --short HEAD) \
+             --build-arg BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
              -f Dockerfile .
 ```
 

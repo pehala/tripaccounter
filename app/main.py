@@ -26,6 +26,7 @@ from app.routers import (
     trips,
     wallets,
 )
+from app.schemas.responses import VersionOut
 from app.services.errors import FIELD_ERROR_PARAMS
 from app.services.errors.api import BadRequestError, InternalError, ValidationError
 from app.services.errors.base import NATIVE_ERROR_CODES, ApiError, FieldError
@@ -172,6 +173,23 @@ def add_index_routes(app: FastAPI, index_file: Path, asset_prefix: str) -> None:
         app.add_api_route(path, endpoint, methods=["GET"], include_in_schema=False)
 
 
+def add_version_route(app: FastAPI, settings: Settings) -> None:
+    """Serve `GET /api/v1/version`: the build id and build time this process was started with.
+
+    Read from the settings the app was built with, not from a database, so it answers even
+    when Postgres is down. A dev run has no build id and reports `dev`.
+    """
+    version = VersionOut(version=settings.build_id or "dev", built_at=settings.build_time or None)
+
+    def get_version() -> VersionOut:
+        """Get the running build's id and build time."""
+        return version
+
+    app.add_api_route(
+        "/api/v1/version", get_version, methods=["GET"], response_model=VersionOut, tags=["version"]
+    )
+
+
 def strip_default_validation_error(schema: dict) -> dict:
     """Leave each operation's responses as its decorator declared them.
 
@@ -217,6 +235,8 @@ def create_app() -> FastAPI:
 
     for router in ROUTERS:
         app.include_router(router, prefix="/api/v1")
+
+    add_version_route(app, settings)
 
     app.add_middleware(ETagMiddleware)
 
