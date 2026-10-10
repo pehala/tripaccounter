@@ -105,6 +105,7 @@ export default {
   'item.country_label': 'Country',
   'item.paid_by_label': 'Paid by',
   'item.when_label': 'When',
+  'item.zone_label': 'Time zone',
   'item.labels_label': 'Labels',
   'item.labels_placeholder': 'add label…',
   'item.labels_hint': "Space separates labels. No spaces inside one — use street-food.",

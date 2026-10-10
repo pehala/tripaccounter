@@ -38,6 +38,7 @@ def test_transfer_mode_posts_the_built_body_and_never_calls_preview_split(
         "to_amount": "20000",
         "to_currency_id": 1,
         "occurred_at": body["occurred_at"],
+        "occurred_tz": "Atlantic/Reykjavik",
         "note": None,
     }
 

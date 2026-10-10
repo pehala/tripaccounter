@@ -95,7 +95,8 @@ erDiagram
     LINE_ITEM {
         int      id PK
         int      trip_id FK "denormalized for fast listing"
-        datetime occurred_at "tz-aware UTC instant; read and written as a wall time in the trip timezone"
+        datetime occurred_at "tz-aware UTC instant; read and written as a wall time in occurred_tz"
+        string   occurred_tz "IANA name, not null; the zone the item happened in"
         string   name
         string   note "nullable"
         string   city "nullable, freeform"
@@ -152,6 +153,7 @@ erDiagram
         int      id PK
         int      trip_id FK
         datetime occurred_at "UTC instant, like LINE_ITEM"
+        string   occurred_tz "IANA name, not null, like LINE_ITEM"
         int      from_wallet_id FK "-> WALLET"
         int      from_currency_id FK
         bigint   from_amount_minor "hundredths, > 0, what left"

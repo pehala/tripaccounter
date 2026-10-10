@@ -13,6 +13,7 @@ from app.services import queries
 from app.services import transfers as transfer_service
 from app.services.errors.api import ValidationError
 from app.services.scope import require_in_trip
+from app.services.timezones import write_zone
 
 router = APIRouter(tags=["transfers"])
 
@@ -35,12 +36,14 @@ def list_transfers(trip: TripDep, session: SessionDep):
 def create_transfer(body: TransferWrite, trip: TripDep, session: SessionDep, clock: ClockDep):
     """Create a new transfer between two wallets."""
     resolved = transfer_service.resolve_write(body, None)
-    fields = transfer_service.validate(session, trip, resolved, body.occurred_at, creating=True)
+    fields = transfer_service.validate(session, trip, resolved, body)
     if fields:
         raise ValidationError(fields)
 
     transfer = WalletTransfer(trip_id=trip.id, occurred_at=clock)
-    transfer_service.apply_write(transfer, resolved, body.occurred_at, body.note, trip.zone)
+    transfer_service.apply_write(
+        transfer, resolved, body.occurred_at, body.note, write_zone(body.occurred_tz, None, trip)
+    )
     session.add(transfer)
     session.flush()
     session.refresh(transfer)
@@ -71,11 +74,17 @@ def update_transfer(transfer_id: int, body: TransferWrite, trip: TripDep, sessio
         session, WalletTransfer, transfer_id, trip.id, "transfer", options=TRANSFER_LOAD_OPTIONS
     )
     resolved = transfer_service.resolve_write(body, transfer)
-    fields = transfer_service.validate(session, trip, resolved, body.occurred_at, creating=False)
+    fields = transfer_service.validate(session, trip, resolved, body, existing=transfer)
     if fields:
         raise ValidationError(fields)
 
-    transfer_service.apply_write(transfer, resolved, body.occurred_at, body.note, trip.zone)
+    transfer_service.apply_write(
+        transfer,
+        resolved,
+        body.occurred_at,
+        body.note,
+        write_zone(body.occurred_tz, transfer, trip),
+    )
     session.flush()
     session.refresh(transfer)
     return {"transfer": TransferOut.from_transfer(transfer)}

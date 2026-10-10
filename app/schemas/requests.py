@@ -186,6 +186,7 @@ class ItemWrite(Located):
     wallet_id: int | None = None
     stay_id: int | None = None
     occurred_at: OccurredAt = None
+    occurred_tz: str | None = None
     labels: list[LabelToken] | None = None
     split_mode: Literal["equal", "shares", "exact"] | None = None
     shares: list[dict] | None = None
@@ -209,6 +210,7 @@ class TransferWrite(Strict):
     to_amount: Amount | None = None
     to_currency_id: int | None = None
     occurred_at: OccurredAt = None
+    occurred_tz: str | None = None
     note: str | None = None
 
 

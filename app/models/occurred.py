@@ -14,7 +14,7 @@ class NonexistentTimeError(ValueError):
 
 
 class Occurred(SQLModel):
-    """`occurred_at`, the UTC instant, and the one place it converts to and from wall time.
+    """When a row happened: the UTC instant and the zone, converted in this one place.
 
     Shared by `LineItem` and `WalletTransfer`, so both follow one rule. The indexes
     stay declared on each model.
@@ -23,6 +23,7 @@ class Occurred(SQLModel):
     occurred_at: datetime = Field(
         sa_type=DateTime(timezone=True), sa_column_kwargs={"nullable": True}
     )
+    occurred_tz: str = Field(max_length=64)
 
     @staticmethod
     def resolve(wall_time: datetime, zone: ZoneInfo) -> datetime:
@@ -46,13 +47,22 @@ class Occurred(SQLModel):
             instant = instant.replace(tzinfo=UTC)
         return instant.astimezone(zone).replace(tzinfo=None)
 
+    @property
+    def zone(self) -> ZoneInfo:
+        """The zone the row happened in: it sets the time a row reads."""
+        return ZoneInfo(self.occurred_tz)
+
     def wire_times(self) -> dict[str, str]:
-        """Return the four time fields of the wire form, in the trip's zone."""
+        """Return the four time fields of the wire form.
+
+        `occurred_at` reads in the row's own zone; `trip_occurred_at` and `day` in the
+        trip's, which orders the feed and cuts its days.
+        """
         trip = self.trip
-        wall = self.wall_time_in(trip.zone).strftime(WALL_TIME_FORMAT)
+        trip_wall = self.wall_time_in(trip.zone).strftime(WALL_TIME_FORMAT)
         return {
-            "occurred_at": wall,
-            "occurred_tz": trip.timezone,
-            "trip_occurred_at": wall,
-            "day": wall[:10],
+            "occurred_at": self.wall_time_in(self.zone).strftime(WALL_TIME_FORMAT),
+            "occurred_tz": self.occurred_tz,
+            "trip_occurred_at": trip_wall,
+            "day": trip_wall[:10],
         }

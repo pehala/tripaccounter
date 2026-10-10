@@ -52,24 +52,31 @@ def scratch_database(name):
 
 
 @contextmanager
+def empty_engine(name):
+    """Yield an engine on an empty scratch database, with no schema, disposed on exit."""
+    with scratch_database(name) as url:
+        pool = {"poolclass": StaticPool} if url.get_backend_name() == "sqlite" else {}
+        eng = make_engine(url, **pool)
+        try:
+            yield eng
+        finally:
+            eng.dispose()
+
+
+@contextmanager
 def migrated_engine(name):
     """Yield an engine on a scratch database, schema created by the real Alembic migration.
 
     Not `metadata.create_all` - so a migration bug fails tests the same way
     it would fail `make migrate`.
     """
-    with scratch_database(name) as url:
-        pool = {"poolclass": StaticPool} if url.get_backend_name() == "sqlite" else {}
-        eng = make_engine(url, **pool)
-        try:
-            alembic_cfg = Config()
-            alembic_cfg.set_main_option("script_location", str(ALEMBIC_SCRIPT_LOCATION))
-            with eng.begin() as connection:
-                alembic_cfg.attributes["connection"] = connection
-                command.upgrade(alembic_cfg, "head")
-            yield eng
-        finally:
-            eng.dispose()
+    with empty_engine(name) as eng:
+        alembic_cfg = Config()
+        alembic_cfg.set_main_option("script_location", str(ALEMBIC_SCRIPT_LOCATION))
+        with eng.begin() as connection:
+            alembic_cfg.attributes["connection"] = connection
+            command.upgrade(alembic_cfg, "head")
+        yield eng
 
 
 @pytest.fixture(scope="session")

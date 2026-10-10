@@ -1,5 +1,6 @@
 import { html } from '../h.js';
 import { t } from '../i18n/index.js';
+import { TimezoneSelect } from './TimezoneSelect.js';
 
 // Wallet selects group by owner so a cross-owner pick is one click; the to
 // side is visually secondary (design/WALLETS.md §4) until the user edits it
@@ -8,7 +9,7 @@ export function TransferFields({
   trip, state, fieldError,
   onFromWallet, onFromAmount, onFromCurrency,
   onToWallet, onToAmount, onToCurrency,
-  onNote, onOccurredAt,
+  onNote, onOccurredAt, onOccurredTz,
 }) {
   const owners = trip.people.filter((p) => (trip.wallets || []).some((w) => w.person_id === p.id));
 
@@ -65,6 +66,9 @@ export function TransferFields({
         <input type="datetime-local" class="form-control ${fieldError('occurred_at') ? 'is-invalid' : ''}"
                value=${state.occurredAt} onChange=${onOccurredAt} />
         ${fieldError('occurred_at')}
+        <label class="form-label small mb-1 mt-2" for="transfer-zone">${t('item.zone_label')}</label>
+        <${TimezoneSelect} id="transfer-zone" small value=${state.occurredTz} onChange=${onOccurredTz} />
+        ${fieldError('occurred_tz')}
       </div>
       <div class="col-12 col-sm-6">
         <label class="form-label small mb-1">${t('transfer.note_placeholder')}</label>

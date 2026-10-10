@@ -9,6 +9,8 @@ import { PersonChip } from './PersonChip.js';
 import { LabelInput } from './LabelInput.js';
 import { SplitEditor } from './SplitEditor.js';
 import { TransferFields } from './TransferFields.js';
+import { TimezoneSelect } from './TimezoneSelect.js';
+import { lastZone, rememberZone, whenBody } from '../zones.js';
 
 function walletsFor(trip, personId) {
   return (trip.wallets || []).filter((w) => w.person_id === personId);
@@ -40,6 +42,7 @@ function initialItemState(item, trip) {
       countryTouched: true,
       cityTouched: Boolean(item.city),
       occurredAt: toInputValue(item.occurred_at),
+      occurredTz: item.occurred_tz,
       labels: [...item.labels],
       city: item.city ?? '',
       mapUrl: item.map_url ?? '',
@@ -52,6 +55,7 @@ function initialItemState(item, trip) {
       preview: item.split,
     };
   }
+  const zone = lastZone(trip);
   const primary = trip.currencies.find((c) => c.is_primary) || trip.currencies[0];
   const defaultCountry = trip.countries.find((c) => c.is_default) || trip.countries[0];
   const payerId = trip.people.find((p) => p.active)?.id ?? null;
@@ -65,7 +69,8 @@ function initialItemState(item, trip) {
     stayId: null,
     countryTouched: false,
     cityTouched: false,
-    occurredAt: nowIn(trip.timezone),
+    occurredAt: nowIn(zone),
+    occurredTz: zone,
     labels: [],
     city: '',
     mapUrl: '',
@@ -90,9 +95,11 @@ function initialTransferState(transfer, trip) {
       toCurrencyId: transfer.to_currency_id,
       toEdited: transfer.to_currency_id !== transfer.from_currency_id || transfer.to_amount !== transfer.from_amount,
       occurredAt: toInputValue(transfer.occurred_at),
+      occurredTz: transfer.occurred_tz,
       note: transfer.note ?? '',
     };
   }
+  const zone = lastZone(trip);
   const primary = trip.currencies.find((c) => c.is_primary) || trip.currencies[0];
   const firstWallet = (trip.wallets || [])[0];
   return {
@@ -103,7 +110,8 @@ function initialTransferState(transfer, trip) {
     toAmount: '',
     toCurrencyId: primary?.id ?? null,
     toEdited: false,
-    occurredAt: nowIn(trip.timezone),
+    occurredAt: nowIn(zone),
+    occurredTz: zone,
     note: '',
   };
 }
@@ -241,7 +249,7 @@ export function ItemModal({ trip, labels, entry, onClose }) {
       wallet_id: state.walletId,
       country_id: state.countryId,
       stay_id: state.stayId,
-      occurred_at: fromInputValue(state.occurredAt),
+      ...whenBody(state, item, toInputValue, fromInputValue),
       labels: state.labels,
       city: state.city.trim() || null,
       map_url: state.mapUrl.trim() || null,
@@ -260,7 +268,7 @@ export function ItemModal({ trip, labels, entry, onClose }) {
       to_wallet_id: tstate.toWalletId,
       to_amount: parse(tstate.toAmount, locale),
       to_currency_id: tstate.toCurrencyId,
-      occurred_at: fromInputValue(tstate.occurredAt),
+      ...whenBody(tstate, transfer, toInputValue, fromInputValue),
       note: tstate.note.trim() || null,
     };
   }
@@ -298,12 +306,14 @@ export function ItemModal({ trip, labels, entry, onClose }) {
         const labelsChanged = lowered(state.labels) !== lowered(isEdit ? item.labels : []);
         if (isEdit) await api.patch(`/trips/${trip.slug}/items/${item.id}`, body);
         else await api.post(`/trips/${trip.slug}/items`, body);
+        rememberZone(trip, state.occurredTz);
         await reload('items');
         if (labelsChanged) await reload('labels');
       } else {
         const body = buildTransferBody();
         if (isEdit) await api.patch(`/trips/${trip.slug}/transfers/${transfer.id}`, body);
         else await api.post(`/trips/${trip.slug}/transfers`, body);
+        rememberZone(trip, tstate.occurredTz);
         await reload('items');
       }
       invalidateMoneyViews();
@@ -376,7 +386,8 @@ export function ItemModal({ trip, labels, entry, onClose }) {
                                   onToWallet=${(e) => setT({ toWalletId: Number(e.target.value) })}
                                   onToAmount=${toAmountChanged} onToCurrency=${toCurrencyChanged}
                                   onNote=${(e) => setT({ note: e.target.value })}
-                                  onOccurredAt=${(e) => setT({ occurredAt: e.target.value })} />
+                                  onOccurredAt=${(e) => setT({ occurredAt: e.target.value })}
+                                  onOccurredTz=${(zone) => setT({ occurredTz: zone })} />
             `}
 
             ${kind === 'item' && html`
@@ -444,6 +455,10 @@ export function ItemModal({ trip, labels, entry, onClose }) {
                 <input type="datetime-local" class="form-control ${fieldErrors.occurred_at ? 'is-invalid' : ''}"
                        value=${state.occurredAt} onChange=${(e) => set({ occurredAt: e.target.value })} />
                 ${fieldError('occurred_at')}
+                <label class="form-label small mb-1 mt-2" for="item-zone">${t('item.zone_label')}</label>
+                <${TimezoneSelect} id="item-zone" small value=${state.occurredTz}
+                                   onChange=${(zone) => set({ occurredTz: zone })} />
+                ${fieldError('occurred_tz')}
               </div>
               <div class="col-12 col-sm-6">
                 <label class="form-label small mb-1">${t('item.labels_label')}</label>

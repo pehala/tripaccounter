@@ -23,7 +23,7 @@ from app.services.errors.fields import (
 )
 from app.services.money import AMOUNT_SCALE, to_hundredths
 from app.services.scope import in_trip, ref_error
-from app.services.timezones import occurred_error
+from app.services.timezones import time_errors
 
 
 def validate_name(name: str | None, *, required: bool) -> FieldError | None:
@@ -38,9 +38,13 @@ def validate_name(name: str | None, *, required: bool) -> FieldError | None:
 
 
 def validate_write(
-    session: Session, trip: Trip, body: ItemWrite, *, creating: bool
+    session: Session, trip: Trip, body: ItemWrite, *, item: LineItem | None = None
 ) -> dict[str, FieldError]:
-    """Validate a write's name, amount and references; return its field errors."""
+    """Validate a write's name, amount, time and references; return its field errors.
+
+    `item` is the row an update writes onto; a create passes none.
+    """
+    creating = item is None
     fields: dict[str, FieldError] = {}
 
     name_error = validate_name(body.name, required=creating)
@@ -48,9 +52,7 @@ def validate_write(
         fields["name"] = name_error
     if creating and body.amount is None:
         fields["amount"] = InvalidAmountError()
-    when_error = occurred_error(body.occurred_at, trip.zone)
-    if when_error:
-        fields["occurred_at"] = when_error
+    fields.update(time_errors(body.occurred_at, body.occurred_tz, item, trip))
 
     for field, model, required in (
         ("currency_id", TripCurrency, creating),
@@ -99,8 +101,9 @@ def rewrite_wallet(session: Session, item: LineItem, body: ItemWrite) -> None:
 def apply_write(item: LineItem, body: ItemWrite, zone: ZoneInfo) -> None:
     """Write the fields a body supplies onto an item, leaving the omitted ones as they are.
 
-    The body's `occurred_at` is a wall time in `zone`. `validate_write` has already
-    rejected one that falls in a gap.
+    The body's `occurred_at` is a wall time in `zone`, the zone the item then records.
+    `validate_write` has already rejected a time that falls in a gap. A body with only
+    `occurred_tz` keeps the instant and changes the zone.
     """
     if body.name is not None:
         item.name = body.name
@@ -116,6 +119,7 @@ def apply_write(item: LineItem, body: ItemWrite, zone: ZoneInfo) -> None:
         item.country_id = body.country_id
     if body.occurred_at is not None:
         item.occurred_at = Occurred.resolve(body.occurred_at, zone)
+    item.occurred_tz = zone.key
     if body.amount is not None:
         item.amount_minor = to_hundredths(body.amount)
     if body.map_url is not None:

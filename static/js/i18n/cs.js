@@ -109,6 +109,7 @@ export default {
   'item.country_label': 'Země',
   'item.paid_by_label': 'Zaplatil/a',
   'item.when_label': 'Kdy',
+  'item.zone_label': 'Časové pásmo',
   'item.labels_label': 'Štítky',
   'item.labels_placeholder': 'přidat štítek…',
   'item.labels_hint': 'Mezera odděluje štítky. Uvnitř jednoho žádná mezera — použijte street-food.',

@@ -11,7 +11,7 @@ export function ItemRow({ item, trip, locale, onSelect }) {
   const wallet = (trip.wallets || []).find((w) => w.id === item.wallet_id);
   const stay = (trip.stays || []).find((candidate) => candidate.id === item.stay_id);
   const walletIsPayerDefault = wallet && payer && wallet.person_id === payer.id && wallet.is_default;
-  const time = wallTime(item.occurred_at);
+  const time = wallTime(item.occurred_at) + (item.occurred_tz !== trip.timezone ? ` ${item.occurred_tz}` : '');
   const hasMap = Boolean(item.map_url || (item.lat && item.lon));
   const mapHref = item.map_url
     || `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lon}`;

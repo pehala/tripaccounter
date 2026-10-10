@@ -58,8 +58,10 @@ def test_unknown_timezone_is_invalid_timezone_on_create_and_update(client, trip,
     assert (updated.status_code, updated.json()) == (422, expected)
 
 
-def test_wall_time_reads_back_in_the_trip_zone_and_follows_a_zone_change(client, trip, item_body):
-    """17:00 typed into a Tokyo trip reads back as 17:00; moving the trip keeps the instant."""
+def test_wall_time_reads_back_in_the_trip_zone_and_keeps_its_zone_when_the_trip_moves(
+    client, trip, item_body
+):
+    """17:00 typed into a Tokyo trip reads back as 17:00; moving the trip re-cuts only its days."""
     set_zone(client, trip, TOKYO)
 
     item = post_item(client, trip, item_body, "2026-09-14T17:00:00")
@@ -72,8 +74,9 @@ def test_wall_time_reads_back_in_the_trip_zone_and_follows_a_zone_change(client,
     set_zone(client, trip, PRAGUE)
     moved = feed(client, trip)["items"][0]
 
-    assert moved["occurred_at"] == "2026-09-14T10:00:00"
-    assert moved["occurred_tz"] == PRAGUE
+    assert moved["occurred_at"] == "2026-09-14T17:00:00"
+    assert moved["occurred_tz"] == TOKYO
+    assert moved["trip_occurred_at"] == "2026-09-14T10:00:00"
 
 
 @pytest.mark.parametrize("wall_time", ["2026-09-14T17:00:00Z", "2026-09-14T17:00:00+02:00"])
@@ -116,7 +119,7 @@ def test_autumn_repeat_resolves_to_the_earlier_instant(client, trip, item_body):
 
     set_zone(client, trip, "UTC")
 
-    assert feed(client, trip)["items"][0]["occurred_at"] == "2026-10-25T00:30:00"
+    assert feed(client, trip)["items"][0]["trip_occurred_at"] == "2026-10-25T00:30:00"
 
 
 def test_patch_without_occurred_at_keeps_the_instant(client, trip, item_body):
@@ -215,3 +218,135 @@ def test_trip_and_summary_carry_the_timezone(client, trip):
     listed = client.get("/api/v1/trips").json()["trips"]
 
     assert [row["timezone"] for row in listed if row["slug"] == trip["slug"]] == [TOKYO]
+
+
+# ---- Per-item zones --------------------------------------------------------------
+
+
+def patch_item(client, trip, item, **body):
+    """PATCH an item and return its wire form."""
+    response = client.patch(f"/api/v1/trips/{trip['slug']}/items/{item['id']}", json=body)
+    assert response.status_code == 200, response.text
+    return response.json()["item"]
+
+
+def test_item_in_another_zone_reads_in_its_own_zone_and_days_in_the_trips(client, trip, item_body):
+    """17:00 Tokyo in a Prague trip reads 17:00 Tokyo; its trip time and day are Prague's."""
+    set_zone(client, trip, PRAGUE)
+
+    item = post_item(client, trip, item_body, "2026-09-14T01:00:00", occurred_tz=TOKYO)
+
+    assert item["occurred_at"] == "2026-09-14T01:00:00"
+    assert item["occurred_tz"] == TOKYO
+    assert item["trip_occurred_at"] == "2026-09-13T18:00:00"
+    assert item["day"] == "2026-09-13"
+
+
+def test_create_without_occurred_tz_takes_the_trips_zone(client, trip, item_body):
+    """A write that omits the zone records the trip's."""
+    set_zone(client, trip, TOKYO)
+
+    assert post_item(client, trip, item_body, "2026-09-14T17:00:00")["occurred_tz"] == TOKYO
+
+
+def test_patch_with_occurred_at_alone_resolves_in_the_rows_zone(client, trip, item_body):
+    """A wall time sent alone is read in the row's zone, not the trip's."""
+    set_zone(client, trip, PRAGUE)
+    item = post_item(client, trip, item_body, "2026-09-14T17:00:00", occurred_tz=TOKYO)
+
+    moved = patch_item(client, trip, item, occurred_at="2026-09-14T18:00:00")
+
+    assert moved["occurred_at"] == "2026-09-14T18:00:00"
+    assert moved["occurred_tz"] == TOKYO
+    assert moved["trip_occurred_at"] == "2026-09-14T11:00:00"
+
+
+def test_patch_with_occurred_tz_alone_keeps_the_instant(client, trip, item_body):
+    """Changing only the zone shows the same moment as local time elsewhere."""
+    set_zone(client, trip, PRAGUE)
+    item = post_item(client, trip, item_body, "2026-09-14T17:00:00")
+
+    moved = patch_item(client, trip, item, occurred_tz=TOKYO)
+
+    assert moved["occurred_at"] == "2026-09-15T00:00:00"
+    assert moved["occurred_tz"] == TOKYO
+    assert moved["trip_occurred_at"] == "2026-09-14T17:00:00"
+
+
+def test_patch_with_both_moves_the_instant_to_the_typed_time_in_the_new_zone(
+    client, trip, item_body
+):
+    """Time and zone together mean the typed time was right and the zone was wrong."""
+    set_zone(client, trip, PRAGUE)
+    item = post_item(client, trip, item_body, "2026-09-14T17:00:00")
+
+    moved = patch_item(client, trip, item, occurred_at="2026-09-14T17:00:00", occurred_tz=TOKYO)
+
+    assert moved["occurred_at"] == "2026-09-14T17:00:00"
+    assert moved["trip_occurred_at"] == "2026-09-14T10:00:00"
+
+
+def test_patch_across_a_clock_change_resolves_at_the_new_offset(client, trip, item_body):
+    """Moving a Prague row from September to November keeps its zone and takes the winter offset."""
+    set_zone(client, trip, PRAGUE)
+    item = post_item(client, trip, item_body, "2026-09-14T12:00:00")
+
+    moved = patch_item(client, trip, item, occurred_at="2026-11-14T12:00:00")
+
+    assert moved["occurred_tz"] == PRAGUE
+    assert moved["trip_occurred_at"] == "2026-11-14T12:00:00"
+    assert feed(client, trip)["items"][0]["occurred_at"] == "2026-11-14T12:00:00"
+
+
+def test_unknown_occurred_tz_is_invalid_timezone_for_items_and_transfers(
+    client, trip, item_body, transfer_body
+):
+    """A zone `zoneinfo` cannot load is a field error on both write paths."""
+    expected = {"occurred_tz": {"code": "invalid_timezone", "params": {}}}
+
+    item = client.post(
+        f"/api/v1/trips/{trip['slug']}/items",
+        json=item_body(occurred_at="2026-09-14T17:00:00", occurred_tz="Mars/Olympus"),
+    )
+    transfer = client.post(
+        f"/api/v1/trips/{trip['slug']}/transfers",
+        json=transfer_body(occurred_tz="Mars/Olympus"),
+    )
+
+    assert item.status_code == transfer.status_code == 422
+    assert item.json()["error"]["fields"] == expected
+    assert transfer.json()["error"]["fields"] == expected
+
+
+def test_gap_is_checked_in_the_items_own_zone(client, trip, item_body):
+    """02:30 on 29 Mar 2026 exists in Tokyo, so a Prague trip accepts it there."""
+    set_zone(client, trip, PRAGUE)
+
+    item = post_item(client, trip, item_body, "2026-03-29T02:30:00", occurred_tz=TOKYO)
+
+    assert item["occurred_at"] == "2026-03-29T02:30:00"
+
+
+def test_transfer_follows_the_same_zone_rules(client, trip, transfer_body):
+    """A transfer's zone defaults to the trip's, and a zone sent alone keeps its instant."""
+    set_zone(client, trip, PRAGUE)
+    url = f"/api/v1/trips/{trip['slug']}/transfers"
+    created = client.post(url, json=transfer_body(occurred_at="2026-09-14T17:00:00")).json()[
+        "transfer"
+    ]
+
+    moved = client.patch(f"{url}/{created['id']}", json={"occurred_tz": TOKYO}).json()["transfer"]
+
+    assert created["occurred_tz"] == PRAGUE
+    assert moved["occurred_at"] == "2026-09-15T00:00:00"
+    assert moved["occurred_tz"] == TOKYO
+    assert moved["trip_occurred_at"] == "2026-09-14T17:00:00"
+
+
+def test_feed_orders_by_instant_across_two_zones(client, trip, item_body):
+    """A later local time in Tokyo can be the earlier instant; the feed follows the instant."""
+    set_zone(client, trip, PRAGUE)
+    tokyo = post_item(client, trip, item_body, "2026-09-14T20:00:00", occurred_tz=TOKYO)
+    prague = post_item(client, trip, item_body, "2026-09-14T14:00:00")
+
+    assert [row["id"] for row in feed(client, trip)["items"]] == [prague["id"], tokyo["id"]]

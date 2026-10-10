@@ -239,12 +239,17 @@ Note the dashed arrow: **a write is followed by a re-read, never by a local muta
    - **Adding a language** is: copy `en.js`, translate, add the code to `LANGS`.
      `test_i18n.py` refuses a catalog with a missing or extra key.
 
-**`occurred_at` is a wall time in the trip's zone on the wire.** `fmt.wallTime()` /
+**`occurred_at` is a wall time in the row's own zone on the wire.** `fmt.wallTime()` /
 `fmt.wallClock()` read its digits as they are, `toInputValue` / `fromInputValue` hand
 the same digits to and from the datetime input, and `fmt.nowIn(zone)` prefills a new
 entry. A day (`YYYY-MM-DD`) is formatted in UTC so every viewer sees the same date.
-Rows group on `day` and merge on `trip_occurred_at`. A component never parses or
-formats a date by hand, and the viewer's own zone enters nowhere.
+Rows group on `day` and merge on `trip_occurred_at`. A row prints its `occurred_tz`
+beside its time when that differs from the trip's. The entry modal carries a zone
+picker: it opens on the row's zone when editing, and on the last zone saved in the
+trip (`zones.js`, `localStorage`) else the trip's when creating. Changing the zone of
+a row and leaving its time as it was sends `occurred_tz` alone (the instant stays);
+editing the time sends both. A component never parses or formats a date by hand, and
+the viewer's own zone enters nowhere.
 
 ## 5. Call budget per screen
 

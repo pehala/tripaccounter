@@ -75,6 +75,7 @@ def apply(session, plan, trip):
             note=body.note,
             city=body.city,
             occurred_at=Occurred.resolve(body.occurred_at, trip.zone),
+            occurred_tz=trip.timezone,
             currency_id=currency.id,
             amount_minor=to_hundredths(body.amount),
             payer_id=payer.id,

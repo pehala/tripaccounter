@@ -38,6 +38,7 @@ def test_save_posts_the_built_body_and_the_row_appears(items_page, new_item_moda
         "country_id": 1,
         "stay_id": None,
         "occurred_at": body["occurred_at"],
+        "occurred_tz": "Atlantic/Reykjavik",
         "labels": [],
         "city": "Bangkok",
         "map_url": None,
@@ -142,6 +143,7 @@ def test_patch_sends_the_built_body_on_save(open_edit_modal, count_requests):
         "country_id": 1,
         "stay_id": None,
         "occurred_at": "2026-09-14T19:30",
+        "occurred_tz": "Atlantic/Reykjavik",
         "labels": ["food", "restaurant"],
         "city": "Reykjavík",
         "map_url": "https://maps.example.test/messinn",
@@ -195,3 +197,70 @@ def test_save_and_add_another_keeps_modal_open_and_resets_only_name_and_amount(
     expect(new_item_modal).to_have_count(1)
     expect(new_item_modal.locator('input[name="amount"]')).to_have_value("")
     expect(new_item_modal.locator("#pay-3")).to_be_checked()
+
+
+# ---- Per-item time zone --------------------------------------------------------
+
+
+def test_row_in_another_zone_shows_its_zone_beside_the_time(items_page):
+    """A row whose zone differs from the trip's prints that zone and its own local time."""
+    row = items_page.locator(".item-row", has_text="Layover lunch")
+
+    expect(row).to_contain_text("14:40 Europe/Copenhagen")
+    expect(items_page.locator(".item-row", has_text="Dinner at Messinn")).not_to_contain_text(
+        "Atlantic/Reykjavik"
+    )
+
+
+def test_edit_preselects_the_rows_zone(open_edit_modal):
+    """The zone picker opens on the zone the row was entered in, not the trip's."""
+    modal = open_edit_modal("Layover lunch")
+
+    expect(modal.locator("#item-zone")).to_have_value("Europe/Copenhagen")
+    expect(modal.locator('input[type="datetime-local"]')).to_have_value("2026-09-12T14:40")
+
+
+def test_new_entry_starts_in_the_trips_zone(new_item_modal):
+    """With no zone picked before, a new entry starts in the trip's zone."""
+    expect(new_item_modal.locator("#item-zone")).to_have_value("Atlantic/Reykjavik")
+
+
+def test_new_entry_remembers_the_last_zone_picked(items_page, new_item_modal):
+    """Saving in another zone makes the next new entry in this trip start there."""
+    new_item_modal.locator('input[name="name"]').fill("Ramen")
+    new_item_modal.locator('input[name="amount"]').fill("900")
+    new_item_modal.locator("#item-zone").fill("Asia/Tokyo")
+    new_item_modal.get_by_role("button", name="Save", exact=True).click()
+    new_item_modal.wait_for(state="hidden")
+
+    items_page.get_by_role("button", name="Expense").click()
+
+    expect(items_page.locator(".modal.show #item-zone")).to_have_value("Asia/Tokyo")
+
+
+def test_changing_only_the_zone_sends_the_zone_alone(open_edit_modal, count_requests):
+    """Picking another zone and leaving the time as it was keeps the instant: only the zone goes."""
+    modal = open_edit_modal("Layover lunch")
+    modal.locator("#item-zone").fill("Asia/Tokyo")
+    patched = count_requests("*/items/38", method="PATCH")
+
+    modal.get_by_role("button", name="Save", exact=True).click()
+
+    modal.wait_for(state="hidden")
+    body = patched[0].post_data_json
+    assert body["occurred_tz"] == "Asia/Tokyo"
+    assert "occurred_at" not in body
+
+
+def test_changing_the_zone_and_the_time_sends_both(open_edit_modal, count_requests):
+    """Typing the time as well as picking a zone sends the typed wall time with that zone."""
+    modal = open_edit_modal("Layover lunch")
+    modal.locator("#item-zone").fill("Asia/Tokyo")
+    modal.locator('input[type="datetime-local"]').fill("2026-09-12T14:41")
+    patched = count_requests("*/items/38", method="PATCH")
+
+    modal.get_by_role("button", name="Save", exact=True).click()
+
+    modal.wait_for(state="hidden")
+    body = patched[0].post_data_json
+    assert (body["occurred_at"], body["occurred_tz"]) == ("2026-09-12T14:41", "Asia/Tokyo")
