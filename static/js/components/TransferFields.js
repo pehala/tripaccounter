@@ -67,7 +67,7 @@ export function TransferFields({
                value=${state.occurredAt} onChange=${onOccurredAt} />
         ${fieldError('occurred_at')}
         <label class="form-label small mb-1 mt-2" for="transfer-zone">${t('item.zone_label')}</label>
-        <${TimezoneSelect} id="transfer-zone" small value=${state.occurredTz} onChange=${onOccurredTz} />
+        <${TimezoneSelect} id="transfer-zone" small disabled=${disabled} value=${state.occurredTz} onChange=${onOccurredTz} />
         ${fieldError('occurred_tz')}
       </div>
       <div class="col-12 col-sm-6">

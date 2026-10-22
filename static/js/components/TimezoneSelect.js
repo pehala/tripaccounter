@@ -12,11 +12,11 @@ function zoneNames(initial) {
 // A text field over a <datalist>: typing "tok" narrows the ~420 names to Asia/Tokyo,
 // where a <select> would make the user scroll for it. A name outside the list is
 // flagged here and refused by the server (`invalid_timezone`).
-export function TimezoneSelect({ value, onChange, id, small }) {
+export function TimezoneSelect({ value, onChange, id, small, disabled = false }) {
   const initial = useRef(value).current;
   const names = zoneNames(initial);
   return html`
-    <input id=${id} list="${id}-zones" autocomplete="off" spellcheck="false"
+    <input id=${id} list="${id}-zones" autocomplete="off" spellcheck="false" disabled=${disabled}
            class="form-control ${small ? 'form-control-sm' : ''} ${names.includes(value) ? '' : 'is-invalid'}"
            value=${value} onInput=${(e) => onChange(e.target.value)} />
     <datalist id="${id}-zones">

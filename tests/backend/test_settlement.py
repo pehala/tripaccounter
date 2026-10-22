@@ -338,6 +338,25 @@ def test_settled_item_restating_every_locked_field_saves(client, trip, settled, 
     assert response.json()["item"]["split"] == item["split"]
 
 
+def test_settled_item_restating_a_split_with_a_deactivated_sharer_saves(client, trip, settled, ids):
+    """Resending the item as read back, inactive sharer included, passes the lock and saves."""
+    client.patch(f"/api/v1/trips/{trip['slug']}/people/{ids['ann']}", json={"active": False})
+    url = f"/api/v1/trips/{trip['slug']}/items/{settled['item']['id']}"
+    split = client.get(url).json()["item"]["split"]
+
+    response = client.patch(
+        url,
+        json={
+            "name": "Renamed",
+            "split_mode": split["mode"],
+            "shares": [{"person_id": share["person_id"]} for share in split["shares"]],
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["item"]["split"] == split
+
+
 def test_settled_item_restating_a_weighted_split_saves(client, trip, item_body, settle, ids):
     """Weights compare once resolved: "2" and "2.0" are the same stored split."""
     created = client.post(

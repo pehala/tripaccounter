@@ -4,7 +4,7 @@ import { parse } from './fmt.js';
 import { rateFor } from './convert.js';
 
 // The Total's target currency and rates, one set per trip, shared by the
-// balances and statistics pages (design/FRONTEND.md §4 rule 1).
+// balances, statistics and accommodation pages (design/FRONTEND.md §4 rule 1).
 // { target: currencyId|null, values: { [currencyId]: rawString } }; switching
 // target clears values, since a rate typed against one target lies against another.
 function key(slug) {
