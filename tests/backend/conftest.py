@@ -295,6 +295,19 @@ def stay_body(country):
 
 
 @pytest.fixture()
+def deactivate(client, trip):
+    """Return a function that deactivates a person through `PATCH {"active": false}`."""
+
+    def _deactivate(person):
+        response = client.patch(
+            f"/api/v1/trips/{trip['slug']}/people/{person['id']}", json={"active": False}
+        )
+        assert response.status_code == 200, response.text
+
+    return _deactivate
+
+
+@pytest.fixture()
 def items_two_same_day_one_earlier(client, trip, item_body):
     """Create three items, after the trip's start: two posted for 2026-09-14, one for 2026-09-13.
 

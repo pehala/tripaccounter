@@ -42,7 +42,9 @@ def validate_write(
 ) -> dict[str, FieldError]:
     """Validate a write's name, amount, time and references; return its field errors.
 
-    `item` is the row an update writes onto; a create passes none.
+    `item` is the row an update writes onto; a create passes none. An inactive
+    payer is refused only when the write puts them there: an edit that resends
+    the payer an item already has is not a new payment.
     """
     creating = item is None
     fields: dict[str, FieldError] = {}
@@ -66,7 +68,7 @@ def validate_write(
             fields[field] = error
 
     payer = in_trip(session, Person, body.payer_id, trip.id)
-    if payer is not None and not payer.active:
+    if payer is not None and not payer.active and (creating or payer.id != item.payer_id):
         fields["payer_id"] = InactiveError()
 
     return fields
@@ -77,7 +79,7 @@ def resolve_wallet_id(session: Session, wallet_id: int | None, payer_id: int) ->
 
     Raises `wallet_owner_mismatch` if the given wallet belongs to someone else.
     Only called once `validate_write` has already confirmed `wallet_id` (if any)
-    exists in this trip and `payer_id` names an active person in it.
+    exists in this trip and `payer_id` names a person in it.
     """
     if wallet_id is None:
         return roster.default_wallet(session, payer_id).id
@@ -163,6 +165,17 @@ def build_shares(
     return splits.build_shares(mode, shares_in, [p.id for p in trip.people], amount, currency_code)
 
 
+def reject_new_inactive_sharers(trip: Trip, rows: list[dict], kept_ids: set[int]) -> None:
+    """Raise `inactive` if `rows` puts an inactive person on a split outside `kept_ids`.
+
+    `kept_ids` are the people the item already splits with; an inactive one of
+    them stays, so an edit never has to drop someone it cannot add back.
+    """
+    inactive_ids = {p.id for p in trip.people if not p.active}
+    if any(row["person_id"] in inactive_ids - kept_ids for row in rows):
+        raise InactiveError()
+
+
 def persist_shares(session: Session, item: LineItem, rows: list[dict]) -> None:
     """Replace an item's share rows with `rows`."""
     for share in list(item.shares):
@@ -196,5 +209,6 @@ def rewrite_shares(session: Session, trip: Trip, item: LineItem, body: ItemWrite
         Decimal(item.amount_minor) / AMOUNT_SCALE,
         currency.code,
     )
+    reject_new_inactive_sharers(trip, rows, {share.person_id for share in item.shares})
     persist_shares(session, item, rows)
     item.split_mode = mode

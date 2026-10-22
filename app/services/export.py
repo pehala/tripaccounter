@@ -6,6 +6,7 @@ import io
 from sqlalchemy.orm import Session
 
 from app.models.items import LineItem
+from app.models.roster import split_roster
 from app.models.trip import Trip
 from app.schemas.responses import ItemOut, TransferOut, TripOut
 from app.services import queries
@@ -53,16 +54,14 @@ def _items(session: Session, trip_id: int) -> list[LineItem]:
 
 def _export_rows(session: Session, trip: Trip) -> list[dict]:
     """One flat dict per resolved share: the row shape CSV and JSON export share."""
-    # Export resolves against the whole roster, inactive people included: a
-    # deactivated person keeps the shares they already carry (`delete_person`
-    # refuses while any exist) and the balances still charge them, so dropping
-    # them here would export an item whose owed column no longer sums to its
-    # amount.
-    roster_ids = [person.id for person in trip.people]
+    # A deactivated person keeps the shares they already carry (`delete_person`
+    # refuses while any exist) and `split_roster` keeps them in the split, so the
+    # owed column still sums to the item's amount.
+    roster = split_roster(trip.people)
     person_names = {person.id: person.name for person in trip.people}
     rows = []
     for item in _items(session, trip.id):
-        payload = ItemOut.from_item(item, roster_ids).model_dump()
+        payload = ItemOut.from_item(item, roster).model_dump()
         payload["item_id"] = payload["id"]
         base = {column: payload[column] for column in ITEM_COLUMNS}
         # A roster-padded share (a null weight for someone this item doesn't touch)

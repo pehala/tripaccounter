@@ -130,20 +130,23 @@ def format_amount(amount_minor: int) -> str:
 
 
 def resolve_shares_wire(
-    roster_ids_sorted: list[int], rows: list[dict], amount_minor: int
+    roster: list[tuple[int, bool]], rows: list[dict], amount_minor: int
 ) -> list[dict]:
-    """Build the `split.shares` array: one entry per active person in roster order.
+    """Build the `split.shares` array from `(person_id, active)` pairs in roster order.
 
-    Nulls for anyone left out of the item.
+    One entry per active person, with nulls for anyone left out of the item, plus
+    one per inactive person who carries a share: deactivating someone hides them
+    from new splits, never from the ones they are already on.
     """
     by_person = {row["person_id"]: row for row in rows}
     total_weight_scaled = sum(row["weight_scaled"] for row in rows)
 
     resolved = []
-    for person_id in roster_ids_sorted:
+    for person_id, active in roster:
         row = by_person.get(person_id)
         if row is None:
-            resolved.append({"person_id": person_id, "weight": None, "owed": None})
+            if active:
+                resolved.append({"person_id": person_id, "weight": None, "owed": None})
             continue
 
         if row["exact"]:

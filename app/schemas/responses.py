@@ -324,10 +324,10 @@ class ItemOut(BaseModel):
     updated_at: str
 
     @classmethod
-    def from_item(cls, item: LineItem, roster_ids_sorted: list[int]) -> "ItemOut":
-        """Build an ItemOut from a LineItem model instance and the trip roster."""
+    def from_item(cls, item: LineItem, roster: list[tuple[int, bool]]) -> "ItemOut":
+        """Build an ItemOut from a LineItem model instance and the trip's `split_roster`."""
         rows = rows_from_shares(item.shares)
-        resolved = resolve_shares_wire(roster_ids_sorted, rows, item.amount_minor)
+        resolved = resolve_shares_wire(roster, rows, item.amount_minor)
         return cls(
             id=item.id,
             name=item.name,
