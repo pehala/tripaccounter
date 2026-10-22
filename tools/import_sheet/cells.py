@@ -46,7 +46,7 @@ def parse_naive(text, year=None):
         candidates += [(f"{text} {year}", f"{shape} %Y") for shape in FORMATS_WITHOUT_YEAR]
     for value, shape in candidates:
         try:
-            naive = datetime.strptime(value, shape)  # noqa: DTZ007 - a wall time, resolved in the trip zone
+            naive = datetime.strptime(value, shape)
         except ValueError:
             continue
         return naive if "%H" in shape else naive.replace(hour=DATE_ONLY_HOUR, minute=0)
