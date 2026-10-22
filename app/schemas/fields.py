@@ -113,7 +113,6 @@ def parse_label(v: object) -> str:
 
 Amount = Annotated[Decimal, BeforeValidator(parse_amount)]
 Weight = Annotated[Decimal, BeforeValidator(parse_weight)]
-# Declared after a `currency_id` field on the same model, which its error names.
 Rate = Annotated[Decimal, BeforeValidator(parse_rate)]
 LatStr = Annotated[str | None, BeforeValidator(parse_lat)]
 LonStr = Annotated[str | None, BeforeValidator(parse_lon)]

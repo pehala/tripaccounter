@@ -8,8 +8,6 @@ import { errText } from '../../components/errText.js';
 import { FieldError } from '../../components/FieldError.js';
 import { AddToggle } from '../../components/AddToggle.js';
 
-// A settled trip keeps every currency it was settled in: its rates name each
-// one, so neither adding nor deleting a currency is offered until it is unlocked.
 function CurrencyRow({ currency, slug, locale, settled }) {
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(currency.symbol || '');

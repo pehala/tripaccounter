@@ -162,6 +162,23 @@ def test_open_total_offers_settle_only_once_every_rate_is_typed(balances_page):
     expect(total.get_by_role("button", name="Fix rates & settle")).to_be_visible()
 
 
+@pytest.mark.parametrize(
+    "rate",
+    [
+        pytest.param("20.0000000001", id="ten-fraction-digits"),
+        pytest.param("1234567890", id="ten-integer-digits"),
+    ],
+)
+def test_open_total_withholds_settle_for_a_rate_the_server_refuses(balances_page, rate):
+    """A rate outside the server's grammar still shows the Total but offers no settle."""
+    total = show_total(balances_page, "balances")
+
+    set_rates(balances_page, EUR="150", DKK=rate)
+
+    expect(total.locator('[data-bs-target="#sec-total-net-body"]')).to_have_count(1)
+    expect(total.get_by_role("button", name="Fix rates & settle")).to_have_count(0)
+
+
 def test_settle_unlock_settle_switches_the_total_each_time(open_trip, total_tab, agreement):
     """Settle, unlock and settle again: the buttons and the form's lock follow every step."""
     page = open_trip(total_tab)
@@ -207,6 +224,26 @@ def test_rejected_settle_shows_the_error_under_the_button(balances_page, stub):
 
     expect(total.locator(".invalid-feedback")).to_have_text(INVALID_RATE)
     expect_open(total)
+
+
+def test_later_flashed_failure_clears_the_inline_settle_error(balances_page, stub):
+    """A retry refused under `fields.id` flashes, and the first attempt's inline error goes."""
+    answers = [
+        (422, load_fixture("errors/422_invalid_rate.json")),
+        (409, load_fixture("errors/409_trip_settled.json")),
+    ]
+    stub("**/api/v1/trips/*/settlement", lambda request: answers.pop(0), method="PUT")
+    balances_page.on("dialog", lambda dialog: dialog.accept())
+    total = show_total(balances_page, "balances")
+    set_rates(balances_page, EUR="150", DKK="20.5")
+    settle_button = total.get_by_role("button", name="Fix rates & settle")
+    settle_button.click()
+    expect(total.locator(".invalid-feedback")).to_have_text(INVALID_RATE)
+
+    settle_button.click()
+
+    expect(balances_page.locator(".alert-danger")).to_have_text(TRIP_SETTLED)
+    expect(total.locator(".invalid-feedback")).to_have_count(0)
 
 
 def test_failed_unlock_flashes_and_keeps_the_trip_settled(settled_trip, stub, page):

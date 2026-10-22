@@ -9,8 +9,8 @@ import { mergeRows } from './breakdown.js';
 // (`targetId` — any trip currency, not necessarily the primary): the target
 // itself is always 1, any other currency needs a positive typed rate or the
 // Total refuses to compute anything — the one place the frontend adds two
-// amounts, and only once every operand is known. A value is either what the
-// user typed, in their locale, or a settled trip's stored rate, a plain number.
+// amounts, and only once every operand is known. A value is a typed string or a
+// settled trip's stored number.
 export function rateFor(currencyId, targetId, values, locale) {
   if (currencyId === targetId) return 1;
   const stored = values[currencyId];

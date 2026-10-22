@@ -11,6 +11,7 @@ demo lands next to whatever trips the database already holds.
 import argparse
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
@@ -21,6 +22,7 @@ from app.models.roster import Person, TripCountry, TripCurrency
 from app.models.stays import Stay
 from app.models.trip import Trip
 from app.models.wallets import Wallet, WalletTransfer
+from app.services import settlement
 
 # (name, colour, default weight)
 PEOPLE = (
@@ -126,8 +128,8 @@ class SeedSettlement:
 
     settled_at: datetime
     target_key: int
-    # (currency spec number, rate ×10⁹)
-    rates: tuple[tuple[int, int], ...]
+    # (currency spec number, rate)
+    rates: tuple[tuple[int, Decimal], ...]
 
 
 @dataclass(frozen=True)
@@ -462,7 +464,7 @@ TRIPS = (
         settlement=SeedSettlement(
             settled_at=datetime(2025, 6, 10, 18, 30, 0, tzinfo=UTC),
             target_key=2,
-            rates=((1, 134_000_000),),
+            rates=((1, Decimal("0.134")),),
         ),
     ),
 )
@@ -597,16 +599,6 @@ def add_transfer(session: Session, trip: Trip, ids: SeedIds, spec: SeedTransfer)
     return transfer
 
 
-def settle(session: Session, trip: Trip, ids: SeedIds, spec: SeedSettlement) -> None:
-    """Store a seeded agreement: target and settled_at on the trip, a rate on each currency."""
-    rates = {resolve(ids.currencies, key): rate for key, rate in spec.rates}
-    for currency in trip.currencies:
-        currency.settlement_rate_scaled = rates.get(currency.id)
-    trip.settlement_currency_id = resolve(ids.currencies, spec.target_key)
-    trip.settled_at = spec.settled_at
-    session.flush()
-
-
 def add_trip(session: Session, spec: SeedTrip) -> Trip:
     """Insert one seeded trip with everything under it; return the trip."""
     trip = Trip(
@@ -641,7 +633,13 @@ def add_trip(session: Session, spec: SeedTrip) -> Trip:
 
     if spec.settlement is not None:
         session.refresh(trip)
-        settle(session, trip, ids, spec.settlement)
+        settlement.settle(
+            session,
+            trip,
+            resolve(ids.currencies, spec.settlement.target_key),
+            [(resolve(ids.currencies, key), rate) for key, rate in spec.settlement.rates],
+            spec.settlement.settled_at,
+        )
     return trip
 
 

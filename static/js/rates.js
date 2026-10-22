@@ -4,12 +4,9 @@ import { parse } from './fmt.js';
 import { rateFor } from './convert.js';
 
 // The Total's target currency and rates, one set per trip, shared by the
-// balances and statistics pages (design/FRONTEND.md §4 rule 1). An unsettled
-// trip's are typed into this browser and kept in localStorage; a settled trip's
-// are the ones the group agreed on, stored with the trip, and read-only here.
-// localStorage: { target: currencyId|null, values: { [currencyId]: rawString } };
-// switching target clears values, since a rate typed against one target lies
-// against another.
+// balances and statistics pages (design/FRONTEND.md §4 rule 1).
+// { target: currencyId|null, values: { [currencyId]: rawString } }; switching
+// target clears values, since a rate typed against one target lies against another.
 function key(slug) {
   return `rates:${slug}`;
 }
@@ -40,11 +37,11 @@ export function setRateValue(slug, currencyId, value) {
   return save(slug, { ...state, values });
 }
 
-// The one source of the Total's rates for both pages. `values` holds typed
-// strings while the trip is open and the stored numbers once it is settled —
-// `rateFor` reads either. `ready` is the server's own `missing_rate` rule: every
-// currency but the target has a positive rate, so a settle sent while ready
-// is one the server accepts.
+// The server's rate grammar: ≤ 9 integer digits, ≤ 9 fraction digits.
+const RATE_RE = /^[0-9]{1,9}(\.[0-9]{1,9})?$/;
+
+// A settled trip's stored rates, else this browser's typed ones. `ready` matches
+// the server's `missing_rate` rule, `settleable` its `invalid_rate` rule too.
 export function useTotalRates(store) {
   const [local, setLocal] = useState(() => getRatesState(store.slug));
   const trip = store.trip;
@@ -58,11 +55,14 @@ export function useTotalRates(store) {
     ? Object.fromEntries(settlement.rates.map((row) => [row.currency_id, row.rate]))
     : local.values;
   const ready = trip.currencies.every((c) => rateFor(c.id, target.id, values, locale) !== null);
+  const settleable = ready && trip.currencies.every(
+    (c) => c.id === target.id || RATE_RE.test(parse(values[c.id], locale) ?? ''));
 
   return {
     target,
     values,
     ready,
+    settleable,
     settlement,
     onTargetChange(currencyId) {
       if (!settlement) setLocal(setTargetCurrency(store.slug, currencyId));
@@ -70,8 +70,6 @@ export function useTotalRates(store) {
     onRateChange(currencyId, value) {
       if (!settlement) setLocal(setRateValue(store.slug, currencyId, value));
     },
-    // The PUT /settlement body: each typed rate in the viewer's locale, sent as
-    // the canonical decimal string every number input is sent as.
     settlementBody() {
       return {
         target_currency_id: target.id,

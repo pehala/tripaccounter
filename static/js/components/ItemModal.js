@@ -4,8 +4,7 @@ import { api } from '../api.js';
 import { reload, invalidateMoneyViews } from '../store.js';
 import { t, getLocale } from '../i18n/index.js';
 import { parse, money, fmtParams, toInputValue, fromInputValue, nowIn } from '../fmt.js';
-import { pushFlash } from './Flash.js';
-import { errText } from './errText.js';
+import { routeError } from './errText.js';
 import { PersonChip } from './PersonChip.js';
 import { LabelInput } from './LabelInput.js';
 import { SplitEditor } from './SplitEditor.js';
@@ -132,8 +131,6 @@ export function ItemModal({ trip, labels, entry, onClose }) {
     return trip.people.filter((p) => p.active || sharing.has(p.id));
   }, [trip]);
   const payerPeople = useMemo(() => trip.people.filter((p) => p.active || p.id === item?.payer_id), [trip]);
-  // A settled trip freezes what enters a balance: an item's money fields, and a
-  // transfer whole. Everything else on an item stays editable.
   const settled = Boolean(trip.settlement);
 
   const [state, setState] = useState(() => initialItemState(item, trip));
@@ -339,13 +336,8 @@ export function ItemModal({ trip, labels, entry, onClose }) {
     }
   }
 
-  // `fields.id` is the object-level slot — a trip settled from another tab, say —
-  // which no input owns, so it goes to the flash; every other field to its input.
   function showError(err) {
-    const { id, ...rest } = err.fields || {};
-    if (id) pushFlash(errText(id, locale));
-    if (Object.keys(rest).length) setFieldErrors(rest);
-    else if (!id) pushFlash(errText(err, locale));
+    setFieldErrors(routeError(err, locale));
   }
 
   async function remove() {

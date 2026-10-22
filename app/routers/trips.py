@@ -163,7 +163,7 @@ def unlock_trip(trip: TripDep, session: SessionDep):
 @router.delete("/trips/{slug}", status_code=204, responses=error_responses(404))
 def delete_trip(trip: TripDep, session: SessionDep):
     """Delete a trip."""
-    # The currencies are deleted while the trip row still exists; it must name none of them.
+    # The ORM deletes the currencies first; the trip must no longer reference one.
     settlement.unlock(session, trip)
     session.delete(trip)
     session.flush()

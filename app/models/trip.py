@@ -28,9 +28,7 @@ class Trip(SQLModel, table=True):
     __tablename__ = "trip"
     __table_args__ = (
         UniqueConstraint("slug", name="uq_trip_slug"),
-        # The settlement target is a currency of this same trip. `trip_scoped_fk`
-        # wants a `trip_id` column, which on `trip` is `id`, so the key is spelled
-        # out; `use_alter` because trip_currency already references trip.
+        # `use_alter`: trip_currency already references trip.
         ForeignKeyConstraint(
             ["settlement_currency_id", "id"],
             ["trip_currency.id", "trip_currency.trip_id"],
@@ -43,8 +41,7 @@ class Trip(SQLModel, table=True):
         ),
     )
 
-    # Explicit: `id` is a column of the settlement key above, and SQLAlchemy does not
-    # autoincrement a primary key that also sits in a foreign key unless told to.
+    # Explicit, because `id` is also in the settlement foreign key.
     id: int | None = Field(default=None, primary_key=True, sa_column_kwargs={"autoincrement": True})
     slug: str = Field(index=True, max_length=60)
     name: str = Field(max_length=200)
@@ -53,7 +50,6 @@ class Trip(SQLModel, table=True):
     timezone: str = Field(default="UTC", max_length=64, sa_column_kwargs={"server_default": "UTC"})
     note: str | None = None
     archived: bool = False
-    # Set together by services/settlement.py; the rates live on trip_currency.
     settled_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
@@ -81,7 +77,6 @@ class Trip(SQLModel, table=True):
         back_populates="trip",
         sa_relationship_kwargs={
             "cascade": "all, delete-orphan",
-            # Two keys join trip and trip_currency; this one is the ownership.
             "foreign_keys": "[TripCurrency.trip_id]",
             "order_by": "[TripCurrency.is_primary.desc(), TripCurrency.code]",
         },

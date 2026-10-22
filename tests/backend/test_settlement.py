@@ -285,6 +285,38 @@ def test_settled_item_rejects_a_changed_locked_field(client, trip, settled, ids,
     assert response.json() == trip_settled(field)
 
 
+def test_settled_exact_item_new_amount_with_matching_shares_is_trip_settled(
+    client, trip, item_body, settle, ids
+):
+    """A new amount with an exact split that adds up to it is the lock, not a sum mismatch."""
+    created = client.post(
+        f"/api/v1/trips/{trip['slug']}/items",
+        json=item_body(
+            split_mode="exact",
+            shares=[
+                {"person_id": ids["petr"], "amount": "60.00"},
+                {"person_id": ids["ann"], "amount": "40.00"},
+            ],
+        ),
+    )
+    settle(ids["eur"], {ids["isk"]: "0.0073"})
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{created.json()['item']['id']}",
+        json={
+            "amount": "200.00",
+            "split_mode": "exact",
+            "shares": [
+                {"person_id": ids["petr"], "amount": "120.00"},
+                {"person_id": ids["ann"], "amount": "80.00"},
+            ],
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json() == trip_settled("amount")
+
+
 def test_settled_item_restating_every_locked_field_saves(client, trip, settled, people):
     """The full body an edit form resends - stored amount, payer, mode and split - saves."""
     item = settled["item"]

@@ -4,8 +4,7 @@ import { TimezoneSelect } from './TimezoneSelect.js';
 
 // Wallet selects group by owner so a cross-owner pick is one click; the to
 // side is visually secondary (design/WALLETS.md §4) until the user edits it
-// away from the from side's mirrored amount/currency. A transfer is frozen whole
-// on a settled trip, so `disabled` reaches every control.
+// away from the from side's mirrored amount/currency.
 export function TransferFields({
   trip, state, fieldError, disabled = false,
   onFromWallet, onFromAmount, onFromCurrency,

@@ -80,7 +80,6 @@ export function Items() {
     ? {}
     : Object.fromEntries((store.dayTotals || []).map((day) => [day.date, day.totals]));
   const beforeTripTotals = needle ? [] : store.beforeTripTotals || [];
-  // A settled trip takes no new expense or transfer; unlocking it on Balances does.
   const settled = Boolean(store.trip.settlement);
   const lockedTitle = settled ? t('settlement.locked_hint') : undefined;
 

@@ -10,9 +10,7 @@ import { Loading } from './Loading.js';
 // — any trip currency, not necessarily the primary. Every other currency
 // needs its own typed rate into `target`. Shared by every page with a Total
 // (statistics, balances): nothing here is page-specific. Each person's average
-// exchange rate for a pair is offered as a link that fills the input. `readOnly`
-// shows a settled trip's stored target and rates, which nothing here can change;
-// `children` render under the inputs, where the panel puts its settle controls.
+// exchange rate for a pair is offered as a link that fills the input.
 export function RatesForm({ trip, target, values, onTargetChange, onRateChange, readOnly = false, children }) {
   const store = useStore();
   const locale = getLocale();
@@ -35,7 +33,6 @@ export function RatesForm({ trip, target, values, onTargetChange, onRateChange, 
     });
   }
 
-  // A stored rate is a plain number; a typed one is the string as typed.
   function shown(value) {
     return typeof value === 'number' ? storedRate(value, locale) : value ?? '';
   }

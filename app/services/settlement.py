@@ -1,9 +1,4 @@
-"""A trip's stored settlement - the agreed target currency and rates - and the lock it holds.
-
-While a trip is settled, every field that enters a balance is frozen: `assert_unchanged`
-guards the item fields one by one, `assert_unsettled` the writes frozen as a whole.
-The rates are stored and validated here and never applied; the browser converts.
-"""
+"""A trip's stored settlement and the lock it puts on every field that enters a balance."""
 
 from datetime import datetime
 from decimal import Decimal
@@ -27,11 +22,7 @@ from app.services.money import scale_rate
 def validate(
     trip: Trip, target_currency_id: int, rates: list[tuple[int, Decimal]]
 ) -> dict[str, FieldError]:
-    """Check a settlement against the trip's currencies; return its field errors.
-
-    The target must be a trip currency, and every other trip currency needs exactly
-    one rate. The balances are never read: the roster alone decides.
-    """
+    """Return the field errors of a settlement checked against the trip's currencies."""
     currency_ids = [currency.id for currency in trip.currencies]
     if target_currency_id not in currency_ids:
         return {"target_currency_id": NotInTripError()}
@@ -57,10 +48,7 @@ def settle(
     rates: list[tuple[int, Decimal]],
     settled_at: datetime,
 ) -> None:
-    """Store the agreement, replacing whatever an earlier settle left.
-
-    Only called once `validate` returned no errors.
-    """
+    """Store the agreement, replacing any earlier one."""
     by_currency = dict(rates)
     for currency in trip.currencies:
         rate = by_currency.get(currency.id)
@@ -71,7 +59,7 @@ def settle(
 
 
 def unlock(session: Session, trip: Trip) -> None:
-    """Clear the target, `settled_at` and every rate together; a no-op on an unsettled trip."""
+    """Clear the target, `settled_at` and every rate."""
     for currency in trip.currencies:
         currency.settlement_rate_scaled = None
     trip.settlement_currency_id = None
@@ -80,28 +68,19 @@ def unlock(session: Session, trip: Trip) -> None:
 
 
 def assert_settled(trip: Trip) -> None:
-    """Raise `TripNotSettledError` when there is no settlement to unlock."""
+    """Raise `TripNotSettledError` on an unsettled trip."""
     if trip.settled_at is None:
         raise TripNotSettledError()
 
 
 def assert_unsettled(trip: Trip) -> None:
-    """Reject a write frozen as a whole while the trip is settled.
-
-    Item create and delete, every transfer write, currency create and delete. Raises
-    the 409 under `fields.id`, the object-level slot.
-    """
+    """Raise a 409 `trip_settled` under `fields.id` on a settled trip."""
     if trip.settled_at is not None:
         raise ConflictError({"id": TripSettledError()})
 
 
 def assert_unchanged(stored: dict[str, Any], sent: dict[str, Any]) -> None:
-    """Reject a write that changes a locked field; the caller calls it on a settled trip only.
-
-    `stored` and `sent` map each locked field to its comparable value; a field the
-    write omits is absent from `sent`, and resending the stored value is accepted.
-    Raises one 409 naming every changed field.
-    """
+    """Raise a 409 `trip_settled` under every field whose sent value differs from the stored one."""
     changed = {field: TripSettledError() for field, value in sent.items() if value != stored[field]}
     if changed:
         raise ConflictError(changed)

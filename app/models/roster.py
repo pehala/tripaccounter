@@ -76,8 +76,7 @@ class TripCurrency(SQLModel, table=True):
     code: str = Field(max_length=3)
     symbol: str | None = Field(default=None, max_length=10)
     is_primary: bool = False
-    # 1 this currency = rate settlement target, ×10⁹; set only while the trip is
-    # settled, and never on the target itself.
+    # ×10⁹: 1 this currency = rate settlement target.
     settlement_rate_scaled: int | None = Field(
         default=None, sa_column=Column(BigInteger, nullable=True)
     )

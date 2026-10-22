@@ -31,8 +31,7 @@ function storedRateFmt(locale) {
   return storedRateFmts[locale] ??= new Intl.NumberFormat(locale, { maximumFractionDigits: 9, useGrouping: false });
 }
 
-// A settled trip's stored rate, every one of its up to nine places, so the
-// read-only form shows exactly the figure the Total multiplies by.
+// A settled trip's stored rate, all nine places.
 export function storedRate(value, locale) {
   return storedRateFmt(locale).format(value);
 }

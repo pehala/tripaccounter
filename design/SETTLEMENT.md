@@ -166,8 +166,9 @@ onRateChange}`:
 both pages render today. Balances and Statistics each render it and keep only their
 own combining step (`combineGroup`/`combineSuggestions` and `combineRows`).
 
-- **Unsettled.** The form is editable. Once `ready`, a **Fix rates & settle** button
-  opens a confirmation, sends `PUT`, and reloads the trip.
+- **Unsettled.** The form is editable. Once `settleable` — `ready`, with every rate
+  inside the server's rate grammar — a **Fix rates & settle** button opens a
+  confirmation, sends `PUT`, and reloads the trip.
 - **Settled.** The form shows the stored target and rates read-only, with a *Settled
   on {date}* badge and an **Unlock** button. Unlock opens a confirmation, sends
   `DELETE`, and reloads the trip.
