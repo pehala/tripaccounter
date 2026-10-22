@@ -8,15 +8,15 @@ DAY3 = "2026-09-15T12:00:00"
 
 
 @pytest.fixture()
-def currency_ids(client, trip, currencies):
+def currency_ids(client, currencies, trip_url):
     """Map currency code to id: the trip's ISK and EUR, plus an added CZK."""
-    czk = client.post(f"/api/v1/trips/{trip['slug']}/currencies", json={"code": "CZK"})
+    czk = client.post(f"{trip_url}/currencies", json={"code": "CZK"})
     assert czk.status_code == 201, czk.text
     return {c["code"]: c["id"] for c in [*currencies, czk.json()["currency"]]}
 
 
 @pytest.fixture()
-def record(client, trip, default_wallet_of, item_body, currency_ids):
+def record(client, trip_url, default_wallet_of, item_body, currency_ids):
     """Return a function posting one person's exchanges and spends, returning their wallets.
 
     Each person gets their `Card` plus tracked `Cash` and `Envelope`. A transfer is
@@ -28,7 +28,7 @@ def record(client, trip, default_wallet_of, item_body, currency_ids):
         wallets = {"Card": default_wallet_of(person_id)["id"]}
         for name in ("Cash", "Envelope"):
             response = client.post(
-                f"/api/v1/trips/{trip['slug']}/wallets",
+                f"{trip_url}/wallets",
                 json={"person_id": person_id, "name": name, "tracked": True},
             )
             assert response.status_code == 201, response.text
@@ -43,7 +43,7 @@ def record(client, trip, default_wallet_of, item_body, currency_ids):
             to_code,
         ) in transfers:
             response = client.post(
-                f"/api/v1/trips/{trip['slug']}/transfers",
+                f"{trip_url}/transfers",
                 json={
                     "from_wallet_id": wallets[from_wallet],
                     "from_amount": from_amount,
@@ -57,7 +57,7 @@ def record(client, trip, default_wallet_of, item_body, currency_ids):
             assert response.status_code == 201, response.text
         for wallet, amount, code in spends:
             response = client.post(
-                f"/api/v1/trips/{trip['slug']}/items",
+                f"{trip_url}/items",
                 json=item_body(
                     amount=amount,
                     payer_id=person_id,
@@ -72,12 +72,12 @@ def record(client, trip, default_wallet_of, item_body, currency_ids):
 
 
 @pytest.fixture()
-def hand_over(client, trip, transfer_body):
+def hand_over(client, trip_url, transfer_body):
     """Return a function posting ISK from one wallet to another, a transfer and not an exchange."""
 
     def post(from_wallet_id, to_wallet_id, amount):
         response = client.post(
-            f"/api/v1/trips/{trip['slug']}/transfers",
+            f"{trip_url}/transfers",
             json=transfer_body(
                 from_wallet_id=from_wallet_id, to_wallet_id=to_wallet_id, from_amount=amount
             ),
@@ -88,11 +88,11 @@ def hand_over(client, trip, transfer_body):
 
 
 @pytest.fixture()
-def get_rates(client, trip):
+def get_rates(client, trip_url):
     """Return a function that fetches the trip's exchange rates."""
 
     def get():
-        return client.get(f"/api/v1/trips/{trip['slug']}/exchange-rates")
+        return client.get(f"{trip_url}/exchange-rates")
 
     return get
 

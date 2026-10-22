@@ -134,7 +134,7 @@ def test_patch_without_occurred_at_keeps_the_instant(client, trip, item_body):
     assert response.json()["item"]["occurred_at"] == "2026-09-14T17:00:00"
 
 
-def test_days_and_totals_are_cut_in_the_trip_zone(client, trip, item_body):
+def test_days_and_totals_are_cut_in_the_trip_zone(client, trip, item_body, trip_url):
     """20:00 UTC on 11 Sep is 12 Sep in Tokyo: inside the trip, under its first day."""
     post_item(client, trip, item_body, "2026-09-11T20:00:00", amount="100.00")
     assert feed(client, trip)["before_trip_totals"] == [
@@ -147,11 +147,11 @@ def test_days_and_totals_are_cut_in_the_trip_zone(client, trip, item_body):
     assert body["items"][0]["day"] == "2026-09-12"
     assert body["before_trip_totals"] == []
     assert [day["date"] for day in body["day_totals"]] == ["2026-09-12"]
-    groups = get_stats(client, trip["slug"], "day")
+    groups = get_stats(client, trip_url, "day")
     assert [row["keys"]["date"] for row in groups[("currency", "day")]] == ["2026-09-12"]
 
 
-def test_day_agrees_with_day_totals_across_a_clock_change(client, trip, item_body):
+def test_day_agrees_with_day_totals_across_a_clock_change(client, trip, item_body, trip_url):
     """Prague's 25 Oct fall-back moves no row off its day: item `day`, totals and stats agree."""
     set_zone(client, trip, PRAGUE)
     wall_times = [
@@ -170,7 +170,7 @@ def test_day_agrees_with_day_totals_across_a_clock_change(client, trip, item_bod
     assert days == ["2026-10-26", "2026-10-25", "2026-10-25", "2026-10-25", "2026-10-24"]
     assert [day["date"] for day in body["day_totals"]] == ["2026-10-26", "2026-10-25", "2026-10-24"]
     assert [day["totals"][0]["amount"] for day in body["day_totals"]] == [10, 30, 10]
-    groups = get_stats(client, trip["slug"], "day")
+    groups = get_stats(client, trip_url, "day")
     assert [(row["keys"]["date"], row["amount"]) for row in groups[("currency", "day")]] == [
         ("2026-10-24", 10),
         ("2026-10-25", 30),

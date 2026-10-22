@@ -203,6 +203,8 @@ the reuse rule below is the most-broken one in review.
 | `trip` | function | **The trip JSON returned by one `POST /trips`** — 4 people, ISK + EUR, one country. A dict, not an ORM object |
 | `people` / `currencies` / `countries` | function | `trip["people"]` / `["currencies"]` / `["countries"]` — request the narrow fixture instead of indexing `trip` when that's all a test needs |
 | `currency` / `country` | function | The trip's primary currency (ISK) / its one country (Iceland) |
+| `trip_url` | function | The trip's API root string, `/api/v1/trips/<slug>`. Write the route after it — `f"{trip_url}/items/{item['id']}"` — so the real path stays visible in the test |
+| `create` | function | `create("items", body)`: POST to `<trip_url>/<collection>`, assert 201, return the entity unwrapped from its one-key envelope. For setup writes; a test about the write itself posts through `client` and asserts the response |
 | `item_body` | function | Builder for a valid item write body against `trip`, so a test overrides only the field it is about |
 | `error_codes` | session, autouse | Records every `code` seen in a `4xx`/`5xx` body; `test_errors.py` reads it at the end of the run |
 | `frozen_clock` | function | The injected clock the app reads for `occurred_at`/`created_at` defaults; set it, never patch `datetime` |

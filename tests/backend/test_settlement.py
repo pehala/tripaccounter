@@ -51,13 +51,13 @@ def ids(currencies, person_id):
 
 
 @pytest.fixture()
-def settle(client, trip, frozen_clock):
+def settle(client, trip, frozen_clock, trip_url):
     """Return a function that PUTs a settlement on `trip` and returns the response."""
     frozen_clock(SETTLED_AT)
 
     def put(target_currency_id, rates):
         return client.put(
-            f"/api/v1/trips/{trip['slug']}/settlement",
+            f"{trip_url}/settlement",
             json={
                 "target_currency_id": target_currency_id,
                 "rates": [{"currency_id": cid, "rate": rate} for cid, rate in rates.items()],
@@ -68,15 +68,15 @@ def settle(client, trip, frozen_clock):
 
 
 @pytest.fixture()
-def item(client, trip, item_body):
+def item(client, trip_url, item_body):
     """Create one 100.00 ISK item Petr paid, split equally over all four people."""
-    response = client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body())
+    response = client.post(f"{trip_url}/items", json=item_body())
     assert response.status_code == 201, response.text
     return response.json()["item"]
 
 
 @pytest.fixture()
-def transfers(client, trip, transfer_body, default_wallet_of, ids):
+def transfers(client, trip_url, transfer_body, default_wallet_of, ids):
     """Create a same-owner exchange (Petr's Card, EUR to ISK) and a cross-owner payment."""
     petr_card = default_wallet_of(ids["petr"])["id"]
     same_owner = transfer_body(
@@ -89,7 +89,7 @@ def transfers(client, trip, transfer_body, default_wallet_of, ids):
     )
     created = {}
     for name, body in (("same-owner", same_owner), ("cross-owner", transfer_body())):
-        response = client.post(f"/api/v1/trips/{trip['slug']}/transfers", json=body)
+        response = client.post(f"{trip_url}/transfers", json=body)
         assert response.status_code == 201, response.text
         created[name] = response.json()["transfer"]
     return created
@@ -107,16 +107,11 @@ def settled(settle, item, transfers, ids):
 
 
 @pytest.fixture()
-def editable(client, trip, ids, stay_body):
+def editable(ids, stay_body, create):
     """Create a second country, a second wallet for Petr and a stay: where editable fields move."""
-    country = client.post(
-        f"/api/v1/trips/{trip['slug']}/countries", json={"name": "Denmark", "code": "DK"}
-    ).json()["country"]
-    wallet = client.post(
-        f"/api/v1/trips/{trip['slug']}/wallets",
-        json={"person_id": ids["petr"], "name": "Cash", "tracked": True},
-    ).json()["wallet"]
-    stay = client.post(f"/api/v1/trips/{trip['slug']}/stays", json=stay_body()).json()["stay"]
+    country = create("countries", {"name": "Denmark", "code": "DK"})
+    wallet = create("wallets", {"person_id": ids["petr"], "name": "Cash", "tracked": True})
+    stay = create("stays", stay_body())
     return {"country_id": country["id"], "wallet_id": wallet["id"], "stay_id": stay["id"]}
 
 
@@ -129,7 +124,7 @@ def locked(settled, item_body, transfer_body, ids):
 # --- settle -------------------------------------------------------------------
 
 
-def test_put_settlement_stores_target_rates_and_settled_at(client, trip, settle, ids):
+def test_put_settlement_stores_target_rates_and_settled_at(client, trip, settle, ids, trip_url):
     """PUT answers with the trip carrying the agreement, and a later GET reads it back."""
     response = settle(ids["eur"], {ids["isk"]: "0.0073"})
 
@@ -140,7 +135,7 @@ def test_put_settlement_stores_target_rates_and_settled_at(client, trip, settle,
         "rates": [{"currency_id": ids["isk"], "rate": 0.0073}],
     }
     assert response.json()["trip"]["settlement"] == expected
-    assert client.get(f"/api/v1/trips/{trip['slug']}").json()["trip"]["settlement"] == expected
+    assert client.get(f"{trip_url}").json()["trip"]["settlement"] == expected
 
 
 def test_unsettled_trip_has_null_settlement(trip):
@@ -211,10 +206,10 @@ def test_put_settlement_bad_rate_is_invalid_rate(settle, ids, rates, named):
     assert response.json() == rate_error("invalid_rate", ids.get(named, named))
 
 
-def test_put_settlement_naming_a_currency_twice_is_invalid_rate(client, trip, ids):
+def test_put_settlement_naming_a_currency_twice_is_invalid_rate(client, trip_url, ids):
     """Two rates for one currency are no agreement; the repeated currency is named."""
     response = client.put(
-        f"/api/v1/trips/{trip['slug']}/settlement",
+        f"{trip_url}/settlement",
         json={
             "target_currency_id": ids["eur"],
             "rates": [
@@ -242,10 +237,10 @@ def test_put_settlement_target_outside_the_trip_is_not_in_trip(settle, ids):
     }
 
 
-def test_unlocking_twice_is_trip_not_settled(client, trip, settle, ids):
+def test_unlocking_twice_is_trip_not_settled(client, trip_url, settle, ids):
     """The first DELETE unlocks; a second has nothing to unlock and says so."""
     settle(ids["eur"], {ids["isk"]: "0.0073"})
-    url = f"/api/v1/trips/{trip['slug']}/settlement"
+    url = f"{trip_url}/settlement"
     assert client.delete(url).status_code == 200
 
     response = client.delete(url)
@@ -273,24 +268,22 @@ def test_unlocking_twice_is_trip_not_settled(client, trip, settle, ids):
         pytest.param(("shares", lambda ids: [{"person_id": ids["petr"]}]), id="shares"),
     ],
 )
-def test_settled_item_rejects_a_changed_locked_field(client, trip, settled, ids, change):
+def test_settled_item_rejects_a_changed_locked_field(client, trip_url, settled, ids, change):
     """A locked field whose value differs from the stored one is trip_settled under itself."""
     field, value = change
 
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/items/{settled['item']['id']}", json={field: value(ids)}
-    )
+    response = client.patch(f"{trip_url}/items/{settled['item']['id']}", json={field: value(ids)})
 
     assert response.status_code == 409
     assert response.json() == trip_settled(field)
 
 
 def test_settled_exact_item_new_amount_with_matching_shares_is_trip_settled(
-    client, trip, item_body, settle, ids
+    client, trip_url, item_body, settle, ids
 ):
     """A new amount with an exact split that adds up to it is the lock, not a sum mismatch."""
     created = client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
+        f"{trip_url}/items",
         json=item_body(
             split_mode="exact",
             shares=[
@@ -302,7 +295,7 @@ def test_settled_exact_item_new_amount_with_matching_shares_is_trip_settled(
     settle(ids["eur"], {ids["isk"]: "0.0073"})
 
     response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/items/{created.json()['item']['id']}",
+        f"{trip_url}/items/{created.json()['item']['id']}",
         json={
             "amount": "200.00",
             "split_mode": "exact",
@@ -317,12 +310,12 @@ def test_settled_exact_item_new_amount_with_matching_shares_is_trip_settled(
     assert response.json() == trip_settled("amount")
 
 
-def test_settled_item_restating_every_locked_field_saves(client, trip, settled, people):
+def test_settled_item_restating_every_locked_field_saves(client, trip_url, settled, people):
     """The full body an edit form resends - stored amount, payer, mode and split - saves."""
     item = settled["item"]
 
     response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/items/{item['id']}",
+        f"{trip_url}/items/{item['id']}",
         json={
             "name": "Renamed",
             "amount": "100.00",
@@ -338,10 +331,12 @@ def test_settled_item_restating_every_locked_field_saves(client, trip, settled, 
     assert response.json()["item"]["split"] == item["split"]
 
 
-def test_settled_item_restating_a_split_with_a_deactivated_sharer_saves(client, trip, settled, ids):
+def test_settled_item_restating_a_split_with_a_deactivated_sharer_saves(
+    client, trip_url, settled, ids
+):
     """Resending the item as read back, inactive sharer included, passes the lock and saves."""
-    client.patch(f"/api/v1/trips/{trip['slug']}/people/{ids['ann']}", json={"active": False})
-    url = f"/api/v1/trips/{trip['slug']}/items/{settled['item']['id']}"
+    client.patch(f"{trip_url}/people/{ids['ann']}", json={"active": False})
+    url = f"{trip_url}/items/{settled['item']['id']}"
     split = client.get(url).json()["item"]["split"]
 
     response = client.patch(
@@ -357,10 +352,10 @@ def test_settled_item_restating_a_split_with_a_deactivated_sharer_saves(client, 
     assert response.json()["item"]["split"] == split
 
 
-def test_settled_item_restating_a_weighted_split_saves(client, trip, item_body, settle, ids):
+def test_settled_item_restating_a_weighted_split_saves(client, trip_url, item_body, settle, ids):
     """Weights compare once resolved: "2" and "2.0" are the same stored split."""
     created = client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
+        f"{trip_url}/items",
         json=item_body(
             split_mode="shares",
             shares=[
@@ -372,7 +367,7 @@ def test_settled_item_restating_a_weighted_split_saves(client, trip, item_body, 
     settle(ids["eur"], {ids["isk"]: "0.0073"})
 
     response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/items/{created.json()['item']['id']}",
+        f"{trip_url}/items/{created.json()['item']['id']}",
         json={
             "split_mode": "shares",
             "shares": [
@@ -401,16 +396,14 @@ def test_settled_item_restating_a_weighted_split_saves(client, trip, item_body, 
         pytest.param({"wallet_id": None}, id="wallet-of-the-payer"),
     ],
 )
-def test_settled_item_editable_field_saves(client, trip, settled, editable, body):
+def test_settled_item_editable_field_saves(client, trip, settled, editable, body, trip_url):  # noqa: PLR0913, PLR0917 (the fixtures are the setup)
     """Every item field outside `net` stays writable on a settled trip.
 
     A `None` in the case stands for the row `editable` created for that field.
     """
     sent = {key: editable[key] if value is None else value for key, value in body.items()}
 
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/items/{settled['item']['id']}", json=sent
-    )
+    response = client.patch(f"{trip_url}/items/{settled['item']['id']}", json=sent)
 
     assert response.status_code == 200, response.text
     saved = response.json()["item"]
@@ -424,18 +417,18 @@ def test_settled_item_editable_field_saves(client, trip, settled, editable, body
         pytest.param({"is_primary": True}, id="is-primary"),
     ],
 )
-def test_settled_currency_editable_field_saves(client, trip, settled, ids, body):
+def test_settled_currency_editable_field_saves(client, trip_url, settled, ids, body):
     """A currency's symbol and primary flag leave every balance alone, so they stay writable."""
-    response = client.patch(f"/api/v1/trips/{trip['slug']}/currencies/{ids['eur']}", json=body)
+    response = client.patch(f"{trip_url}/currencies/{ids['eur']}", json=body)
 
     assert response.status_code == 200, response.text
     assert {key: response.json()["currency"][key] for key in body} == body
 
 
-def test_settled_trip_fields_save(client, trip, settled):
+def test_settled_trip_fields_save(client, trip, settled, trip_url):
     """The trip's own name, dates, note and archived flag stay writable while settled."""
     response = client.patch(
-        f"/api/v1/trips/{trip['slug']}",
+        f"{trip_url}",
         json={"name": "Iceland, done", "end_date": "2026-09-23", "note": "paid", "archived": True},
     )
 
@@ -450,10 +443,10 @@ def test_settled_trip_fields_save(client, trip, settled):
     assert saved["settlement"] == settled["trip"]["settlement"]
 
 
-def test_settled_trip_still_previews_a_split(client, trip, settled, ids):
+def test_settled_trip_still_previews_a_split(client, trip, settled, ids, trip_url):
     """`preview-split` saves nothing, so a settled trip answers it as usual."""
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/items/preview-split",
+        f"{trip_url}/items/preview-split",
         json={"amount": "40.00", "currency_id": ids["isk"], "split_mode": "equal"},
     )
 
@@ -526,17 +519,17 @@ def test_settled_trip_rejects_a_whole_object_write(client, trip, locked, write):
 # --- lock / unlock cycles -----------------------------------------------------
 
 
-def test_settle_unlock_cycles_keep_only_the_latest_agreement(client, trip, item, settle, ids):
+def test_settle_unlock_cycles_keep_only_the_latest_agreement(  # noqa: PLR0913, PLR0917 (the fixtures are the setup)
+    client, trip, item, settle, ids, trip_url, create
+):
     """Settle, unlock, settle anew, unlock, settle: each step holds exactly its own agreement.
 
     Balances never move across a settle or an unlock, a locked edit fails exactly
     while settled, and a currency's rate from an earlier agreement never survives.
     """
     isk, eur = ids["isk"], ids["eur"]
-    dkk = client.post(f"/api/v1/trips/{trip['slug']}/currencies", json={"code": "DKK"}).json()[
-        "currency"
-    ]["id"]
-    trip_url = f"/api/v1/trips/{trip['slug']}"
+    dkk = create("currencies", {"code": "DKK"})["id"]
+    trip_url = f"{trip_url}"
 
     def unlock():
         return client.delete(f"{trip_url}/settlement")
@@ -581,12 +574,12 @@ def test_settle_unlock_cycles_keep_only_the_latest_agreement(client, trip, item,
 # --- schema -------------------------------------------------------------------
 
 
-def test_delete_settled_trip_leaves_no_row_behind(client, trip, settled, session):
+def test_delete_settled_trip_leaves_no_row_behind(client, trip, settled, session, trip_url):
     """A settled trip deletes cleanly; its currencies go too, which only the DB can show."""
-    response = client.delete(f"/api/v1/trips/{trip['slug']}")
+    response = client.delete(f"{trip_url}")
 
     assert response.status_code == 204
-    assert client.get(f"/api/v1/trips/{trip['slug']}").status_code == 404
+    assert client.get(f"{trip_url}").status_code == 404
     remaining = session.execute(
         select(func.count()).select_from(TripCurrency).where(TripCurrency.trip_id == trip["id"])
     ).scalar_one()

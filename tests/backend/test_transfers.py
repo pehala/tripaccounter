@@ -1,35 +1,35 @@
 """Functional tests for wallet transfers: CRUD, the plain/exchange rules, and spend exclusion."""
 
 
-def test_create_transfer_omitted_to_side_mirrors_the_from_side(client, trip, transfer_body):
+def test_create_transfer_omitted_to_side_mirrors_the_from_side(
+    client, currencies, transfer_body, trip_url
+):
     """A plain transfer only needs one amount; the to side defaults to it."""
-    response = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers", json=transfer_body(from_amount="150.00")
-    )
+    response = client.post(f"{trip_url}/transfers", json=transfer_body(from_amount="150.00"))
 
     assert response.status_code == 201
     transfer = response.json()["transfer"]
     assert transfer["to_amount"] == 150
-    assert transfer["to_currency_id"] == trip["currencies"][0]["id"]
+    assert transfer["to_currency_id"] == currencies[0]["id"]
     assert transfer["to_currency_code"] == "ISK"
 
 
-def test_create_transfer_exchange_inside_one_wallet_is_accepted(
-    client, trip, default_wallet_of, person_id, transfer_body
+def test_create_transfer_exchange_inside_one_wallet_is_accepted(  # noqa: PLR0913, PLR0917 (the fixtures are the setup)
+    client, currencies, default_wallet_of, person_id, transfer_body, trip_url
 ):
     """Two different currencies on the same person's own wallet is a valid exchange."""
     petr = person_id("Petr")
     wallet_id = default_wallet_of(petr)["id"]
 
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers",
+        f"{trip_url}/transfers",
         json=transfer_body(
             from_wallet_id=wallet_id,
             from_amount="20",
-            from_currency_id=trip["currencies"][1]["id"],
+            from_currency_id=currencies[1]["id"],
             to_wallet_id=wallet_id,
             to_amount="2800",
-            to_currency_id=trip["currencies"][0]["id"],
+            to_currency_id=currencies[0]["id"],
         ),
     )
 
@@ -40,13 +40,13 @@ def test_create_transfer_exchange_inside_one_wallet_is_accepted(
 
 
 def test_create_transfer_same_wallet_same_currency_is_same_wallet(
-    client, trip, default_wallet_of, people, transfer_body
+    client, trip_url, default_wallet_of, people, transfer_body
 ):
     """The same wallet on both sides in the same currency is meaningless."""
     wallet_id = default_wallet_of(people[0]["id"])["id"]
 
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers",
+        f"{trip_url}/transfers",
         json=transfer_body(from_wallet_id=wallet_id, to_wallet_id=wallet_id),
     )
 
@@ -58,12 +58,12 @@ def test_create_transfer_same_wallet_same_currency_is_same_wallet(
 
 
 def test_create_transfer_cross_owner_currency_change_is_cross_owner_exchange(
-    client, trip, transfer_body
+    client, currencies, transfer_body, trip_url
 ):
     """A transfer between two different people can't also change currency."""
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers",
-        json=transfer_body(to_currency_id=trip["currencies"][1]["id"], to_amount="20"),
+        f"{trip_url}/transfers",
+        json=transfer_body(to_currency_id=currencies[1]["id"], to_amount="20"),
     )
 
     assert response.status_code == 422
@@ -73,36 +73,32 @@ def test_create_transfer_cross_owner_currency_change_is_cross_owner_exchange(
     }
 
 
-def test_create_transfer_missing_wallet_is_required(client, trip, transfer_body):
+def test_create_transfer_missing_wallet_is_required(client, trip_url, transfer_body):
     """`from_wallet_id` is required on create."""
     body = transfer_body()
     del body["from_wallet_id"]
 
-    response = client.post(f"/api/v1/trips/{trip['slug']}/transfers", json=body)
+    response = client.post(f"{trip_url}/transfers", json=body)
 
     assert response.status_code == 422
     assert response.json()["error"]["fields"]["from_wallet_id"]["code"] == "required"
 
 
-def test_create_transfer_wallet_not_in_trip_is_not_in_trip(client, trip, transfer_body):
+def test_create_transfer_wallet_not_in_trip_is_not_in_trip(client, transfer_body, trip_url):
     """A wallet id from outside this trip is rejected."""
-    response = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers", json=transfer_body(to_wallet_id=999999)
-    )
+    response = client.post(f"{trip_url}/transfers", json=transfer_body(to_wallet_id=999999))
 
     assert response.status_code == 422
     assert response.json()["error"]["fields"]["to_wallet_id"]["code"] == "not_in_trip"
 
 
-def test_update_transfer_from_amount_follows_to_plain_transfer(client, trip, transfer_body):
+def test_update_transfer_from_amount_follows_to_plain_transfer(
+    client, trip_url, transfer_body, create
+):
     """Updating from_amount on a plain transfer mirrors to_amount along with it."""
-    created = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers", json=transfer_body(from_amount="100")
-    ).json()["transfer"]
+    created = create("transfers", transfer_body(from_amount="100"))
 
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/transfers/{created['id']}", json={"from_amount": "250"}
-    )
+    response = client.patch(f"{trip_url}/transfers/{created['id']}", json={"from_amount": "250"})
 
     assert response.status_code == 200
     updated = response.json()["transfer"]
@@ -110,26 +106,24 @@ def test_update_transfer_from_amount_follows_to_plain_transfer(client, trip, tra
     assert updated["to_amount"] == 250
 
 
-def test_update_transfer_exchange_keeps_to_amount_when_only_from_changes(
-    client, trip, default_wallet_of, people, transfer_body
+def test_update_transfer_exchange_keeps_to_amount_when_only_from_changes(  # noqa: PLR0913, PLR0917 (the fixtures are the setup)
+    client, currencies, default_wallet_of, people, transfer_body, trip_url, create
 ):
     """An exchange's to_amount stays put when from_amount changes and to_amount is omitted."""
     wallet_id = default_wallet_of(people[0]["id"])["id"]
-    created = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers",
-        json=transfer_body(
+    created = create(
+        "transfers",
+        transfer_body(
             from_wallet_id=wallet_id,
             from_amount="20",
-            from_currency_id=trip["currencies"][1]["id"],
+            from_currency_id=currencies[1]["id"],
             to_wallet_id=wallet_id,
             to_amount="2800",
-            to_currency_id=trip["currencies"][0]["id"],
+            to_currency_id=currencies[0]["id"],
         ),
-    ).json()["transfer"]
-
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/transfers/{created['id']}", json={"from_amount": "30"}
     )
+
+    response = client.patch(f"{trip_url}/transfers/{created['id']}", json={"from_amount": "30"})
 
     assert response.status_code == 200
     updated = response.json()["transfer"]
@@ -137,20 +131,17 @@ def test_update_transfer_exchange_keeps_to_amount_when_only_from_changes(
     assert updated["to_amount"] == 2800
 
 
-def test_update_transfer_dropping_to_currency_becomes_plain_and_mirrors(
-    client, trip, default_wallet_of, person_id, transfer_body
+def test_update_transfer_dropping_to_currency_becomes_plain_and_mirrors(  # noqa: PLR0913, PLR0917 (the fixtures are the setup)
+    client, currencies, default_wallet_of, person_id, transfer_body, trip_url, create
 ):
     """Setting to_currency_id back to the from side, with to_amount omitted, mirrors from_amount."""
     petr = person_id("Petr")
     card = default_wallet_of(petr)["id"]
-    cash = client.post(
-        f"/api/v1/trips/{trip['slug']}/wallets",
-        json={"person_id": petr, "name": "Cash", "tracked": True},
-    ).json()["wallet"]["id"]
-    eur, isk = trip["currencies"][1]["id"], trip["currencies"][0]["id"]
-    created = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers",
-        json=transfer_body(
+    cash = create("wallets", {"person_id": petr, "name": "Cash", "tracked": True})["id"]
+    eur, isk = currencies[1]["id"], currencies[0]["id"]
+    created = create(
+        "transfers",
+        transfer_body(
             from_wallet_id=card,
             from_amount="20",
             from_currency_id=eur,
@@ -158,10 +149,10 @@ def test_update_transfer_dropping_to_currency_becomes_plain_and_mirrors(
             to_amount="2800",
             to_currency_id=isk,
         ),
-    ).json()["transfer"]
+    )
 
     response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/transfers/{created['id']}",
+        f"{trip_url}/transfers/{created['id']}",
         json={"to_currency_id": eur},
     )
 
@@ -171,105 +162,81 @@ def test_update_transfer_dropping_to_currency_becomes_plain_and_mirrors(
     assert updated["to_amount"] == 20
 
 
-def test_delete_transfer_then_get_is_404(client, trip, transfer_body):
+def test_delete_transfer_then_get_is_404(client, trip_url, transfer_body, create):
     """A deleted transfer is gone."""
-    created = client.post(f"/api/v1/trips/{trip['slug']}/transfers", json=transfer_body()).json()[
-        "transfer"
-    ]
+    created = create("transfers", transfer_body())
 
-    delete_response = client.delete(f"/api/v1/trips/{trip['slug']}/transfers/{created['id']}")
-    get_response = client.get(f"/api/v1/trips/{trip['slug']}/transfers/{created['id']}")
+    delete_response = client.delete(f"{trip_url}/transfers/{created['id']}")
+    get_response = client.get(f"{trip_url}/transfers/{created['id']}")
 
     assert delete_response.status_code == 204
     assert get_response.status_code == 404
     assert get_response.json()["error"] == {"code": "not_found", "params": {"resource": "transfer"}}
 
 
-def test_transfers_are_absent_from_day_totals_stats_and_total_spent(
-    client, trip, transfer_body, item_body
+def test_transfers_are_absent_from_day_totals_stats_and_total_spent(  # noqa: PLR0913, PLR0917 (the fixtures are the setup)
+    client, currencies, transfer_body, item_body, trip_url, create
 ):
     """A transfer is movement, not spending: it touches none of the spend aggregates."""
-    client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
-        json=item_body(amount="100.00", occurred_at="2026-09-14T12:00:00"),
-    )
-    client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers",
-        json=transfer_body(from_amount="99999", occurred_at="2026-09-14T12:00:00"),
-    )
+    create("items", item_body(amount="100.00", occurred_at="2026-09-14T12:00:00"))
+    create("transfers", transfer_body(from_amount="99999", occurred_at="2026-09-14T12:00:00"))
 
-    items_response = client.get(f"/api/v1/trips/{trip['slug']}/items").json()
+    items_response = client.get(f"{trip_url}/items").json()
     day_total = next(d for d in items_response["day_totals"] if d["date"] == "2026-09-14")
     assert day_total["totals"] == [
-        {"currency_code": "ISK", "currency_id": trip["currencies"][0]["id"], "amount": 100}
+        {"currency_code": "ISK", "currency_id": currencies[0]["id"], "amount": 100}
     ]
     assert len(items_response["transfers"]) == 1
 
-    groups = client.get(f"/api/v1/trips/{trip['slug']}/stats").json()["groups"]
+    groups = client.get(f"{trip_url}/stats").json()["groups"]
     totals = next(g for g in groups if g["by"] == ["currency"])["rows"]
     assert totals == [
-        {"keys": {"currency_id": trip["currencies"][0]["id"]}, "amount": 100, "item_count": 1}
+        {"keys": {"currency_id": currencies[0]["id"]}, "amount": 100, "item_count": 1}
     ]
 
-    balances = client.get(f"/api/v1/trips/{trip['slug']}/balances").json()["balances"]
+    balances = client.get(f"{trip_url}/balances").json()["balances"]
     isk_balances = next(b for b in balances if b["currency_code"] == "ISK")
     assert isk_balances["total_spent"] == 100
 
 
-def test_items_envelope_merges_transfers_sorted_newest_first(client, trip, transfer_body):
+def test_items_envelope_merges_transfers_sorted_newest_first(
+    client, trip_url, transfer_body, create
+):
     """Transfers ride the items envelope, sorted like items: occurred_at desc, id desc."""
-    older = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers",
-        json=transfer_body(occurred_at="2026-09-13T09:00:00"),
-    ).json()["transfer"]
-    newer = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers",
-        json=transfer_body(occurred_at="2026-09-14T09:00:00"),
-    ).json()["transfer"]
+    older = create("transfers", transfer_body(occurred_at="2026-09-13T09:00:00"))
+    newer = create("transfers", transfer_body(occurred_at="2026-09-14T09:00:00"))
 
-    transfers = client.get(f"/api/v1/trips/{trip['slug']}/items").json()["transfers"]
+    transfers = client.get(f"{trip_url}/items").json()["transfers"]
 
     assert [t["id"] for t in transfers] == [newer["id"], older["id"]]
 
 
-def test_list_transfers_is_newest_first(client, trip, transfer_body):
+def test_list_transfers_is_newest_first(client, trip_url, transfer_body, create):
     """The transfers collection answers on its own route, ordered occurred_at desc, id desc."""
-    older = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers",
-        json=transfer_body(occurred_at="2026-09-13T09:00:00"),
-    ).json()["transfer"]
-    newer = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers",
-        json=transfer_body(occurred_at="2026-09-14T09:00:00"),
-    ).json()["transfer"]
+    older = create("transfers", transfer_body(occurred_at="2026-09-13T09:00:00"))
+    newer = create("transfers", transfer_body(occurred_at="2026-09-14T09:00:00"))
 
-    response = client.get(f"/api/v1/trips/{trip['slug']}/transfers")
+    response = client.get(f"{trip_url}/transfers")
 
     assert response.status_code == 200
     assert [t["id"] for t in response.json()["transfers"]] == [newer["id"], older["id"]]
 
 
-def test_get_transfer_reads_back_what_was_created(client, trip, transfer_body):
+def test_get_transfer_reads_back_what_was_created(client, trip_url, transfer_body, create):
     """A transfer read by id is the same body the create answered with."""
-    created = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers", json=transfer_body(from_amount="150.00")
-    ).json()["transfer"]
+    created = create("transfers", transfer_body(from_amount="150.00"))
 
-    read_back = client.get(f"/api/v1/trips/{trip['slug']}/transfers/{created['id']}")
+    read_back = client.get(f"{trip_url}/transfers/{created['id']}")
 
     assert read_back.status_code == 200
     assert read_back.json()["transfer"] == created
 
 
-def test_update_transfer_note(client, trip, transfer_body):
+def test_update_transfer_note(client, trip_url, transfer_body, create):
     """A PATCH carrying only a note writes it and leaves both amounts alone."""
-    created = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers", json=transfer_body(from_amount="100")
-    ).json()["transfer"]
+    created = create("transfers", transfer_body(from_amount="100"))
 
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/transfers/{created['id']}", json={"note": "for petrol"}
-    )
+    response = client.patch(f"{trip_url}/transfers/{created['id']}", json={"note": "for petrol"})
 
     assert response.status_code == 200
     updated = response.json()["transfer"]
@@ -278,27 +245,25 @@ def test_update_transfer_note(client, trip, transfer_body):
     assert updated["to_amount"] == 100
 
 
-def test_update_transfer_explicit_to_amount_on_an_exchange(
-    client, trip, default_wallet_of, person_id, transfer_body
+def test_update_transfer_explicit_to_amount_on_an_exchange(  # noqa: PLR0913, PLR0917 (the fixtures are the setup)
+    client, currencies, default_wallet_of, person_id, transfer_body, trip_url, create
 ):
     """A new to_amount on an exchange is written as sent, not mirrored from the from side."""
     petr = person_id("Petr")
     wallet_id = default_wallet_of(petr)["id"]
-    created = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers",
-        json=transfer_body(
+    created = create(
+        "transfers",
+        transfer_body(
             from_wallet_id=wallet_id,
             from_amount="20",
-            from_currency_id=trip["currencies"][1]["id"],
+            from_currency_id=currencies[1]["id"],
             to_wallet_id=wallet_id,
             to_amount="2800",
-            to_currency_id=trip["currencies"][0]["id"],
+            to_currency_id=currencies[0]["id"],
         ),
-    ).json()["transfer"]
-
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/transfers/{created['id']}", json={"to_amount": "2900"}
     )
+
+    response = client.patch(f"{trip_url}/transfers/{created['id']}", json={"to_amount": "2900"})
 
     assert response.status_code == 200
     updated = response.json()["transfer"]
@@ -306,12 +271,12 @@ def test_update_transfer_explicit_to_amount_on_an_exchange(
     assert updated["to_amount"] == 2900
 
 
-def test_create_transfer_missing_amount_is_required(client, trip, transfer_body):
+def test_create_transfer_missing_amount_is_required(client, trip_url, transfer_body):
     """`from_amount` is required on create; there is nothing on file to default it from."""
     body = transfer_body()
     del body["from_amount"]
 
-    response = client.post(f"/api/v1/trips/{trip['slug']}/transfers", json=body)
+    response = client.post(f"{trip_url}/transfers", json=body)
 
     assert response.status_code == 422
     assert response.json() == {
@@ -323,10 +288,10 @@ def test_create_transfer_missing_amount_is_required(client, trip, transfer_body)
     }
 
 
-def test_create_transfer_to_currency_not_in_trip_is_not_in_trip(client, trip, transfer_body):
+def test_create_transfer_to_currency_not_in_trip_is_not_in_trip(client, transfer_body, trip_url):
     """A to-side currency from outside this trip is rejected on its own field."""
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers",
+        f"{trip_url}/transfers",
         json=transfer_body(to_currency_id=999999, to_amount="20"),
     )
 

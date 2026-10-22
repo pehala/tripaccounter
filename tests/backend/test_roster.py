@@ -3,9 +3,9 @@
 import pytest
 
 
-def test_duplicate_person_name_is_409(client, trip, people):
+def test_duplicate_person_name_is_409(client, trip, people, trip_url):
     """A duplicate person name within a trip is a conflict."""
-    response = client.post(f"/api/v1/trips/{trip['slug']}/people", json={"name": people[0]["name"]})
+    response = client.post(f"{trip_url}/people", json={"name": people[0]["name"]})
     assert response.status_code == 409
     assert response.json() == {
         "error": {
@@ -16,31 +16,31 @@ def test_duplicate_person_name_is_409(client, trip, people):
     }
 
 
-def test_delete_referenced_person_is_409_in_use(client, trip, people, item_body):
+def test_delete_referenced_person_is_409_in_use(client, trip_url, people, item_body, create):
     """Deleting a person referenced by an item's share is blocked."""
-    client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body())
+    create("items", item_body())
     person_id = people[0]["id"]
 
-    response = client.delete(f"/api/v1/trips/{trip['slug']}/people/{person_id}")
+    response = client.delete(f"{trip_url}/people/{person_id}")
     assert response.status_code == 409
     body = response.json()
     assert body["error"]["code"] == "conflict"
     assert body["error"]["fields"]["id"]["code"] == "in_use"
 
 
-def test_patch_person_active_false_hides_from_new_splits(client, trip, people, item_body):
+def test_patch_person_active_false_hides_from_new_splits(
+    client, trip_url, people, item_body, create
+):
     """A deactivated person is left out of a new default split and gets no null entry either."""
     person_id = people[0]["id"]
 
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/people/{person_id}", json={"active": False}
-    )
+    response = client.patch(f"{trip_url}/people/{person_id}", json={"active": False})
     assert response.status_code == 200
     assert response.json()["person"]["active"] is False
 
     body = item_body(amount="90.00", payer_id=people[1]["id"])
     del body["shares"]
-    item = client.post(f"/api/v1/trips/{trip['slug']}/items", json=body).json()["item"]
+    item = create("items", body)
     assert [share["person_id"] for share in item["split"]["shares"]] == [
         people[1]["id"],
         people[2]["id"],
@@ -91,8 +91,8 @@ def test_patch_person_active_false_hides_from_new_splits(client, trip, people, i
         ),
     ],
 )
-def test_deactivated_sharer_keeps_their_share_through_a_full_edit(
-    client, trip, item_body, deactivate, case
+def test_deactivated_sharer_keeps_their_share_through_a_full_edit(  # noqa: PLR0913, PLR0917 (the fixtures are the setup)
+    client, trip, item_body, deactivate, case, trip_url, create
 ):
     """An item still lists a sharer deactivated since, and resending its split keeps them on it."""
     people = trip["people"]
@@ -101,33 +101,29 @@ def test_deactivated_sharer_keeps_their_share_through_a_full_edit(
         for person, fields in zip(people, case["share_fields"], strict=True)
     ]
     body = item_body(amount=case["amount"], split_mode=case["split_mode"], shares=shares)
-    item_id = client.post(f"/api/v1/trips/{trip['slug']}/items", json=body).json()["item"]["id"]
+    item_id = create("items", body)["id"]
     deactivate(people[3])
     expected_shares = [
         {"person_id": person["id"], "weight": weight, "owed": owed}
         for person, (weight, owed) in zip(people, case["expected"], strict=True)
     ]
 
-    read = client.get(f"/api/v1/trips/{trip['slug']}/items/{item_id}")
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/items/{item_id}", json={**body, "name": "Renamed"}
-    )
+    read = client.get(f"{trip_url}/items/{item_id}")
+    response = client.patch(f"{trip_url}/items/{item_id}", json={**body, "name": "Renamed"})
 
     assert read.json()["item"]["split"]["shares"] == expected_shares
     assert response.status_code == 200, response.text
     assert response.json()["item"]["split"]["shares"] == expected_shares
 
 
-def test_amount_only_edit_keeps_deactivated_sharer(client, trip, people, item_body, deactivate):
+def test_amount_only_edit_keeps_deactivated_sharer(  # noqa: PLR0913, PLR0917 (the fixtures are the setup)
+    client, trip_url, people, item_body, deactivate, create
+):
     """An amount-only edit re-splits over the saved sharers, a deactivated one included."""
-    item_id = client.post(
-        f"/api/v1/trips/{trip['slug']}/items", json=item_body(amount="18400")
-    ).json()["item"]["id"]
+    item_id = create("items", item_body(amount="18400"))["id"]
     deactivate(people[3])
 
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/items/{item_id}", json={"amount": "20000"}
-    )
+    response = client.patch(f"{trip_url}/items/{item_id}", json={"amount": "20000"})
 
     assert response.status_code == 200, response.text
     assert response.json()["item"]["split"]["shares"] == [
@@ -135,12 +131,12 @@ def test_amount_only_edit_keeps_deactivated_sharer(client, trip, people, item_bo
     ]
 
 
-def test_preview_split_lists_a_deactivated_sharer(client, trip, people, item_body, deactivate):
+def test_preview_split_lists_a_deactivated_sharer(client, trip_url, people, item_body, deactivate):
     """Previewing an edit whose split holds an inactive person resolves their share too."""
     deactivate(people[3])
     body = item_body(amount="18400", shares=[{"person_id": person["id"]} for person in people])
 
-    response = client.post(f"/api/v1/trips/{trip['slug']}/items/preview-split", json=body)
+    response = client.post(f"{trip_url}/items/preview-split", json=body)
 
     assert response.status_code == 200, response.text
     assert response.json()["split"]["shares"] == [
@@ -148,15 +144,13 @@ def test_preview_split_lists_a_deactivated_sharer(client, trip, people, item_bod
     ]
 
 
-def test_edit_keeps_a_deactivated_payer(client, trip, people, item_body, deactivate):
+def test_edit_keeps_a_deactivated_payer(client, trip_url, people, item_body, deactivate, create):  # noqa: PLR0913, PLR0917 (the fixtures are the setup)
     """Resending the payer an item already has is accepted after that payer was deactivated."""
     body = item_body(amount="18400", payer_id=people[0]["id"])
-    created = client.post(f"/api/v1/trips/{trip['slug']}/items", json=body).json()["item"]
+    created = create("items", body)
     deactivate(people[0])
 
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/items/{created['id']}", json={**body, "name": "Renamed"}
-    )
+    response = client.patch(f"{trip_url}/items/{created['id']}", json={**body, "name": "Renamed"})
 
     assert response.status_code == 200, response.text
     item = response.json()["item"]
@@ -167,9 +161,9 @@ def test_edit_keeps_a_deactivated_payer(client, trip, people, item_body, deactiv
     )
 
 
-def test_currency_code_must_be_three_letters(client, trip):
+def test_currency_code_must_be_three_letters(client, trip_url):
     """A malformed currency code is invalid_code."""
-    response = client.post(f"/api/v1/trips/{trip['slug']}/currencies", json={"code": "US"})
+    response = client.post(f"{trip_url}/currencies", json={"code": "US"})
     assert response.status_code == 422
     assert response.json() == {
         "error": {
@@ -180,33 +174,31 @@ def test_currency_code_must_be_three_letters(client, trip):
     }
 
 
-def test_duplicate_currency_code_is_409(client, trip, currency):
+def test_duplicate_currency_code_is_409(client, trip, currency, trip_url):
     """Adding a currency code already on the trip conflicts."""
-    response = client.post(
-        f"/api/v1/trips/{trip['slug']}/currencies", json={"code": currency["code"]}
-    )
+    response = client.post(f"{trip_url}/currencies", json={"code": currency["code"]})
     assert response.status_code == 409
     body = response.json()
     assert body["error"]["code"] == "conflict"
     assert body["error"]["fields"]["code"]["code"] == "duplicate"
 
 
-def test_delete_referenced_currency_is_409(client, trip, currency, item_body):
+def test_delete_referenced_currency_is_409(client, trip_url, currency, item_body, create):
     """A currency used by an item cannot be deleted."""
-    client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body())
+    create("items", item_body())
 
-    response = client.delete(f"/api/v1/trips/{trip['slug']}/currencies/{currency['id']}")
+    response = client.delete(f"{trip_url}/currencies/{currency['id']}")
     assert response.status_code == 409
     body = response.json()
     assert body["error"]["code"] == "conflict"
     assert body["error"]["fields"]["id"]["code"] == "in_use"
 
 
-def test_delete_country_held_by_a_stay_is_409_in_use(client, trip, country, stay_body):
+def test_delete_country_held_by_a_stay_is_409_in_use(client, trip_url, country, stay_body, create):
     """A country a stay sits in cannot be deleted, even with no item in it."""
-    client.post(f"/api/v1/trips/{trip['slug']}/stays", json=stay_body())
+    create("stays", stay_body())
 
-    response = client.delete(f"/api/v1/trips/{trip['slug']}/countries/{country['id']}")
+    response = client.delete(f"{trip_url}/countries/{country['id']}")
 
     assert response.status_code == 409
     assert response.json() == {
@@ -218,11 +210,9 @@ def test_delete_country_held_by_a_stay_is_409_in_use(client, trip, country, stay
     }
 
 
-def test_duplicate_country_name_is_409(client, trip, country):
+def test_duplicate_country_name_is_409(client, trip, country, trip_url):
     """A country name collision within a trip conflicts."""
-    response = client.post(
-        f"/api/v1/trips/{trip['slug']}/countries", json={"name": country["name"]}
-    )
+    response = client.post(f"{trip_url}/countries", json={"name": country["name"]})
     assert response.status_code == 409
     assert response.json() == {
         "error": {
@@ -233,96 +223,90 @@ def test_duplicate_country_name_is_409(client, trip, country):
     }
 
 
-def test_delete_referenced_country_is_409(client, trip, country, item_body):
+def test_delete_referenced_country_is_409(client, trip_url, country, item_body, create):
     """A country used by an item cannot be deleted."""
-    client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body())
+    create("items", item_body())
 
-    response = client.delete(f"/api/v1/trips/{trip['slug']}/countries/{country['id']}")
+    response = client.delete(f"{trip_url}/countries/{country['id']}")
     assert response.status_code == 409
     body = response.json()
     assert body["error"]["code"] == "conflict"
     assert body["error"]["fields"]["id"]["code"] == "in_use"
 
 
-def test_country_flag_derived_from_code(client, trip):
+def test_country_flag_derived_from_code(client, trip_url):
     """A country with an ISO code gets a derived flag; without one, null."""
-    response = client.post(
-        f"/api/v1/trips/{trip['slug']}/countries", json={"name": "Denmark", "code": "DK"}
-    )
+    response = client.post(f"{trip_url}/countries", json={"name": "Denmark", "code": "DK"})
     assert response.json()["country"]["flag"] == "🇩🇰"
 
-    response = client.post(f"/api/v1/trips/{trip['slug']}/countries", json={"name": "Somewhere"})
+    response = client.post(f"{trip_url}/countries", json={"name": "Somewhere"})
     assert response.json()["country"]["flag"] is None
 
 
-def test_people_list_follows_sort_order_not_row_age(client, trip, people):
+def test_people_list_follows_sort_order_not_row_age(client, trip_url, people):
     """Reversing the roster's sort_order reverses the list, which row age alone would not."""
     for position, person in enumerate(reversed(people)):
-        response = client.patch(
-            f"/api/v1/trips/{trip['slug']}/people/{person['id']}", json={"sort_order": position}
-        )
+        response = client.patch(f"{trip_url}/people/{person['id']}", json={"sort_order": position})
         assert response.status_code == 200, response.text
 
-    listed = client.get(f"/api/v1/trips/{trip['slug']}/people").json()["people"]
+    listed = client.get(f"{trip_url}/people").json()["people"]
     assert [person["name"] for person in listed] == ["Eva", "Bob", "Ann", "Petr"]
     assert [person["sort_order"] for person in listed] == [0, 1, 2, 3]
 
 
-def test_people_tied_on_sort_order_fall_back_to_name(client, trip, person_id):
+def test_people_tied_on_sort_order_fall_back_to_name(client, trip_url, person_id):
     """Two people on the same `sort_order` order by name, so the roster stays total."""
-    client.patch(f"/api/v1/trips/{trip['slug']}/people/{person_id('Petr')}", json={"sort_order": 1})
+    client.patch(f"{trip_url}/people/{person_id('Petr')}", json={"sort_order": 1})
 
-    listed = client.get(f"/api/v1/trips/{trip['slug']}/people").json()["people"]
+    listed = client.get(f"{trip_url}/people").json()["people"]
 
     assert [person["name"] for person in listed] == ["Ann", "Petr", "Bob", "Eva"]
 
 
-def test_currencies_list_is_primary_then_code_not_row_age(client, trip):
+def test_currencies_list_is_primary_then_code_not_row_age(client, trip_url, create):
     """The currency list leads with the primary, then by code - neither is row age."""
-    client.post(f"/api/v1/trips/{trip['slug']}/currencies", json={"code": "DKK"})
+    create("currencies", {"code": "DKK"})
 
-    listed = client.get(f"/api/v1/trips/{trip['slug']}/currencies").json()["currencies"]
+    listed = client.get(f"{trip_url}/currencies").json()["currencies"]
 
     assert [currency["code"] for currency in listed] == ["ISK", "DKK", "EUR"]
 
 
-def test_currencies_list_follows_a_moved_primary(client, trip, currencies):
+def test_currencies_list_follows_a_moved_primary(client, trip_url, currencies):
     """Making EUR primary moves it to the front, which code order alone would not."""
     eur = next(currency for currency in currencies if currency["code"] == "EUR")
-    client.patch(f"/api/v1/trips/{trip['slug']}/currencies/{eur['id']}", json={"is_primary": True})
+    client.patch(f"{trip_url}/currencies/{eur['id']}", json={"is_primary": True})
 
-    listed = client.get(f"/api/v1/trips/{trip['slug']}/currencies").json()["currencies"]
+    listed = client.get(f"{trip_url}/currencies").json()["currencies"]
 
     assert [currency["code"] for currency in listed] == ["EUR", "ISK"]
 
 
-def test_countries_list_is_default_then_name_not_row_age(client, trip):
+def test_countries_list_is_default_then_name_not_row_age(client, trip_url, create):
     """The country list leads with the default, then by name - neither is row age."""
-    client.post(f"/api/v1/trips/{trip['slug']}/countries", json={"name": "Denmark", "code": "DK"})
+    create("countries", {"name": "Denmark", "code": "DK"})
 
-    listed = client.get(f"/api/v1/trips/{trip['slug']}/countries").json()["countries"]
+    listed = client.get(f"{trip_url}/countries").json()["countries"]
 
     assert [entry["name"] for entry in listed] == ["Iceland", "Denmark"]
 
 
-def test_countries_list_follows_a_moved_default(client, trip):
+def test_countries_list_follows_a_moved_default(client, trip_url, create):
     """Making Denmark the default moves it ahead of Iceland, which name order would not."""
-    added = client.post(
-        f"/api/v1/trips/{trip['slug']}/countries", json={"name": "Denmark", "code": "DK"}
-    ).json()["country"]
-    client.patch(f"/api/v1/trips/{trip['slug']}/countries/{added['id']}", json={"is_default": True})
+    added = create("countries", {"name": "Denmark", "code": "DK"})
+    client.patch(f"{trip_url}/countries/{added['id']}", json={"is_default": True})
 
-    listed = client.get(f"/api/v1/trips/{trip['slug']}/countries").json()["countries"]
+    listed = client.get(f"{trip_url}/countries").json()["countries"]
 
     assert [entry["name"] for entry in listed] == ["Denmark", "Iceland"]
 
 
-def test_create_person_gets_a_default_card_wallet(client, trip):
+def test_create_person_gets_a_default_card_wallet(client, trip, trip_url):
     """Every new person gets an untracked, default `Card` wallet, server-side."""
-    response = client.post(f"/api/v1/trips/{trip['slug']}/people", json={"name": "Frank"})
+    response = client.post(f"{trip_url}/people", json={"name": "Frank"})
     person_id = response.json()["person"]["id"]
 
-    updated_trip = client.get(f"/api/v1/trips/{trip['slug']}").json()["trip"]
+    updated_trip = client.get(f"{trip_url}").json()["trip"]
     franks_wallets = [w for w in updated_trip["wallets"] if w["person_id"] == person_id]
 
     assert len(franks_wallets) == 1
@@ -335,14 +319,14 @@ def test_create_person_gets_a_default_card_wallet(client, trip):
     }
 
 
-def test_delete_person_referenced_by_transfer_is_409_in_use(
-    client, trip, person_id, default_wallet_of
+def test_delete_person_referenced_by_transfer_is_409_in_use(  # noqa: PLR0913, PLR0917 (the fixtures are the setup)
+    client, trip, person_id, default_wallet_of, trip_url, create
 ):
     """A person whose wallet appears in a transfer can't be deleted, even with no items."""
     ann, bob = person_id("Ann"), person_id("Bob")
-    client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers",
-        json={
+    create(
+        "transfers",
+        {
             "from_wallet_id": default_wallet_of(ann)["id"],
             "from_amount": "50",
             "from_currency_id": trip["currencies"][0]["id"],
@@ -350,20 +334,20 @@ def test_delete_person_referenced_by_transfer_is_409_in_use(
         },
     )
 
-    response = client.delete(f"/api/v1/trips/{trip['slug']}/people/{ann}")
+    response = client.delete(f"{trip_url}/people/{ann}")
     assert response.status_code == 409
     assert response.json()["error"]["fields"]["id"]["code"] == "in_use"
 
 
-def test_delete_currency_referenced_by_transfer_is_409_in_use(
-    client, trip, person_id, default_wallet_of, currencies
+def test_delete_currency_referenced_by_transfer_is_409_in_use(  # noqa: PLR0913, PLR0917 (the fixtures are the setup)
+    client, trip_url, person_id, default_wallet_of, currencies, create
 ):
     """A currency used only by a transfer, never an item, still can't be deleted."""
     ann, bob = person_id("Ann"), person_id("Bob")
     eur = currencies[1]["id"]
-    client.post(
-        f"/api/v1/trips/{trip['slug']}/transfers",
-        json={
+    create(
+        "transfers",
+        {
             "from_wallet_id": default_wallet_of(ann)["id"],
             "from_amount": "50",
             "from_currency_id": eur,
@@ -371,15 +355,15 @@ def test_delete_currency_referenced_by_transfer_is_409_in_use(
         },
     )
 
-    response = client.delete(f"/api/v1/trips/{trip['slug']}/currencies/{eur}")
+    response = client.delete(f"{trip_url}/currencies/{eur}")
     assert response.status_code == 409
     assert response.json()["error"]["fields"]["id"]["code"] == "in_use"
 
 
-def test_patch_person_renames_and_reweights(client, trip, person_id):
+def test_patch_person_renames_and_reweights(client, trip_url, person_id):
     """A PATCH carrying a new name and default weight writes both."""
     response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/people/{person_id('Petr')}",
+        f"{trip_url}/people/{person_id('Petr')}",
         json={"name": "Petra", "default_weight": "1.5"},
     )
 
@@ -390,13 +374,11 @@ def test_patch_person_renames_and_reweights(client, trip, person_id):
     assert person["default_weight"] == "1.5"
 
 
-def test_patch_person_onto_another_persons_name_is_409(client, trip, people, person_id):
+def test_patch_person_onto_another_persons_name_is_409(client, trip_url, people, person_id):
     """Renaming someone to a name already on the roster conflicts; their own name does not."""
     petr = person_id("Petr")
 
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/people/{petr}", json={"name": people[1]["name"]}
-    )
+    response = client.patch(f"{trip_url}/people/{petr}", json={"name": people[1]["name"]})
 
     assert response.status_code == 409
     assert response.json() == {
@@ -406,15 +388,13 @@ def test_patch_person_onto_another_persons_name_is_409(client, trip, people, per
             "fields": {"name": {"code": "duplicate", "params": {"name": people[1]["name"]}}},
         }
     }
-    unchanged = client.patch(f"/api/v1/trips/{trip['slug']}/people/{petr}", json={"name": "Petr"})
+    unchanged = client.patch(f"{trip_url}/people/{petr}", json={"name": "Petr"})
     assert unchanged.status_code == 200
 
 
-def test_patch_currency_symbol(client, trip, currency):
+def test_patch_currency_symbol(client, trip_url, currency):
     """A PATCH carrying a symbol writes it, leaving the code alone."""
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/currencies/{currency['id']}", json={"symbol": "kr"}
-    )
+    response = client.patch(f"{trip_url}/currencies/{currency['id']}", json={"symbol": "kr"})
 
     assert response.status_code == 200
     assert response.json()["currency"] == {
@@ -425,10 +405,10 @@ def test_patch_currency_symbol(client, trip, currency):
     }
 
 
-def test_patch_country_renames_and_uppercases_the_code(client, trip, country):
+def test_patch_country_renames_and_uppercases_the_code(client, trip_url, country):
     """A PATCH writes the new name and upper-cases the ISO code, which drives the flag."""
     response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/countries/{country['id']}",
+        f"{trip_url}/countries/{country['id']}",
         json={"name": "Danmark", "code": "dk"},
     )
 
@@ -439,15 +419,11 @@ def test_patch_country_renames_and_uppercases_the_code(client, trip, country):
     assert updated["flag"] == "🇩🇰"
 
 
-def test_patch_country_onto_another_countrys_name_is_409(client, trip, country):
+def test_patch_country_onto_another_countrys_name_is_409(client, trip, country, trip_url, create):
     """Renaming a country to one the trip already has conflicts."""
-    added = client.post(f"/api/v1/trips/{trip['slug']}/countries", json={"name": "Denmark"}).json()[
-        "country"
-    ]
+    added = create("countries", {"name": "Denmark"})
 
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/countries/{added['id']}", json={"name": country["name"]}
-    )
+    response = client.patch(f"{trip_url}/countries/{added['id']}", json={"name": country["name"]})
 
     assert response.status_code == 409
     assert response.json()["error"]["fields"]["name"] == {
@@ -464,27 +440,24 @@ def test_patch_country_onto_another_countrys_name_is_409(client, trip, country):
         pytest.param("countries", "country", {"name": "Denmark"}, id="country"),
     ],
 )
-def test_delete_unreferenced_roster_row_removes_it(client, trip, collection, resource, body):
+def test_delete_unreferenced_roster_row_removes_it(client, trip_url, collection, resource, body):
     """A roster row nothing references deletes with 204, and its id stops resolving."""
-    created = client.post(f"/api/v1/trips/{trip['slug']}/{collection}", json=body).json()[resource]
+    created = client.post(f"{trip_url}/{collection}", json=body).json()[resource]
 
-    response = client.delete(f"/api/v1/trips/{trip['slug']}/{collection}/{created['id']}")
+    response = client.delete(f"{trip_url}/{collection}/{created['id']}")
 
     assert response.status_code == 204
     assert response.content == b""
-    gone = client.delete(f"/api/v1/trips/{trip['slug']}/{collection}/{created['id']}")
+    gone = client.delete(f"{trip_url}/{collection}/{created['id']}")
     assert gone.status_code == 404
     assert gone.json() == {"error": {"code": "not_found", "params": {"resource": resource}}}
 
 
-def test_create_country_as_default_moves_the_flag(client, trip, country):
+def test_create_country_as_default_moves_the_flag(client, trip_url, country, create):
     """A country created with `is_default` takes the flag off the one that held it."""
-    client.post(
-        f"/api/v1/trips/{trip['slug']}/countries",
-        json={"name": "Denmark", "code": "DK", "is_default": True},
-    )
+    create("countries", {"name": "Denmark", "code": "DK", "is_default": True})
 
-    listed = client.get(f"/api/v1/trips/{trip['slug']}/countries").json()["countries"]
+    listed = client.get(f"{trip_url}/countries").json()["countries"]
 
     assert [(entry["name"], entry["is_default"]) for entry in listed] == [
         ("Denmark", True),
