@@ -20,6 +20,15 @@ def active_roster_ids(people: list["Person"]) -> list[int]:
     return [p.id for p in people if p.active]
 
 
+def split_roster(people: list["Person"]) -> list[tuple[int, bool]]:
+    """Return `(id, active)` for every person, in the order given.
+
+    What a resolved split is laid out against: `splits.resolve_shares_wire`
+    keeps the inactive people who carry a share and drops the rest.
+    """
+    return [(p.id, p.active) for p in people]
+
+
 class Person(SQLModel, table=True):
     """A member of a trip's roster, with a default split weight and display color."""
 

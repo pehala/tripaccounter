@@ -6,7 +6,7 @@ import { Avatar } from './Avatar.js';
 const MODES = ['equal', 'shares', 'exact'];
 
 // Collapsed to one line while it's a plain equal split; expands to mode switch
-// + one row per active person. Never computes a share itself (rule 2) — every
+// + one row per person the modal offers. Never computes a share itself (rule 2) — every
 // number shown comes from the `preview` prop, which is the server's last
 // preview-split (or saved item) response, rendered as given.
 export function SplitEditor({

@@ -29,7 +29,7 @@ def test_delete_referenced_person_is_409_in_use(client, trip, people, item_body)
 
 
 def test_patch_person_active_false_hides_from_new_splits(client, trip, people, item_body):
-    """Deactivating a person keeps existing items, drops them from new equal splits."""
+    """A deactivated person is left out of a new default split and gets no null entry either."""
     person_id = people[0]["id"]
 
     response = client.patch(
@@ -41,9 +41,130 @@ def test_patch_person_active_false_hides_from_new_splits(client, trip, people, i
     body = item_body(amount="90.00", payer_id=people[1]["id"])
     del body["shares"]
     item = client.post(f"/api/v1/trips/{trip['slug']}/items", json=body).json()["item"]
-    active_shares = [s for s in item["split"]["shares"] if s["owed"] is not None]
-    assert len(active_shares) == 3
-    assert person_id not in [s["person_id"] for s in active_shares]
+    assert [share["person_id"] for share in item["split"]["shares"]] == [
+        people[1]["id"],
+        people[2]["id"],
+        people[3]["id"],
+    ]
+    assert all(share["owed"] is not None for share in item["split"]["shares"])
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param(
+            {
+                "split_mode": "equal",
+                "amount": "18400",
+                "share_fields": [{}, {}, {}, {}],
+                "expected": [("1", 4600), ("1", 4600), ("1", 4600), ("1", 4600)],
+            },
+            id="equal",
+        ),
+        pytest.param(
+            {
+                "split_mode": "shares",
+                "amount": "17500",
+                "share_fields": [
+                    {"weight": "1"},
+                    {"weight": "1"},
+                    {"weight": "1"},
+                    {"weight": "0.5"},
+                ],
+                "expected": [("1", 5000), ("1", 5000), ("1", 5000), ("0.5", 2500)],
+            },
+            id="shares",
+        ),
+        pytest.param(
+            {
+                "split_mode": "exact",
+                "amount": "18400",
+                "share_fields": [
+                    {"amount": "9000"},
+                    {"amount": "3000"},
+                    {"amount": "3000"},
+                    {"amount": "3400"},
+                ],
+                "expected": [("1", 9000), ("1", 3000), ("1", 3000), ("1", 3400)],
+            },
+            id="exact",
+        ),
+    ],
+)
+def test_deactivated_sharer_keeps_their_share_through_a_full_edit(
+    client, trip, item_body, deactivate, case
+):
+    """An item still lists a sharer deactivated since, and resending its split keeps them on it."""
+    people = trip["people"]
+    shares = [
+        {"person_id": person["id"], **fields}
+        for person, fields in zip(people, case["share_fields"], strict=True)
+    ]
+    body = item_body(amount=case["amount"], split_mode=case["split_mode"], shares=shares)
+    item_id = client.post(f"/api/v1/trips/{trip['slug']}/items", json=body).json()["item"]["id"]
+    deactivate(people[3])
+    expected_shares = [
+        {"person_id": person["id"], "weight": weight, "owed": owed}
+        for person, (weight, owed) in zip(people, case["expected"], strict=True)
+    ]
+
+    read = client.get(f"/api/v1/trips/{trip['slug']}/items/{item_id}")
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{item_id}", json={**body, "name": "Renamed"}
+    )
+
+    assert read.json()["item"]["split"]["shares"] == expected_shares
+    assert response.status_code == 200, response.text
+    assert response.json()["item"]["split"]["shares"] == expected_shares
+
+
+def test_amount_only_edit_keeps_deactivated_sharer(client, trip, people, item_body, deactivate):
+    """An amount-only edit re-splits over the saved sharers, a deactivated one included."""
+    item_id = client.post(
+        f"/api/v1/trips/{trip['slug']}/items", json=item_body(amount="18400")
+    ).json()["item"]["id"]
+    deactivate(people[3])
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{item_id}", json={"amount": "20000"}
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["item"]["split"]["shares"] == [
+        {"person_id": person["id"], "weight": "1", "owed": 5000} for person in people
+    ]
+
+
+def test_preview_split_lists_a_deactivated_sharer(client, trip, people, item_body, deactivate):
+    """Previewing an edit whose split holds an inactive person resolves their share too."""
+    deactivate(people[3])
+    body = item_body(amount="18400", shares=[{"person_id": person["id"]} for person in people])
+
+    response = client.post(f"/api/v1/trips/{trip['slug']}/items/preview-split", json=body)
+
+    assert response.status_code == 200, response.text
+    assert response.json()["split"]["shares"] == [
+        {"person_id": person["id"], "weight": "1", "owed": 4600} for person in people
+    ]
+
+
+def test_edit_keeps_a_deactivated_payer(client, trip, people, item_body, deactivate):
+    """Resending the payer an item already has is accepted after that payer was deactivated."""
+    body = item_body(amount="18400", payer_id=people[0]["id"])
+    created = client.post(f"/api/v1/trips/{trip['slug']}/items", json=body).json()["item"]
+    deactivate(people[0])
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{created['id']}", json={**body, "name": "Renamed"}
+    )
+
+    assert response.status_code == 200, response.text
+    item = response.json()["item"]
+    assert (item["name"], item["payer_id"], item["wallet_id"]) == (
+        "Renamed",
+        people[0]["id"],
+        created["wallet_id"],
+    )
 
 
 def test_currency_code_must_be_three_letters(client, trip):

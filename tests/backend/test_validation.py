@@ -94,15 +94,54 @@ def test_item_write_validation(client, trip, item_body, overrides, expected):
     }
 
 
-def test_item_payer_who_is_inactive_is_rejected(client, trip, people, item_body):
-    """An item can't name a deactivated person as its payer."""
-    payer = people[0]["id"]
-    client.patch(f"/api/v1/trips/{trip['slug']}/people/{payer}", json={"active": False})
+PLACE_INACTIVE = {
+    "payer_id": lambda people: {"payer_id": people[3]["id"]},
+    "shares": lambda people: {"shares": [{"person_id": person["id"]} for person in people]},
+}
 
-    response = client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(payer_id=payer))
+
+@pytest.mark.parametrize("field", [pytest.param(field, id=field) for field in PLACE_INACTIVE])
+def test_new_item_cannot_place_an_inactive_person(client, trip, item_body, deactivate, field):
+    """A new item can name a deactivated person neither as its payer nor in its split."""
+    deactivate(trip["people"][3])
+
+    response = client.post(
+        f"/api/v1/trips/{trip['slug']}/items",
+        json=item_body(**PLACE_INACTIVE[field](trip["people"])),
+    )
 
     assert response.status_code == 422
-    assert response.json()["error"]["fields"]["payer_id"] == {"code": "inactive", "params": {}}
+    assert response.json() == {
+        "error": {
+            "code": "validation_error",
+            "params": {},
+            "fields": {field: {"code": "inactive", "params": {}}},
+        }
+    }
+
+
+@pytest.mark.parametrize("field", [pytest.param(field, id=field) for field in PLACE_INACTIVE])
+def test_edit_cannot_newly_place_an_inactive_person(client, trip, item_body, deactivate, field):
+    """An edit can't make a deactivated person the payer or add them to a split they weren't on."""
+    people = trip["people"]
+    item_id = client.post(
+        f"/api/v1/trips/{trip['slug']}/items",
+        json=item_body(shares=[{"person_id": person["id"]} for person in people[:3]]),
+    ).json()["item"]["id"]
+    deactivate(people[3])
+
+    response = client.patch(
+        f"/api/v1/trips/{trip['slug']}/items/{item_id}", json=PLACE_INACTIVE[field](people)
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "error": {
+            "code": "validation_error",
+            "params": {},
+            "fields": {field: {"code": "inactive", "params": {}}},
+        }
+    }
 
 
 def test_person_default_weight_must_be_a_canonical_decimal_string(client, trip):

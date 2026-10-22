@@ -124,7 +124,13 @@ export function ItemModal({ trip, labels, entry, onClose }) {
   const item = isEdit && entry.kind === 'item' ? entry.row : null;
   const transfer = isEdit && entry.kind === 'transfer' ? entry.row : null;
   const [kind, setKind] = useState(isEdit && entry.kind === 'transfer' ? 'transfer' : 'item');
-  const activePeople = useMemo(() => trip.people.filter((p) => p.active), [trip]);
+  // An inactive person is offered only where the saved item already has them, so
+  // an edit keeps them and a new item never gains them.
+  const splitPeople = useMemo(() => {
+    const sharing = new Set((item?.split.shares || []).filter((s) => s.weight !== null).map((s) => s.person_id));
+    return trip.people.filter((p) => p.active || sharing.has(p.id));
+  }, [trip]);
+  const payerPeople = useMemo(() => trip.people.filter((p) => p.active || p.id === item?.payer_id), [trip]);
 
   const [state, setState] = useState(() => initialItemState(item, trip));
   const [tstate, setTState] = useState(() => initialTransferState(transfer, trip));
@@ -428,7 +434,7 @@ export function ItemModal({ trip, labels, entry, onClose }) {
 
             <label class="form-label small mb-1">${t('item.paid_by_label')}</label>
             <div class="d-flex gap-1 flex-wrap mb-3">
-              ${activePeople.map((p) => html`
+              ${payerPeople.map((p) => html`
                 <${PersonChip} key=${p.id} person=${p} type="radio" name="payer_id" id="pay-${p.id}"
                                 checked=${state.payerId === p.id} onChange=${() => payerChanged(p.id)} />
               `)}
@@ -441,7 +447,7 @@ export function ItemModal({ trip, labels, entry, onClose }) {
             </select>
             ${fieldError('wallet_id')}
 
-            <${SplitEditor} people=${activePeople} mode=${state.splitMode} onModeChange=${changeMode}
+            <${SplitEditor} people=${splitPeople} mode=${state.splitMode} onModeChange=${changeMode}
                             included=${state.included} onToggle=${toggleIncluded}
                             weights=${state.weights} onWeightChange=${changeWeight}
                             exacts=${state.exacts} onExactChange=${changeExact}

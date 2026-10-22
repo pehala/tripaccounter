@@ -220,7 +220,9 @@ A `DELETE` refused because the row is still referenced answers `409` with
 hold it without a second request. **People are the exception worth knowing:** a
 referenced person cannot be deleted either, and the answer is
 `PATCH {"active": false}`, which hides them from new splits while every existing
-item keeps their row.
+item keeps their row. A write may not newly make an inactive person an item's payer
+or add them to its split; it may resend them where the item already has them, so an
+edit form sends back the whole item unchanged.
 
 ### Labels
 A label name is **one token** — no whitespace inside it, ever. Typing `street food`
@@ -244,9 +246,10 @@ and win.
 **The split comes out resolved, but as data.** The backend does the weighting and the
 rounding; wording is the client's business.
 
-- `split.shares` has **one entry per active person of the trip, in roster order**
-  (`sort_order`, ties by `name`). A person left out of the item has
-  `"weight": null, "owed": null`.
+- `split.shares` has **one entry per active person of the trip, plus one per
+  inactive person holding a share of this item, in roster order** (`sort_order`,
+  ties by `name`). An active person left out of the item has
+  `"weight": null, "owed": null`; an inactive one left out has no entry.
   No filtering, no set difference, no "is this person in the list" check. `"owed": 0`
   is a different thing: they are in the split and rounding gave them nothing.
 - `owed` is the share as a fraction, to six places, **never rounded to a cent per
@@ -506,12 +509,13 @@ rule, its code and its intended meaning sit in one row.
 | `name` (item) | 1–200 chars after strip | `required` / `too_long` | `{max}` | "Give it a name." / "Keep it under 200 characters." |
 | `amount` | canonical grammar, `> 0`, ≤ 12 integer digits, ≤ 2 fraction digits | `invalid_amount` | | "Enter an amount." |
 | `currency_id` | belongs to this trip | `not_in_trip` | | "Unknown currency." |
-| `payer_id` | belongs to this trip, `active` | `not_in_trip` / `inactive` | | "Pick who paid." |
+| `payer_id` | belongs to this trip; `active`, unless it is the item's payer already | `not_in_trip` / `inactive` | | "Pick who paid." |
 | `country_id` | **required**, belongs to this trip | `required` / `not_in_trip` | | "Pick a country." |
 | `occurred_at` | valid wall time with no offset, not in a clock-change gap; default = now | `invalid_datetime` | | "Check the date." |
 | trip `timezone` | an IANA zone name; `UTC` when omitted on create | `invalid_timezone` | | "Unknown time zone." |
 | `labels[]` | each 1–40 chars, no whitespace | `label_whitespace` / `too_long` | `{value}` | "Labels can't contain spaces — use street-food." |
 | `shares` | ≥1 entry, no duplicate `person_id` | `empty` / `duplicate_person` | | "Somebody has to owe something." |
+| `shares` (item write) | every `person_id` `active`, unless the item already splits with them | `inactive` | | "This person isn't active." |
 | `shares` (exact) | each ≤ 2 fraction digits; sum exactly to `amount` | `sum_mismatch` | `{diff, currency_code}` | "Off by 0.03 ISK." |
 | `shares` (weights) | each `> 0`, ≤ 4 fraction digits | `not_positive` / `too_precise` | `{max}` | "Shares must be positive." |
 | `map_url` | absolute `http(s)` URL | `invalid_url` | | "Not a link." |

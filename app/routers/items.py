@@ -6,7 +6,7 @@ from sqlalchemy import case, select
 from app.clock import ClockDep
 from app.deps import SessionDep, TripDep
 from app.models.items import LineItem
-from app.models.roster import TripCurrency, active_roster_ids
+from app.models.roster import TripCurrency, split_roster
 from app.schemas.envelopes import DayCurrencyTotalOut, DayTotalOut, ItemEnvelope, ItemListEnvelope
 from app.schemas.error_shapes import error_responses
 from app.schemas.requests import ItemWrite, PreviewSplitRequest
@@ -45,7 +45,7 @@ def preview_split(body: PreviewSplitRequest, trip: TripDep, session: SessionDep)
         )
 
     amount_minor = to_hundredths(body.amount)
-    resolved = splits.resolve_shares_wire(active_roster_ids(trip.people), rows, amount_minor)
+    resolved = splits.resolve_shares_wire(split_roster(trip.people), rows, amount_minor)
     return {
         "split": {"mode": body.split_mode, "shares": resolved},
         "total": to_wire(amount_minor, AMOUNT_SCALE),
@@ -56,7 +56,7 @@ def preview_split(body: PreviewSplitRequest, trip: TripDep, session: SessionDep)
 def list_items(trip: TripDep, session: SessionDep):
     """List items for a trip."""
     items = session.execute(queries.items_for_trip(trip.id)).scalars().all()
-    roster_ids = active_roster_ids(trip.people)
+    roster = split_roster(trip.people)
 
     # Items dated before the trip started bucket into one "before" group instead
     # of one per day, so the feed's "Before the trip" section gets a real
@@ -92,7 +92,7 @@ def list_items(trip: TripDep, session: SessionDep):
     transfer_rows = session.execute(queries.transfers_for_trip(trip.id)).scalars().all()
 
     return {
-        "items": [ItemOut.from_item(item, roster_ids) for item in items],
+        "items": [ItemOut.from_item(item, roster) for item in items],
         "day_totals": [DayTotalOut(date=day, totals=totals) for day, totals in day_totals.items()],
         "before_trip_totals": before_trip_totals,
         "transfers": [TransferOut.from_transfer(row) for row in transfer_rows],
@@ -105,7 +105,7 @@ def list_items(trip: TripDep, session: SessionDep):
 def get_item(item_id: int, trip: TripDep, session: SessionDep):
     """Get a single item by id."""
     item = require_in_trip(session, LineItem, item_id, trip.id, "item", options=ITEM_LOAD_OPTIONS)
-    return {"item": ItemOut.from_item(item, active_roster_ids(trip.people))}
+    return {"item": ItemOut.from_item(item, split_roster(trip.people))}
 
 
 @router.post(
@@ -126,6 +126,7 @@ def create_item(body: ItemWrite, trip: TripDep, session: SessionDep, clock: Cloc
     currency = session.get(TripCurrency, body.currency_id)
     with field_errors("shares"):
         rows = item_service.build_shares(trip, mode, body.shares, body.amount, currency.code)
+        item_service.reject_new_inactive_sharers(trip, rows, set())
 
     item = LineItem(trip_id=trip.id, occurred_at=clock, wallet_id=wallet_id, split_mode=mode)
     item_service.apply_write(item, body, write_zone(body.occurred_tz, None, trip))
@@ -137,7 +138,7 @@ def create_item(body: ItemWrite, trip: TripDep, session: SessionDep, clock: Cloc
 
     session.flush()
     session.refresh(item)
-    return {"item": ItemOut.from_item(item, active_roster_ids(trip.people))}
+    return {"item": ItemOut.from_item(item, split_roster(trip.people))}
 
 
 @router.patch(
@@ -164,7 +165,7 @@ def update_item(item_id: int, body: ItemWrite, trip: TripDep, session: SessionDe
 
     session.flush()
     session.refresh(item)
-    return {"item": ItemOut.from_item(item, active_roster_ids(trip.people))}
+    return {"item": ItemOut.from_item(item, split_roster(trip.people))}
 
 
 @router.delete("/trips/{slug}/items/{item_id}", status_code=204, responses=error_responses(404))
