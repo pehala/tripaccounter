@@ -8,7 +8,7 @@ import { errText } from '../../components/errText.js';
 import { FieldError } from '../../components/FieldError.js';
 import { AddToggle } from '../../components/AddToggle.js';
 
-function CurrencyRow({ currency, slug, locale }) {
+function CurrencyRow({ currency, slug, locale, settled }) {
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(currency.symbol || '');
   const [error, setError] = useState(null);
@@ -44,7 +44,7 @@ function CurrencyRow({ currency, slug, locale }) {
         <span class="d-flex align-items-center gap-2">
           ${currency.is_primary && html`<small class="text-body-secondary">${t('setup.primary')}</small>`}
           <button class="btn btn-sm btn-link link-danger text-decoration-none" type="button"
-                  aria-label=${t('action.delete')} onClick=${remove}>
+                  aria-label=${t('action.delete')} disabled=${settled} onClick=${remove}>
             <i class="bi bi-trash"></i></button>
         </span>
       </div>
@@ -54,6 +54,7 @@ function CurrencyRow({ currency, slug, locale }) {
 }
 
 export function CurrenciesSection({ trip, locale }) {
+  const settled = Boolean(trip.settlement);
   const [adding, setAdding] = useState(false);
   const [code, setCode] = useState('');
   const [symbol, setSymbol] = useState('');
@@ -79,9 +80,9 @@ export function CurrenciesSection({ trip, locale }) {
     <div class="card shadow-sm mb-3">
       <div class="card-header d-flex justify-content-between align-items-center">
         <span class="fw-semibold">${t('setup.currencies')}</span>
-        <${AddToggle} open=${adding} onOpen=${() => setAdding(true)} />
+        <${AddToggle} open=${adding} onOpen=${() => setAdding(true)} disabled=${settled} />
       </div>
-      ${adding && html`
+      ${adding && !settled && html`
         <form class="card-body d-flex flex-wrap gap-2 align-items-start border-bottom" onSubmit=${add}>
           <div>
             <input class="form-control form-control-sm text-uppercase ${error?.code ? 'is-invalid' : ''}" style="width:6rem" maxlength="3"
@@ -100,7 +101,7 @@ export function CurrenciesSection({ trip, locale }) {
         </form>
       `}
       <ul class="list-group list-group-flush">
-        ${trip.currencies.map((c) => html`<${CurrencyRow} key=${c.id} currency=${c} slug=${trip.slug} locale=${locale} />`)}
+        ${trip.currencies.map((c) => html`<${CurrencyRow} key=${c.id} currency=${c} slug=${trip.slug} locale=${locale} settled=${settled} />`)}
       </ul>
     </div>
   `;

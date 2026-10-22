@@ -9,10 +9,12 @@ import { mergeRows } from './breakdown.js';
 // (`targetId` — any trip currency, not necessarily the primary): the target
 // itself is always 1, any other currency needs a positive typed rate or the
 // Total refuses to compute anything — the one place the frontend adds two
-// amounts, and only once every operand is known.
+// amounts, and only once every operand is known. A value is a typed string or a
+// settled trip's stored number.
 export function rateFor(currencyId, targetId, values, locale) {
   if (currencyId === targetId) return 1;
-  const raw = parse(values[currencyId], locale);
+  const stored = values[currencyId];
+  const raw = typeof stored === 'number' ? stored : parse(stored, locale);
   const value = raw === null ? null : Number(raw);
   return value && value > 0 ? value : null;
 }
@@ -60,7 +62,7 @@ export function combineRows(rows, targetId, values, locale) {
 }
 
 // Combines each currency's already-computed settle-up suggestions into one
-// converted list — never a fresh minimum-transfer plan (that's `settle.py`'s
+// converted list — never a fresh minimum-transfer plan (that's `settle_up.py`'s
 // job, not the client's). The same two people can owe each other in opposite
 // directions across different currencies, so pairs are netted: converted
 // amounts are summed signed, per unordered person pair, and a pair whose

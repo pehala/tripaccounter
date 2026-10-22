@@ -19,6 +19,7 @@ erDiagram
     TRIP_COUNTRY |o--o{ STAY : "located in"
 
     TRIP_CURRENCY ||--o{ LINE_ITEM : "denominates"
+    TRIP_CURRENCY |o--o| TRIP : "settlement target"
     TRIP_COUNTRY  ||--|{ LINE_ITEM : "located in"
 
     PERSON ||--o{ LINE_ITEM : "paid by"
@@ -45,6 +46,8 @@ erDiagram
         string   timezone "IANA name, default UTC; cuts the trip days"
         string   note "nullable"
         bool     archived "default false"
+        datetime settled_at "nullable; set with settlement_currency_id"
+        int      settlement_currency_id FK "nullable; a currency of this trip"
         datetime created_at
         datetime updated_at
     }
@@ -66,6 +69,7 @@ erDiagram
         string   code "unique per trip: EUR, ISK, CZK"
         string   symbol "nullable, display only"
         bool     is_primary "one per trip, pre-selected in forms"
+        bigint   settlement_rate_scaled "nullable; x10^9, 1 this = rate target"
     }
 
     TRIP_COUNTRY {
@@ -214,7 +218,8 @@ erDiagram
   for Balances, converted-and-netted settle-up suggestions) across currencies, but
   the rates are typed by the user in the browser, live **only** in the browser
   (`localStorage`, shared between the two pages), and the Total shows nothing until
-  every currency has one. Never sent to the API, never stored in the DB.
+  every currency has one — until the trip is settled (below), when the Total reads
+  the agreed rates stored with the trip instead.
 
 **Splits**
 - `split_mode = equal`: a row per selected person, `weight_scaled = 10000`,
@@ -353,6 +358,32 @@ from a suggestion, though — a suggestion is never recorded, a transfer always 
   `stay(id, trip_id)`). An item joins at most one stay, on any date.
 - Optional location as on an item: `country_id`, `city`, `map_url`/`lat`/`lon`,
   coordinates parsed from `map_url` the same way.
+
+**Settlement**
+- A trip holds at most one settlement: the target currency the group agreed to settle
+  in, one rate per other trip currency, and when they agreed. `TRIP.settled_at` and
+  `TRIP.settlement_currency_id` are set and cleared together —
+  `ck_trip_settlement_complete`: `(settled_at IS NULL) = (settlement_currency_id IS
+  NULL)`.
+- The target is a currency of the same trip: `fk_trip_settlement_currency`,
+  `(settlement_currency_id, id) → trip_currency (id, trip_id)`, declared with
+  `use_alter` because `trip_currency.trip_id` already references `trip`.
+  `Trip.currencies` and `TripCurrency.trip` name `TripCurrency.trip_id` as their key.
+  `trip.id` sits in that key, so the model marks it `autoincrement=True`.
+- `TRIP_CURRENCY.settlement_rate_scaled` is the rate typed for that currency: *1 this
+  currency = rate target*, at `RATE_SCALE` (10⁹). The rates follow the trip's state,
+  and a test over the seeded DB asserts it:
+  - a settled trip has a rate on every currency except the target;
+  - the target has no rate;
+  - an unsettled trip has no rate on any currency.
+- The server stores and validates the rates; the browser applies them. Balances and
+  statistics stay per currency.
+- **The lock.** While a trip is settled, every field that enters `net` keeps its
+  value: an item's `amount_minor`, `currency_id`, `payer_id`, `split_mode` and shares;
+  item create and delete; every transfer, whole; currency create and delete. Every
+  other field stays writable. `services/settlement.py` holds the rule.
+- **Deleting a settled trip** unlocks it first and flushes, so the trip row names no
+  currency when the ORM deletes its currencies.
 
 **`PERSON.sort_order` is the only stored order.** People are the one roster a user
 has a reason to arrange by hand, so that column stays and `PATCH /people/{id}`

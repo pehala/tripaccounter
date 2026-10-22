@@ -20,6 +20,7 @@ layers, how money moves, and where the two halves meet.
 | [`design/WALLETS.md`](design/WALLETS.md) | wallets and transfers — the shipped design record; the rules themselves live in `ERD.md`/`API.md`/`DECISIONS.md` |
 | [`design/EXCHANGE_RATES.md`](design/EXCHANGE_RATES.md) | per-person effective exchange rates (#37) — the shipped design record; the rules themselves live in `API.md` |
 | [`design/TIMEZONES.md`](design/TIMEZONES.md) | trip and per-item time zones — the shipped design record; the rules themselves live in `API.md`/`ERD.md`/`DECISIONS.md` |
+| [`design/SETTLEMENT.md`](design/SETTLEMENT.md) | settling a trip — stored target currency and rates, the lock on money fields; the shipped design record; the rules themselves live in `ERD.md`/`API.md`/`DECISIONS.md` |
 | [`tests/frontend/fixtures/trip.json`](tests/frontend/fixtures/trip.json) | the canned trip the Playwright suite renders |
 | [`tests/backend/fixtures/sheet.csv`](tests/backend/fixtures/sheet.csv) | the example sheet `tools/import_sheet/` is tested against, and the format by example |
 
@@ -59,8 +60,9 @@ before opening the PR.
    in every column, sum, weight and remainder; `money.to_wire` converts once, in the
    serializer, and its output never feeds back in.
 3. **No currency conversion server-side.** Balances and stats are per currency. The
-   only conversion anywhere is the statistics page multiplying by rates the user
-   typed, and it is never persisted.
+   only conversion anywhere is each page's Total, in the browser, multiplying by
+   rates the user typed. Settling a trip stores the agreed target and rates on the
+   trip; the browser applies them.
 4. **No "current user".** An item states who paid and what each person owes. Nothing
    is rendered relative to a viewer.
 5. **The frontend tolerates unknown fields.** A response carrying a key it has never

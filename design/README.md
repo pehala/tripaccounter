@@ -16,6 +16,7 @@ schedules — those described how the thing got built and were deleted when it w
 | [`CRUD_ROUTES.md`](CRUD_ROUTES.md) | how the six trip-scoped roster entities declare their list/create/update/delete routes |
 | [`FRONTEND.md`](FRONTEND.md) | how `static/` is laid out, and the rules that keep it from computing money |
 | [`MOCKAPI.md`](MOCKAPI.md) | the JSON-driven mock API the Playwright suite runs against: fixture grammar, resolution rules, conftest fixtures |
+| [`SETTLEMENT.md`](SETTLEMENT.md) | settling a trip: the stored target currency and rates, and the lock on every field that feeds a balance |
 | [`../tests/frontend/fixtures/`](../tests/frontend/fixtures/) | the canned responses the Playwright suite renders |
 
 ## Shapes are generated; rules are written

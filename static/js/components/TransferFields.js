@@ -6,7 +6,7 @@ import { TimezoneSelect } from './TimezoneSelect.js';
 // side is visually secondary (design/WALLETS.md §4) until the user edits it
 // away from the from side's mirrored amount/currency.
 export function TransferFields({
-  trip, state, fieldError,
+  trip, state, fieldError, disabled = false,
   onFromWallet, onFromAmount, onFromCurrency,
   onToWallet, onToAmount, onToCurrency,
   onNote, onOccurredAt, onOccurredTz,
@@ -26,15 +26,15 @@ export function TransferFields({
   return html`
     <div class="mb-3">
       <label class="form-label small mb-1">${t('transfer.from_label')}</label>
-      <select class="form-select mb-2 ${fieldError('from_wallet_id') ? 'is-invalid' : ''}" required
+      <select disabled=${disabled} class="form-select mb-2 ${fieldError('from_wallet_id') ? 'is-invalid' : ''}" required
               value=${state.fromWalletId ?? ''} onChange=${onFromWallet}>
         <option value="" disabled>—</option>
         ${walletOptions()}
       </select>
       <div class="input-group">
-        <input class="form-control num ${fieldError('from_amount') ? 'is-invalid' : ''}" inputmode="decimal"
+        <input disabled=${disabled} class="form-control num ${fieldError('from_amount') ? 'is-invalid' : ''}" inputmode="decimal"
                placeholder="0" required value=${state.fromAmount} onInput=${onFromAmount} />
-        <select class="form-select flex-grow-0 w-auto" value=${state.fromCurrencyId} onChange=${onFromCurrency}>
+        <select disabled=${disabled} class="form-select flex-grow-0 w-auto" value=${state.fromCurrencyId} onChange=${onFromCurrency}>
           ${trip.currencies.map((c) => html`<option key=${c.id} value=${c.id}>${c.code}</option>`)}
         </select>
       </div>
@@ -43,16 +43,16 @@ export function TransferFields({
 
     <div class="mb-3 ${state.toEdited ? '' : 'opacity-75'}">
       <label class="form-label small mb-1">${t('transfer.to_label')}</label>
-      <select class="form-select mb-2 ${fieldError('to_wallet_id') ? 'is-invalid' : ''}" required
+      <select disabled=${disabled} class="form-select mb-2 ${fieldError('to_wallet_id') ? 'is-invalid' : ''}" required
               value=${state.toWalletId ?? ''} onChange=${onToWallet}>
         <option value="" disabled>—</option>
         ${walletOptions()}
       </select>
       <label class="form-label small mb-1">${t('transfer.receives_label')}</label>
       <div class="input-group">
-        <input class="form-control num" inputmode="decimal" placeholder="0" required
+        <input disabled=${disabled} class="form-control num" inputmode="decimal" placeholder="0" required
                value=${state.toAmount} onInput=${onToAmount} />
-        <select class="form-select flex-grow-0 w-auto ${fieldError('to_currency_id') ? 'is-invalid' : ''}"
+        <select disabled=${disabled} class="form-select flex-grow-0 w-auto ${fieldError('to_currency_id') ? 'is-invalid' : ''}"
                 value=${state.toCurrencyId} onChange=${onToCurrency}>
           ${trip.currencies.map((c) => html`<option key=${c.id} value=${c.id}>${c.code}</option>`)}
         </select>
@@ -63,16 +63,16 @@ export function TransferFields({
     <div class="row g-3">
       <div class="col-12 col-sm-6">
         <label class="form-label small mb-1">${t('item.when_label')}</label>
-        <input type="datetime-local" class="form-control ${fieldError('occurred_at') ? 'is-invalid' : ''}"
+        <input disabled=${disabled} type="datetime-local" class="form-control ${fieldError('occurred_at') ? 'is-invalid' : ''}"
                value=${state.occurredAt} onChange=${onOccurredAt} />
         ${fieldError('occurred_at')}
         <label class="form-label small mb-1 mt-2" for="transfer-zone">${t('item.zone_label')}</label>
-        <${TimezoneSelect} id="transfer-zone" small value=${state.occurredTz} onChange=${onOccurredTz} />
+        <${TimezoneSelect} id="transfer-zone" small disabled=${disabled} value=${state.occurredTz} onChange=${onOccurredTz} />
         ${fieldError('occurred_tz')}
       </div>
       <div class="col-12 col-sm-6">
         <label class="form-label small mb-1">${t('transfer.note_placeholder')}</label>
-        <input class="form-control" placeholder=${t('transfer.note_placeholder')}
+        <input disabled=${disabled} class="form-control" placeholder=${t('transfer.note_placeholder')}
                value=${state.note} onInput=${onNote} />
       </div>
     </div>

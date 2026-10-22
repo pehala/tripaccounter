@@ -8,7 +8,7 @@ from app.routers.crud import Route, TripChildRoutes, route
 from app.schemas.envelopes import CurrencyEnvelope, CurrencyListEnvelope
 from app.schemas.requests import CurrencyCreate, CurrencyUpdate
 from app.schemas.responses import CurrencyOut
-from app.services import roster
+from app.services import roster, settlement
 
 
 class CurrencyRoutes(TripChildRoutes):
@@ -32,6 +32,7 @@ class CurrencyRoutes(TripChildRoutes):
     @route(Route.CREATE, field="code")
     def create(self, session: Session, trip: Trip, body: CurrencyCreate) -> TripCurrency:
         """Add a new currency to a trip."""
+        settlement.assert_unsettled(trip)
         return roster.create_currency(session, trip, body.code, body.symbol, body.is_primary)
 
     @route(Route.UPDATE, field="code")
@@ -44,6 +45,7 @@ class CurrencyRoutes(TripChildRoutes):
     @route(Route.DELETE)
     def delete_row(self, session: Session, currency: TripCurrency) -> None:
         """Delete a currency from a trip."""
+        settlement.assert_unsettled(currency.trip)
         roster.delete_currency(session, currency)
 
 

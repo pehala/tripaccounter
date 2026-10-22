@@ -80,10 +80,13 @@ export function Items() {
     ? {}
     : Object.fromEntries((store.dayTotals || []).map((day) => [day.date, day.totals]));
   const beforeTripTotals = needle ? [] : store.beforeTripTotals || [];
+  const settled = Boolean(store.trip.settlement);
+  const lockedTitle = settled ? t('settlement.locked_hint') : undefined;
 
   return html`
     <div class="d-flex align-items-center gap-2 mb-3">
-      <button class="btn btn-primary px-4 d-none d-md-inline-block" onClick=${() => setModalEntry(null)}>
+      <button class="btn btn-primary px-4 d-none d-md-inline-block" disabled=${settled} title=${lockedTitle}
+              onClick=${() => setModalEntry(null)}>
         <i class="bi bi-plus-lg"></i> ${t('items.add')}</button>
       <div class="input-group input-group-sm ms-auto" style="max-width:16rem">
         <span class="input-group-text bg-body"><i class="bi bi-search"></i></span>
@@ -100,7 +103,7 @@ export function Items() {
     `)}
 
     <button class="btn btn-primary btn-lg rounded-pill fab" aria-label=${t('items.add_expense')}
-            onClick=${() => setModalEntry(null)}>
+            disabled=${settled} title=${lockedTitle} onClick=${() => setModalEntry(null)}>
       <i class="bi bi-plus-lg"></i></button>
 
     ${modalEntry !== undefined && html`

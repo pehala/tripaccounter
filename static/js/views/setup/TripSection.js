@@ -8,6 +8,7 @@ import { pushFlash } from '../../components/Flash.js';
 import { errText } from '../../components/errText.js';
 import { FieldError } from '../../components/FieldError.js';
 import { TimezoneSelect } from '../../components/TimezoneSelect.js';
+import { SettledBadge } from '../../components/SettledBadge.js';
 
 export function TripSection({ trip, locale }) {
   const [field, setField] = useState(null); // 'name' | 'note' | 'dates' | 'timezone' | null
@@ -124,9 +125,12 @@ export function TripSection({ trip, locale }) {
             <a href="/api/v1/trips/${trip.slug}/export?format=json">${t('setup.export_json')}</a>
           </span>
         </li>
-        ${!trip.archived && html`
-          <li class="list-group-item">
-            <a href="#" class="link-danger" onClick=${(e) => { e.preventDefault(); archive(); }}>${t('setup.archive')}</a>
+        ${(trip.settlement || !trip.archived) && html`
+          <li class="list-group-item d-flex flex-wrap align-items-center gap-2">
+            <${SettledBadge} settlement=${trip.settlement} locale=${locale} />
+            ${!trip.archived && html`
+              <a href="#" class="link-danger" onClick=${(e) => { e.preventDefault(); archive(); }}>${t('setup.archive')}</a>
+            `}
           </li>
         `}
       </ul>

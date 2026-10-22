@@ -19,6 +19,7 @@ from pydantic import (
     HttpUrl,
     NaiveDatetime,
     PlainSerializer,
+    ValidationInfo,
 )
 from pydantic_core import PydanticCustomError
 
@@ -68,6 +69,14 @@ def parse_weight(v: object) -> Decimal:
         raise as_pydantic_error(err) from err
 
 
+def parse_rate(v: object, info: ValidationInfo) -> Decimal:
+    """Validate a settlement rate, naming the sibling `currency_id` in a parse failure."""
+    try:
+        return parsing.parse_rate(v, info.data.get("currency_id"))
+    except FieldError as err:
+        raise as_pydantic_error(err) from err
+
+
 def parse_lat(v: object) -> str | None:
     """Validate a latitude string, returning it unchanged."""
     if v is None:
@@ -104,6 +113,7 @@ def parse_label(v: object) -> str:
 
 Amount = Annotated[Decimal, BeforeValidator(parse_amount)]
 Weight = Annotated[Decimal, BeforeValidator(parse_weight)]
+Rate = Annotated[Decimal, BeforeValidator(parse_rate)]
 LatStr = Annotated[str | None, BeforeValidator(parse_lat)]
 LonStr = Annotated[str | None, BeforeValidator(parse_lon)]
 # A wall time in the trip's zone: an offset is an error, and the zone is applied

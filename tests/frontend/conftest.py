@@ -165,7 +165,7 @@ def stub(page):
     | None`; None, or a request of another `method`, goes through to the mock. Bodies
     are JSON-encoded unless a non-JSON `content_type` is given, in which case `body` is
     sent as text. Fulfilled
-    POST/PATCH request bodies are recorded in call order; other methods record None.
+    POST/PATCH/PUT request bodies are recorded in call order; other methods record None.
     """
 
     def install(pattern, responder, method=None):
@@ -177,7 +177,9 @@ def stub(page):
             if result is None:
                 route.continue_()
                 return
-            calls.append(request.post_data_json if request.method in ("POST", "PATCH") else None)
+            calls.append(
+                request.post_data_json if request.method in ("POST", "PATCH", "PUT") else None
+            )
             status, body, *rest = result
             content_type = rest[0] if rest else "application/json"
             if content_type == "application/json":

@@ -12,7 +12,7 @@ from app.models.stays import Stay
 from app.models.trip import Trip
 from app.models.wallets import Wallet
 from app.schemas.requests import ItemWrite
-from app.services import roster, splits
+from app.services import roster, settlement, splits
 from app.services.errors.base import FieldError
 from app.services.errors.fields import (
     InactiveError,
@@ -212,3 +212,49 @@ def rewrite_shares(session: Session, trip: Trip, item: LineItem, body: ItemWrite
     reject_new_inactive_sharers(trip, rows, {share.person_id for share in item.shares})
     persist_shares(session, item, rows)
     item.split_mode = mode
+
+
+def comparable_shares(rows: list[dict]) -> list[tuple]:
+    """Return share rows in an order-independent, comparable form."""
+    return sorted(
+        (row["person_id"], row["weight_scaled"], row["owed_minor"], row["exact"]) for row in rows
+    )
+
+
+def assert_locked_unchanged(session: Session, trip: Trip, item: LineItem, body: ItemWrite) -> None:
+    """On a settled trip, reject a write that changes an item field entering `net`.
+
+    Sent shares are resolved before comparing, so restating the stored split passes.
+    They resolve against the stored amount and mode, so the scalar fields compare first.
+    """
+    if trip.settled_at is None:
+        return
+    stored = {
+        "amount": item.amount_minor,
+        "currency_id": item.currency_id,
+        "payer_id": item.payer_id,
+        "split_mode": item.split_mode,
+    }
+    sent = {
+        "amount": to_hundredths(body.amount) if body.amount is not None else None,
+        "currency_id": body.currency_id,
+        "payer_id": body.payer_id,
+        "split_mode": body.split_mode,
+    }
+    settlement.assert_unchanged(
+        stored, {field: value for field, value in sent.items() if value is not None}
+    )
+    if body.shares is None:
+        return
+    currency = session.get(TripCurrency, item.currency_id)
+    rows = build_shares(
+        trip,
+        item.split_mode,
+        body.shares,
+        Decimal(item.amount_minor) / AMOUNT_SCALE,
+        currency.code,
+    )
+    settlement.assert_unchanged(
+        {"shares": comparable_shares(splits.rows_from_shares(item.shares))},
+        {"shares": comparable_shares(rows)},
+    )

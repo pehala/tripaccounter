@@ -4,7 +4,14 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Column, DateTime, UniqueConstraint, func
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKeyConstraint,
+    UniqueConstraint,
+    func,
+)
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -19,9 +26,23 @@ class Trip(SQLModel, table=True):
     """A trip: its slug, dates, and the roster, currencies, countries, labels, stays and items."""
 
     __tablename__ = "trip"
-    __table_args__ = (UniqueConstraint("slug", name="uq_trip_slug"),)
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_trip_slug"),
+        # `use_alter`: trip_currency already references trip.
+        ForeignKeyConstraint(
+            ["settlement_currency_id", "id"],
+            ["trip_currency.id", "trip_currency.trip_id"],
+            name="fk_trip_settlement_currency",
+            use_alter=True,
+        ),
+        CheckConstraint(
+            "(settled_at IS NULL) = (settlement_currency_id IS NULL)",
+            name="ck_trip_settlement_complete",
+        ),
+    )
 
-    id: int | None = Field(default=None, primary_key=True)
+    # Explicit, because `id` is also in the settlement foreign key.
+    id: int | None = Field(default=None, primary_key=True, sa_column_kwargs={"autoincrement": True})
     slug: str = Field(index=True, max_length=60)
     name: str = Field(max_length=200)
     start_date: str | None = Field(default=None, max_length=10)
@@ -29,6 +50,10 @@ class Trip(SQLModel, table=True):
     timezone: str = Field(default="UTC", max_length=64, sa_column_kwargs={"server_default": "UTC"})
     note: str | None = None
     archived: bool = False
+    settled_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    settlement_currency_id: int | None = None
     created_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), server_default=func.now())
     )
@@ -52,6 +77,7 @@ class Trip(SQLModel, table=True):
         back_populates="trip",
         sa_relationship_kwargs={
             "cascade": "all, delete-orphan",
+            "foreign_keys": "[TripCurrency.trip_id]",
             "order_by": "[TripCurrency.is_primary.desc(), TripCurrency.code]",
         },
     )

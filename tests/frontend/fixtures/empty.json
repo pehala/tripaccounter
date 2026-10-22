@@ -37,6 +37,7 @@
         {"id": 2, "person_id": 2, "name": "Card", "tracked": false, "is_default": true, "balances": []}
       ],
       "stays": [],
+      "settlement": null,
       "created_at": "2026-09-01T08:12:00Z",
       "updated_at": "2026-09-01T08:12:00Z"
     }

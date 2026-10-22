@@ -181,9 +181,11 @@ statistics are per currency, full stop. The only conversion anywhere is each pag
 own Total section — on both balances and statistics — a switch alongside the
 currencies that multiplies by rates the user typed into their own browser (shared
 between the two pages, one rate set per trip) and only computes once every
-currency has one — those rates are never sent here and never stored. The rate form
-may offer each person's average exchange rate (`GET /exchange-rates`, derived from
-their typed exchanges) as a link; a click makes it one more typed rate.
+currency has one. The rate form may offer each person's average exchange rate
+(`GET /exchange-rates`, derived from their typed exchanges) as a link; a click makes
+it one more typed rate. **Settling a trip** stores the agreed target and rates on the
+trip and locks every field that feeds a balance; the Total then reads the stored
+rates, and the browser still does the multiplying.
 
 ## 5. The contract seam
 

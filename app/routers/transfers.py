@@ -9,7 +9,7 @@ from app.schemas.envelopes import TransferEnvelope, TransferListEnvelope
 from app.schemas.error_shapes import error_responses
 from app.schemas.requests import TransferWrite
 from app.schemas.responses import TRANSFER_LOAD_OPTIONS, TransferOut
-from app.services import queries
+from app.services import queries, settlement
 from app.services import transfers as transfer_service
 from app.services.errors.api import ValidationError
 from app.services.scope import require_in_trip
@@ -31,10 +31,11 @@ def list_transfers(trip: TripDep, session: SessionDep):
     "/trips/{slug}/transfers",
     status_code=201,
     response_model=TransferEnvelope,
-    responses=error_responses(400, 404, 422),
+    responses=error_responses(400, 404, 409, 422),
 )
 def create_transfer(body: TransferWrite, trip: TripDep, session: SessionDep, clock: ClockDep):
     """Create a new transfer between two wallets."""
+    settlement.assert_unsettled(trip)
     resolved = transfer_service.resolve_write(body, None)
     fields = transfer_service.validate(session, trip, resolved, body)
     if fields:
@@ -66,13 +67,14 @@ def get_transfer(transfer_id: int, trip: TripDep, session: SessionDep):
 @router.patch(
     "/trips/{slug}/transfers/{transfer_id}",
     response_model=TransferEnvelope,
-    responses=error_responses(400, 404, 422),
+    responses=error_responses(400, 404, 409, 422),
 )
 def update_transfer(transfer_id: int, body: TransferWrite, trip: TripDep, session: SessionDep):
     """Update a transfer's fields."""
     transfer = require_in_trip(
         session, WalletTransfer, transfer_id, trip.id, "transfer", options=TRANSFER_LOAD_OPTIONS
     )
+    settlement.assert_unsettled(trip)
     resolved = transfer_service.resolve_write(body, transfer)
     fields = transfer_service.validate(session, trip, resolved, body, existing=transfer)
     if fields:
@@ -91,13 +93,14 @@ def update_transfer(transfer_id: int, body: TransferWrite, trip: TripDep, sessio
 
 
 @router.delete(
-    "/trips/{slug}/transfers/{transfer_id}", status_code=204, responses=error_responses(404)
+    "/trips/{slug}/transfers/{transfer_id}", status_code=204, responses=error_responses(404, 409)
 )
 def delete_transfer(transfer_id: int, trip: TripDep, session: SessionDep):
     """Delete a transfer from a trip."""
     transfer = require_in_trip(
         session, WalletTransfer, transfer_id, trip.id, "transfer", options=TRANSFER_LOAD_OPTIONS
     )
+    settlement.assert_unsettled(trip)
     session.delete(transfer)
     session.flush()
     return Response(status_code=204)

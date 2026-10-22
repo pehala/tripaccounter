@@ -11,7 +11,7 @@ const MODES = ['equal', 'shares', 'exact'];
 // preview-split (or saved item) response, rendered as given.
 export function SplitEditor({
   people, mode, onModeChange, included, onToggle, weights, onWeightChange,
-  exacts, onExactChange, preview, previewFailed, previewError, locale,
+  exacts, onExactChange, preview, previewFailed, previewError, locale, disabled = false,
 }) {
   const owedFor = (personId) => preview?.shares.find((s) => s.person_id === personId)?.owed;
   const activeCount = people.filter((p) => included.has(p.id)).length;
@@ -42,7 +42,7 @@ export function SplitEditor({
           <div class="btn-group btn-group-sm d-flex mb-2" role="group">
             ${MODES.map((m) => html`
               <button key=${m} type="button" class="btn ${mode === m ? 'btn-primary' : 'btn-outline-primary'}"
-                      onClick=${() => onModeChange(m)}>${t(`split.mode.${m}`)}</button>
+                      disabled=${disabled} onClick=${() => onModeChange(m)}>${t(`split.mode.${m}`)}</button>
             `)}
           </div>
           <ul class="list-group list-group-flush ${previewFailed ? 'opacity-50' : ''}">
@@ -53,17 +53,17 @@ export function SplitEditor({
                 <li key=${p.id} class="list-group-item d-flex align-items-center px-0 py-2 gap-2">
                   <div class="form-check form-switch mb-0">
                     <input class="form-check-input" type="checkbox" id="split-${p.id}"
-                           checked=${isIn} onChange=${() => onToggle(p.id)} />
+                           checked=${isIn} disabled=${disabled} onChange=${() => onToggle(p.id)} />
                     <label class="form-check-label" for="split-${p.id}"><${Avatar} person=${p} /> ${p.name}</label>
                   </div>
                   ${mode === 'shares' && isIn && html`
                     <input class="form-control form-control-sm num text-end ms-auto" style="width:5rem" inputmode="decimal"
-                           value=${weights[p.id] ?? '1'} onInput=${(e) => onWeightChange(p.id, e.target.value, false)}
+                           value=${weights[p.id] ?? '1'} disabled=${disabled} onInput=${(e) => onWeightChange(p.id, e.target.value, false)}
                            onChange=${(e) => onWeightChange(p.id, e.target.value, true)} />
                   `}
                   ${mode === 'exact' && isIn && html`
                     <input class="form-control form-control-sm num text-end ms-auto" style="width:6rem" inputmode="decimal"
-                           value=${exacts[p.id] ?? ''} onInput=${(e) => onExactChange(p.id, e.target.value, false)}
+                           value=${exacts[p.id] ?? ''} disabled=${disabled} onInput=${(e) => onExactChange(p.id, e.target.value, false)}
                            onChange=${(e) => onExactChange(p.id, e.target.value, true)} />
                   `}
                   ${mode !== 'shares' && mode !== 'exact' && html`

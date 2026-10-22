@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "validation_error",
+    "params": {},
+    "fields": {
+      "rates": { "code": "invalid_rate", "params": { "currency_id": 3 } }
+    }
+  }
+}

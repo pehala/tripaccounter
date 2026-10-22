@@ -1412,6 +1412,109 @@
         "title": "PreviewSplitRequest",
         "type": "object"
       },
+      "SettlementOut": {
+        "description": "Wire representation of a trip's stored settlement.",
+        "properties": {
+          "rates": {
+            "items": {
+              "$ref": "#/components/schemas/SettlementRateOut"
+            },
+            "title": "Rates",
+            "type": "array"
+          },
+          "settled_at": {
+            "title": "Settled At",
+            "type": "string"
+          },
+          "target_currency_id": {
+            "title": "Target Currency Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "target_currency_id",
+          "settled_at",
+          "rates"
+        ],
+        "title": "SettlementOut",
+        "type": "object"
+      },
+      "SettlementRateOut": {
+        "description": "One agreed rate: 1 `currency_id` = `rate` of the settlement target, to 9 places.",
+        "properties": {
+          "currency_id": {
+            "title": "Currency Id",
+            "type": "integer"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Rate"
+          }
+        },
+        "required": [
+          "currency_id",
+          "rate"
+        ],
+        "title": "SettlementRateOut",
+        "type": "object"
+      },
+      "SettlementRateWrite": {
+        "additionalProperties": false,
+        "description": "One agreed rate: 1 `currency_id` = `rate` of the settlement target.",
+        "properties": {
+          "currency_id": {
+            "title": "Currency Id",
+            "type": "integer"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Rate"
+          }
+        },
+        "required": [
+          "currency_id",
+          "rate"
+        ],
+        "title": "SettlementRateWrite",
+        "type": "object"
+      },
+      "SettlementWrite": {
+        "additionalProperties": false,
+        "description": "Request body for settling a trip: the target currency and a rate for every other one.",
+        "properties": {
+          "rates": {
+            "items": {
+              "$ref": "#/components/schemas/SettlementRateWrite"
+            },
+            "title": "Rates",
+            "type": "array"
+          },
+          "target_currency_id": {
+            "title": "Target Currency Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "target_currency_id",
+          "rates"
+        ],
+        "title": "SettlementWrite",
+        "type": "object"
+      },
       "ShareOut": {
         "description": "Wire representation of one person's share of a split.",
         "properties": {
@@ -2592,6 +2695,16 @@
             "title": "People",
             "type": "array"
           },
+          "settlement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SettlementOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "slug": {
             "title": "Slug",
             "type": "string"
@@ -2644,6 +2757,7 @@
           "countries",
           "wallets",
           "stays",
+          "settlement",
           "created_at",
           "updated_at"
         ],
@@ -4276,6 +4390,16 @@
             },
             "description": "Not Found"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -4424,6 +4548,16 @@
             },
             "description": "Not Found"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
           "500": {
             "content": {
               "application/json": {
@@ -4563,6 +4697,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
           },
           "422": {
             "content": {
@@ -5199,6 +5343,150 @@
         ]
       }
     },
+    "/api/v1/trips/{slug}/settlement": {
+      "delete": {
+        "description": "Unlock a settled trip: clear its target currency and rates.",
+        "operationId": "unlock_trip_api_v1_trips__slug__settlement_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Unlock Trip",
+        "tags": [
+          "trips"
+        ]
+      },
+      "put": {
+        "description": "Settle a trip: store the agreed target currency and rates, replacing any earlier ones.",
+        "operationId": "settle_trip_api_v1_trips__slug__settlement_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettlementWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Settle Trip",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
     "/api/v1/trips/{slug}/stats": {
       "get": {
         "description": "Get spending statistics for a trip, grouped by the requested dimension chains.",
@@ -5682,6 +5970,16 @@
             },
             "description": "Not Found"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -5746,6 +6044,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
           },
           "500": {
             "content": {
@@ -5886,6 +6194,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Conflict"
           },
           "422": {
             "content": {

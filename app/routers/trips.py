@@ -3,15 +3,16 @@
 from fastapi import APIRouter, Response
 from sqlalchemy import func, select
 
+from app.clock import ClockDep
 from app.deps import SessionDep, TripDep
 from app.models.items import LineItem
 from app.models.roster import Person
 from app.models.trip import Trip
 from app.schemas.envelopes import TripEnvelope, TripListEnvelope
 from app.schemas.error_shapes import error_responses
-from app.schemas.requests import TripCreate, TripUpdate
+from app.schemas.requests import SettlementWrite, TripCreate, TripUpdate
 from app.schemas.responses import TripOut, TripSummaryOut
-from app.services import roster
+from app.services import roster, settlement
 from app.services.errors.api import ValidationError, field_errors
 from app.services.errors.fields import EmptyError
 from app.services.labels import get_or_create as get_or_create_label
@@ -131,9 +132,39 @@ def update_trip(body: TripUpdate, trip: TripDep, session: SessionDep):
     return {"trip": TripOut.from_trip(trip, country_item_counts(session, trip.id))}
 
 
+@router.put(
+    "/trips/{slug}/settlement",
+    response_model=TripEnvelope,
+    responses=error_responses(400, 404, 422),
+)
+def settle_trip(body: SettlementWrite, trip: TripDep, session: SessionDep, clock: ClockDep):
+    """Settle a trip: store the agreed target currency and rates, replacing any earlier ones."""
+    rates = [(row.currency_id, row.rate) for row in body.rates]
+    fields = settlement.validate(trip, body.target_currency_id, rates)
+    if fields:
+        raise ValidationError(fields)
+    settlement.settle(session, trip, body.target_currency_id, rates, clock)
+    session.refresh(trip)
+    return {"trip": TripOut.from_trip(trip, country_item_counts(session, trip.id))}
+
+
+@router.delete(
+    "/trips/{slug}/settlement", response_model=TripEnvelope, responses=error_responses(404, 409)
+)
+def unlock_trip(trip: TripDep, session: SessionDep):
+    """Unlock a settled trip: clear its target currency and rates."""
+    with field_errors("id"):
+        settlement.assert_settled(trip)
+    settlement.unlock(session, trip)
+    session.refresh(trip)
+    return {"trip": TripOut.from_trip(trip, country_item_counts(session, trip.id))}
+
+
 @router.delete("/trips/{slug}", status_code=204, responses=error_responses(404))
 def delete_trip(trip: TripDep, session: SessionDep):
     """Delete a trip."""
+    # The ORM deletes the currencies first; the trip must no longer reference one.
+    settlement.unlock(session, trip)
     session.delete(trip)
     session.flush()
     return Response(status_code=204)

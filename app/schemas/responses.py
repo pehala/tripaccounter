@@ -16,7 +16,7 @@ from app.models.trip import Trip
 from app.models.wallets import WalletTransfer
 from app.schemas.fields import iso_z
 from app.services.countries import flag_from_code
-from app.services.money import AMOUNT_SCALE, to_wire
+from app.services.money import AMOUNT_SCALE, RATE_SCALE, to_wire
 from app.services.splits import format_weight, resolve_shares_wire, rows_from_shares
 
 Number = float | int
@@ -186,6 +186,38 @@ class LabelOut(BaseModel):
     use_count: int
 
 
+class SettlementRateOut(BaseModel):
+    """One agreed rate: 1 `currency_id` = `rate` of the settlement target, to 9 places."""
+
+    currency_id: int
+    rate: Number
+
+
+class SettlementOut(BaseModel):
+    """Wire representation of a trip's stored settlement."""
+
+    target_currency_id: int
+    settled_at: str
+    rates: list[SettlementRateOut]
+
+    @classmethod
+    def from_trip(cls, trip: Trip) -> "SettlementOut | None":
+        """Build the settlement off a trip's own columns and its currencies' rates, or None."""
+        if trip.settled_at is None:
+            return None
+        return cls(
+            target_currency_id=trip.settlement_currency_id,
+            settled_at=iso_z(trip.settled_at),
+            rates=[
+                SettlementRateOut(
+                    currency_id=c.id, rate=to_wire(c.settlement_rate_scaled, RATE_SCALE)
+                )
+                for c in trip.currencies
+                if c.settlement_rate_scaled is not None
+            ],
+        )
+
+
 class TripOut(BaseModel):
     """Wire representation of a full trip, including its roster."""
 
@@ -202,6 +234,7 @@ class TripOut(BaseModel):
     countries: list[CountryOut]
     wallets: list[WalletOut]
     stays: list[StayOut]
+    settlement: SettlementOut | None
     created_at: str
     updated_at: str
 
@@ -224,6 +257,7 @@ class TripOut(BaseModel):
             ],
             wallets=[WalletOut.model_validate(w) for p in trip.people for w in p.wallets],
             stays=[StayOut.from_stay(stay) for stay in trip.stays],
+            settlement=SettlementOut.from_trip(trip),
             created_at=iso_z(trip.created_at),
             updated_at=iso_z(trip.updated_at),
         )

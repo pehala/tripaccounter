@@ -384,7 +384,7 @@ Two things follow, and both get raised in review:
 - **A direct import from `app.services.*` needs a justification**, and there is
   exactly one standing exception: `test_money.py`, where the cases are combinatorial
   and HTTP would add only runtime. Anything else — `splits.build`, `balances.compute`,
-  `settle.suggest`, `stats.by_day` — is covered by the endpoint that publishes it
+  `settle_up.suggest_transfers`, `stats.by_day` — is covered by the endpoint that publishes it
   (P-6, AP-1).
 - **Assert the response, not the ORM.** After a request, the session is closed;
   reaching into `trip.items[0].shares` invites `DetachedInstanceError` and asserts a

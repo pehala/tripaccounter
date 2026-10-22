@@ -156,7 +156,13 @@ def test_stays_tab_costs_two_calls(items_page, count_requests, open_tab):
 
 
 @pytest.fixture
-def total_section(fixture_data, open_trip):
+def settlement() -> dict | None:
+    """Return the trip's `settlement`: open unless a test parametrizes one in."""
+    return None
+
+
+@pytest.fixture
+def total_section(fixture_data, open_trip, settlement):
     """Return the opened Total section of a stay costing 48 000 ISK and 100 EUR per night.
 
     Tests read the card through `total_section.page`: asking for `stay_card` too would
@@ -165,6 +171,7 @@ def total_section(fixture_data, open_trip):
     fixture_data["stays"]["stays"][0]["totals"].append(
         {"currency_code": "EUR", "currency_id": 2, "amount": 200, "per_night": 100}
     )
+    fixture_data["trip"]["trip"]["settlement"] = settlement
     page = open_trip("stays")
     section = page.locator("#stays-total")
     section.get_by_role("button", name="Total").click()
@@ -191,3 +198,25 @@ def test_stay_total_sums_the_per_night_figures_at_the_typed_rates(total_section)
     converted = total_section.page.locator(".stay-card .stay-cost-total")
     expect(converted.locator(".stay-amount")).to_have_text("126,000 ISK")
     expect(converted.locator(".stay-per-night")).to_have_text("63,000 ISK per night")
+
+
+@pytest.mark.parametrize(
+    "settlement",
+    [
+        {
+            "target_currency_id": 1,
+            "settled_at": "2026-09-22T18:00:00Z",
+            "rates": [{"currency_id": 2, "rate": 150}, {"currency_id": 3, "rate": 20}],
+        }
+    ],
+)
+def test_settled_stay_total_reads_the_stored_rates_read_only(total_section):
+    """A settled trip's stay Total converts at the agreed rates, with nothing typed or typeable."""
+    for code in ("EUR", "DKK"):
+        row = total_section.locator(".row").filter(
+            has=total_section.page.locator(".badge", has_text=code)
+        )
+        expect(row.locator("input")).to_have_attribute("readonly", "")
+
+    converted = total_section.page.locator(".stay-card .stay-cost-total")
+    expect(converted.locator(".stay-amount")).to_have_text("126,000 ISK")

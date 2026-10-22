@@ -1,4 +1,7 @@
-"""Builds the demo trip `make seed` puts in the dev database.
+"""Builds the demo trips `make seed` puts in the dev database.
+
+`iceland-2026` is the open trip every tab is shown with; `faroe-2025` is the same
+group's earlier trip, settled, so the demo also shows a locked one.
 
 Every id is assigned by the database. The specs below number their own rows, and one
 list per entity translates a spec number into the id that row actually got, so the
@@ -8,6 +11,7 @@ demo lands next to whatever trips the database already holds.
 import argparse
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
@@ -18,6 +22,7 @@ from app.models.roster import Person, TripCountry, TripCurrency
 from app.models.stays import Stay
 from app.models.trip import Trip
 from app.models.wallets import Wallet, WalletTransfer
+from app.services import settlement
 
 # (name, colour, default weight)
 PEOPLE = (
@@ -39,10 +44,13 @@ WALLETS = (
 
 # (code, symbol, is_primary)
 CURRENCIES = (("ISK", "kr", True), ("EUR", "€", False), ("DKK", "kr.", False))
+FAROE_CURRENCIES = (("DKK", "kr.", True), ("EUR", "€", False))
 
 # (name, ISO code, is_default)
 COUNTRIES = (("Iceland", "IS", True), ("Denmark", "DK", False))
+FAROE_COUNTRIES = (("Faroe Islands", "FO", True),)
 
+FAROE_LABELS = ("food", "lodging", "transport")
 LABELS = (
     "food",
     "restaurant",
@@ -112,6 +120,36 @@ class SeedIds:
     wallets: list[int]
     currencies: list[int]
     countries: list[int]
+
+
+@dataclass(frozen=True)
+class SeedSettlement:
+    """A settled trip's agreement: the target's spec number and each other currency's rate."""
+
+    settled_at: datetime
+    target_key: int
+    # (currency spec number, rate)
+    rates: tuple[tuple[int, Decimal], ...]
+
+
+@dataclass(frozen=True)
+class SeedTrip:
+    """One seeded trip: its own fields, roster specs, rows and, when settled, its agreement."""
+
+    slug: str
+    name: str
+    start_date: str
+    end_date: str
+    timezone: str
+    created_at: datetime
+    updated_at: datetime
+    currencies: tuple[tuple[str, str, bool], ...]
+    countries: tuple[tuple[str, str, bool], ...]
+    labels: tuple[str, ...]
+    items: tuple["SeedItem", ...]
+    transfers: tuple[SeedTransfer, ...]
+    stays: tuple[tuple, ...] = ()
+    settlement: SeedSettlement | None = None
 
 
 EVERYONE_EQUAL = (
@@ -348,13 +386,96 @@ STAYS = (
     ),
 )
 
+FAROE_ITEMS = (
+    SeedItem(
+        name="Guesthouse Tórshavn, 3 nights",
+        city="Tórshavn",
+        occurred_at=datetime(2025, 6, 6, 15, 0, tzinfo=UTC),
+        currency_key=1,
+        amount_minor=480_000,
+        payer_key=2,
+        wallet_key=2,
+        country_key=1,
+        labels=("lodging",),
+        shares=EVERYONE_EQUAL,
+        lat="62.01100",
+        lon="-6.77160",
+    ),
+    SeedItem(
+        name="Ferry to Mykines",
+        city="Sørvágur",
+        occurred_at=datetime(2025, 6, 7, 8, 30, tzinfo=UTC),
+        currency_key=2,
+        amount_minor=12_000,
+        payer_key=1,
+        wallet_key=1,
+        country_key=1,
+        labels=("transport",),
+        shares=EVERYONE_EQUAL,
+        lat="62.07120",
+        lon="-7.31440",
+    ),
+    SeedItem(
+        name="Fish soup at Barbara",
+        city="Tórshavn",
+        occurred_at=datetime(2025, 6, 8, 19, 0, tzinfo=UTC),
+        currency_key=1,
+        amount_minor=96_000,
+        payer_key=3,
+        wallet_key=3,
+        country_key=1,
+        labels=("food",),
+        shares=EVERYONE_EQUAL,
+        lat="62.01030",
+        lon="-6.77300",
+    ),
+)
+
+TRIPS = (
+    SeedTrip(
+        slug="iceland-2026",
+        name="Iceland 2026",
+        start_date="2026-09-12",
+        end_date="2026-09-21",
+        timezone="Atlantic/Reykjavik",
+        created_at=datetime(2026, 9, 1, 8, 12, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 9, 12, 14, 2, 0, tzinfo=UTC),
+        currencies=CURRENCIES,
+        countries=COUNTRIES,
+        labels=LABELS,
+        items=ITEMS,
+        transfers=TRANSFERS,
+        stays=STAYS,
+    ),
+    SeedTrip(
+        slug="faroe-2025",
+        name="Faroe Islands 2025",
+        start_date="2025-06-06",
+        end_date="2025-06-09",
+        timezone="Atlantic/Faroe",
+        created_at=datetime(2025, 5, 20, 9, 0, 0, tzinfo=UTC),
+        updated_at=datetime(2025, 6, 10, 18, 30, 0, tzinfo=UTC),
+        currencies=FAROE_CURRENCIES,
+        countries=FAROE_COUNTRIES,
+        labels=FAROE_LABELS,
+        items=FAROE_ITEMS,
+        transfers=(),
+        # Settled in EUR: 1 DKK = 0.134 EUR.
+        settlement=SeedSettlement(
+            settled_at=datetime(2025, 6, 10, 18, 30, 0, tzinfo=UTC),
+            target_key=2,
+            rates=((1, Decimal("0.134")),),
+        ),
+    ),
+)
+
 
 def resolve(ids: list[int], key: int) -> int:
     """Return the row id a spec number stands for."""
     return ids[key - 1]
 
 
-def add_roster(session: Session, trip_id: int) -> SeedIds:
+def add_roster(session: Session, trip_id: int, spec: SeedTrip) -> SeedIds:
     """Insert the people, wallets, currencies and countries; return the ids they got."""
     people = [
         Person(trip_id=trip_id, name=name, color=color, default_weight_scaled=weight, sort_order=i)
@@ -362,11 +483,11 @@ def add_roster(session: Session, trip_id: int) -> SeedIds:
     ]
     currencies = [
         TripCurrency(trip_id=trip_id, code=code, symbol=symbol, is_primary=is_primary)
-        for code, symbol, is_primary in CURRENCIES
+        for code, symbol, is_primary in spec.currencies
     ]
     countries = [
         TripCountry(trip_id=trip_id, name=name, code=code, is_default=is_default)
-        for name, code, is_default in COUNTRIES
+        for name, code, is_default in spec.countries
     ]
     session.add_all([*people, *currencies, *countries])
     session.flush()
@@ -393,7 +514,7 @@ def add_roster(session: Session, trip_id: int) -> SeedIds:
     )
 
 
-def add_stays(session: Session, trip_id: int, ids: SeedIds) -> list[int]:
+def add_stays(session: Session, trip_id: int, ids: SeedIds, spec: SeedTrip) -> list[int]:
     """Insert the stays; return the ids they got."""
     stays = [
         Stay(
@@ -407,29 +528,26 @@ def add_stays(session: Session, trip_id: int, ids: SeedIds) -> list[int]:
             lat=lat,
             lon=lon,
         )
-        for name, check_in, check_out, url, country_key, city, lat, lon in STAYS
+        for name, check_in, check_out, url, country_key, city, lat, lon in spec.stays
     ]
     session.add_all(stays)
     session.flush()
     return [stay.id for stay in stays]
 
 
-DEMO_TIMEZONE = "Atlantic/Reykjavik"
-
-
 def add_item(  # noqa: PLR0913, PLR0917
     session: Session,
-    trip_id: int,
+    trip: Trip,
     ids: SeedIds,
     labels: dict[str, Label],
     stay_ids: list[int],
     spec: SeedItem,
 ) -> LineItem:
-    """Insert one seeded line item together with its shares and label links; return it."""
+    """Insert one seeded line item, in the trip's zone, with its shares and label links."""
     item = LineItem(
-        trip_id=trip_id,
+        trip_id=trip.id,
         occurred_at=spec.occurred_at,
-        occurred_tz=DEMO_TIMEZONE,
+        occurred_tz=trip.timezone,
         name=spec.name,
         note=None,
         city=spec.city,
@@ -463,14 +581,12 @@ def add_item(  # noqa: PLR0913, PLR0917
     return item
 
 
-def add_transfer(
-    session: Session, trip_id: int, ids: SeedIds, spec: SeedTransfer
-) -> WalletTransfer:
-    """Insert one seeded wallet transfer; return it."""
+def add_transfer(session: Session, trip: Trip, ids: SeedIds, spec: SeedTransfer) -> WalletTransfer:
+    """Insert one seeded wallet transfer, in the trip's zone; return it."""
     transfer = WalletTransfer(
-        trip_id=trip_id,
+        trip_id=trip.id,
         occurred_at=spec.occurred_at,
-        occurred_tz=DEMO_TIMEZONE,
+        occurred_tz=trip.timezone,
         from_wallet_id=resolve(ids.wallets, spec.from_wallet_key),
         from_currency_id=resolve(ids.currencies, spec.from_currency_key),
         from_amount_minor=spec.from_amount_minor,
@@ -483,38 +599,53 @@ def add_transfer(
     return transfer
 
 
-def seed_demo(session: Session) -> Trip:
-    """Insert the demo trip, roster, currencies, countries, labels, stays and items; return it."""
+def add_trip(session: Session, spec: SeedTrip) -> Trip:
+    """Insert one seeded trip with everything under it; return the trip."""
     trip = Trip(
-        slug="iceland-2026",
-        name="Iceland 2026",
-        start_date="2026-09-12",
-        end_date="2026-09-21",
-        timezone=DEMO_TIMEZONE,
+        slug=spec.slug,
+        name=spec.name,
+        start_date=spec.start_date,
+        end_date=spec.end_date,
+        timezone=spec.timezone,
         note=None,
         archived=False,
-        created_at=datetime(2026, 9, 1, 8, 12, 0, tzinfo=UTC),
-        updated_at=datetime(2026, 9, 12, 14, 2, 0, tzinfo=UTC),
+        created_at=spec.created_at,
+        updated_at=spec.updated_at,
     )
     session.add(trip)
     session.flush()
 
-    ids = add_roster(session, trip.id)
+    ids = add_roster(session, trip.id, spec)
 
     labels = {
-        name: Label(trip_id=trip.id, name=name, name_norm=name, color="#6c757d") for name in LABELS
+        name: Label(trip_id=trip.id, name=name, name_norm=name, color="#6c757d")
+        for name in spec.labels
     }
     session.add_all(labels.values())
     session.flush()
 
-    stay_ids = add_stays(session, trip.id, ids)
-    for spec in ITEMS:
-        add_item(session, trip.id, ids, labels, stay_ids, spec)
-    for spec in TRANSFERS:
-        add_transfer(session, trip.id, ids, spec)
-
+    stay_ids = add_stays(session, trip.id, ids, spec)
+    for item in spec.items:
+        add_item(session, trip, ids, labels, stay_ids, item)
+    for transfer in spec.transfers:
+        add_transfer(session, trip, ids, transfer)
     session.flush()
+
+    if spec.settlement is not None:
+        session.refresh(trip)
+        settlement.settle(
+            session,
+            trip,
+            resolve(ids.currencies, spec.settlement.target_key),
+            [(resolve(ids.currencies, key), rate) for key, rate in spec.settlement.rates],
+            spec.settlement.settled_at,
+        )
     return trip
+
+
+def seed_demo(session: Session) -> list[Trip]:
+    """Insert every demo trip, with its roster, labels, stays, items and transfers; return them."""
+    return [add_trip(session, spec) for spec in TRIPS]
 
 
 def main() -> None:

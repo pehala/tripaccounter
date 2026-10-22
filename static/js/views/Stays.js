@@ -4,7 +4,7 @@ import { useStore, reload } from '../store.js';
 import { t, getLocale } from '../i18n/index.js';
 import { dateRange, money } from '../fmt.js';
 import { stayMatches } from '../filter.js';
-import { getRatesState, setTargetCurrency, setRateValue } from '../rates.js';
+import { useTotalRates } from '../rates.js';
 import { rateFor, convert } from '../convert.js';
 import { RatesForm } from '../components/RatesForm.js';
 import { ItemRow } from '../components/ItemRow.js';
@@ -83,7 +83,7 @@ export function Stays() {
   const [stayModal, setStayModal] = useState(undefined); // undefined = closed, null = new, stay = edit
   const [editEntry, setEditEntry] = useState(null);
   const [filter, setFilter] = useState('');
-  const [ratesState, setRatesState] = useState(() => getRatesState(store.slug));
+  const rates = useTotalRates(store);
 
   // An item save clears store.stays (invalidateMoneyViews), so a total the
   // modal just changed is refetched while the tab is still open.
@@ -112,11 +112,8 @@ export function Stays() {
   }
 
   const trip = store.trip;
-  const primary = trip.currencies.find((c) => c.is_primary) || trip.currencies[0];
-  const target = trip.currencies.find((c) => c.id === ratesState.target) || primary;
   const multiCurrency = trip.currencies.length > 1;
-  const allRatesSet = trip.currencies.every((c) => rateFor(c.id, target.id, ratesState.values, locale) !== null);
-  const total = multiCurrency && allRatesSet ? { target, values: ratesState.values } : null;
+  const total = multiCurrency && rates.ready ? { target: rates.target, values: rates.values } : null;
 
   const needle = filter.trim().toLowerCase();
   const stayItems = (stay) => store.items.filter((item) => item.stay_id === stay.id);
@@ -137,11 +134,10 @@ export function Stays() {
     </div>
     ${multiCurrency && store.stays.length > 0 && html`
       <${CollapsibleSection} id="stays-total" icon="bi-calculator" title=${t('nav.total')}>
-        <${RatesForm} trip=${trip} target=${target} values=${ratesState.values}
-                      onTargetChange=${(id) => setRatesState(setTargetCurrency(store.slug, id))}
-                      onRateChange=${(id, value) => setRatesState(setRateValue(store.slug, id, value))} />
-        ${!allRatesSet && html`<div class="alert alert-secondary py-2 px-3 small mb-0">${t('rates.missing')}</div>`}
-        ${allRatesSet && html`<div class="small text-body-secondary">${t('rates.total_note')}</div>`}
+        <${RatesForm} trip=${trip} target=${rates.target} values=${rates.values} readOnly=${Boolean(rates.settlement)}
+                      onTargetChange=${rates.onTargetChange} onRateChange=${rates.onRateChange} />
+        ${!rates.ready && html`<div class="alert alert-secondary py-2 px-3 small mb-0">${t('rates.missing')}</div>`}
+        ${rates.ready && html`<div class="small text-body-secondary">${t('rates.total_note')}</div>`}
       <//>
     `}
     ${store.stays.length === 0 && html`<p class="text-body-secondary">${t('stays.empty')}</p>`}

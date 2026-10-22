@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Column, DateTime, UniqueConstraint, func
+from sqlalchemy import BigInteger, Column, DateTime, UniqueConstraint, func
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.models.trip import Trip
@@ -76,8 +76,15 @@ class TripCurrency(SQLModel, table=True):
     code: str = Field(max_length=3)
     symbol: str | None = Field(default=None, max_length=10)
     is_primary: bool = False
+    # ×10⁹: 1 this currency = rate settlement target.
+    settlement_rate_scaled: int | None = Field(
+        default=None, sa_column=Column(BigInteger, nullable=True)
+    )
 
-    trip: Trip = Relationship(back_populates="currencies")
+    trip: Trip = Relationship(
+        back_populates="currencies",
+        sa_relationship_kwargs={"foreign_keys": "[TripCurrency.trip_id]"},
+    )
 
 
 class TripCountry(SQLModel, table=True):

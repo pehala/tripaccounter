@@ -158,7 +158,7 @@ datetime in the request body, or freeze it with a fixture — never assert again
 `date.today()` computed inside the test as well as inside the code, because that
 hides an off-by-one at midnight and makes the test pass for the wrong reason.
 
-`settle.round_nets_to_minor` has a deterministic tie-break by roster order. Tests
+`settle_up.round_nets_to_minor` has a deterministic tie-break by roster order. Tests
 must pin that order explicitly; a test that passes only because dict iteration
 happened to agree is a flake waiting for a schema change.
 

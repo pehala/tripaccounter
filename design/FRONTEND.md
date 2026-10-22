@@ -51,9 +51,10 @@ static/
     ├── fmt.js            money(), signed(), rate(), parse(), date() — one cached
     │                     Intl.NumberFormat per locale
     ├── h.js              html = htm.bind(h)
-    ├── rates.js          Total target currency + typed rates, one set per trip,
-    │                     shared by the balances and statistics pages — localStorage
-    │                     only, never sent
+    ├── rates.js          useTotalRates(): the Total's target currency and rates,
+    │                     one set per trip, shared by the balances and statistics
+    │                     pages — trip.settlement when settled, localStorage
+    │                     otherwise; builds the PUT /settlement body
     ├── convert.js        rateFor(), rateBetween(), convert(), combineGroup(), combineSuggestions() —
     │                     the money-combination math behind every page's Total
     ├── collapse.js       toggleCollapse(), showCollapse() — tiny Bootstrap Collapse
@@ -95,7 +96,10 @@ static/
         ├── SideNav.js      the jump-to sidebar + mobile pill row, shared by
         │                   any page with a currency-first layout
         ├── RatesForm.js    the "convert to" picker + one rate input per currency,
-        │                   shared by every page with a Total
+        │                   shared by every page with a Total; read-only when settled
+        ├── TotalRatesPanel.js  RatesForm + the Total's alerts + settle / unlock,
+        │                   rendered by both Balances and Statistics
+        ├── SettledBadge.js "Settled on {date}", wherever a settled trip shows its lock
         ├── MapCanvas.js    the Leaflet instance: imports leaflet on mount, owns
         │                   every node inside the canvas, draws one pin per point
         ├── MapFilters.js   the map's search box, label chips and date range
@@ -179,10 +183,12 @@ Note the dashed arrow: **a write is followed by a re-read, never by a local muta
    those rounded figures across currencies. It is all-or-nothing — the Total renders
    nothing but the rate form until every currency has a positive rate, never a partial
    sum quietly missing one. That sum is the only place the frontend adds two amounts,
-   and every operand is already the user's own guesswork. The rates live in
-   `localStorage`, shared between the three pages so one typed rate set serves all, are
-   never posted back, and never come near a currency's own balance, settle-up figure,
-   or statistics — only its Total. The rate form offers each person's average
+   and every operand is already the user's own guesswork. The Total's rates come from
+   `useTotalRates`: the trip's `settlement` when the trip is settled, `localStorage`
+   otherwise, shared between the three pages so one rate set serves all. They reach the
+   server only as the agreement *Fix rates & settle* sends, and they apply to the Total
+   alone — a currency's own balance, settle-up figure and statistics stay as the server
+   computed them. The rate form offers each person's average
    rate of what they spent, from `GET /exchange-rates`, as a link that fills the input;
    `rateBetween()` inverts it when the pair runs the other way — a ratio, not an
    amount, so the one division is allowed. `fmt.rate()` formats it.
@@ -280,6 +286,7 @@ it opens; landing straight on a tab via a direct link or a hard refresh pays for
 | Save an item or a transfer | 2 | the write, then `GET /items` (plus `/labels` if the save changed the item's label set); a transfer or item write also invalidates `store.wallets`/`store.balances`/`store.exchangeRates` so those refetch on next open |
 | Setup edit | 2 | the write, then `GET /trips/{slug}` (or `/labels`) |
 | Save or delete a stay | 3, or 4 | the write, then `GET /stays` and `GET /trips/{slug}` for the item form's picker, plus `GET /items` once the feed is loaded — a delete detaches items |
+| Settle or unlock | 2 | `PUT` or `DELETE /settlement`, then `GET /trips/{slug}` |
 
 The shell also asks `GET /version` once per page load, for the build id the settings menu shows.
 It is chrome, not a screen — a tab switch or route change never repeats it — so the

@@ -3,16 +3,16 @@ import { html } from '../h.js';
 import { useStore, reload, setStatsDims } from '../store.js';
 import { t, getLocale } from '../i18n/index.js';
 import { money, date as fmtDate } from '../fmt.js';
-import { getRatesState, setTargetCurrency, setRateValue } from '../rates.js';
+import { useTotalRates } from '../rates.js';
 import {
   setDims, getShownCurrency, setShownCurrency, getView, setView, getRange, setRange, isDated,
   prefixes, mergeRows,
 } from '../breakdown.js';
-import { rateFor, convert, combineRows } from '../convert.js';
+import { combineRows } from '../convert.js';
 import { isBeforeTrip } from '../days.js';
 import { LabelBadge } from '../components/LabelBadge.js';
 import { Loading } from '../components/Loading.js';
-import { RatesForm } from '../components/RatesForm.js';
+import { TotalRatesPanel } from '../components/TotalRatesPanel.js';
 import { StatsChart } from '../components/StatsChart.js';
 
 // Every dimension the picker offers, in its order, mapped to the key it answers
@@ -327,33 +327,25 @@ function StatsPicker({
   `;
 }
 
-// Only renders rows once every currency has a confirmed rate (`allRatesSet`) —
+// Only renders rows once every currency has a confirmed rate (`rates.ready`) —
 // never a partial or misleading sum, just the rates form or the whole answer.
-function TotalSection({ groups, dims, trip, ratesState, onTargetChange, onRateChange, locale, view, range }) {
-  const primary = trip.currencies.find((c) => c.is_primary) || trip.currencies[0];
-  const target = trip.currencies.find((c) => c.id === ratesState.target) || primary;
-  const values = ratesState.values;
-
-  const allRatesSet = trip.currencies.every((c) => rateFor(c.id, target.id, values, locale) !== null);
+function TotalSection({ groups, dims, trip, rates, locale, view, range }) {
+  const { target, values, ready } = rates;
   const index = indexRows(groups, (rows) =>
-    allRatesSet ? combineRows(rows, target.id, values, locale) : [], trip.start_date);
+    ready ? combineRows(rows, target.id, values, locale) : [], trip.start_date);
 
-  const extra = html`
-    <${RatesForm} trip=${trip} target=${target} values=${values} onTargetChange=${onTargetChange} onRateChange=${onRateChange} />
-    ${!allRatesSet && html`<div class="alert alert-secondary py-2 px-3 small mb-0">${t('rates.missing')}</div>`}
-    ${allRatesSet && html`<div class="small text-body-secondary mb-2">${t('rates.total_note')}</div>`}
-  `;
+  const extra = html`<${TotalRatesPanel} trip=${trip} rates=${rates} locale=${locale} />`;
 
   return html`
     <${StatSection} id="total" badgeLabel=${t('nav.total')} code=${target.code} index=${index}
-                    dims=${dims} trip=${trip} locale=${locale} view=${view} range=${range} extra=${extra} showRows=${allRatesSet} />
+                    dims=${dims} trip=${trip} locale=${locale} view=${view} range=${range} extra=${extra} showRows=${ready} />
   `;
 }
 
 export function Stats() {
   const store = useStore();
   const locale = getLocale();
-  const [ratesState, setRatesState] = useState(() => getRatesState(store.slug));
+  const rates = useTotalRates(store);
   const [shown, setShown] = useState(() => getShownCurrency(store.slug));
   const [view, setViewState] = useState(() => getView(store.slug));
   const [range, setRangeState] = useState(() => getRange(store.slug));
@@ -379,14 +371,6 @@ export function Stats() {
   // A remembered currency that this trip no longer spends falls back to the primary.
   const picked = options.some((option) => option.id === shown) ? shown : primary?.id;
 
-  function onTargetChange(currencyId) {
-    setRatesState(setTargetCurrency(store.slug, currencyId));
-  }
-
-  function onRateChange(currencyId, value) {
-    setRatesState(setRateValue(store.slug, currencyId, value));
-  }
-
   function onDimsChange(next) {
     setStatsDims(setDims(store.slug, next));
   }
@@ -411,8 +395,7 @@ export function Stats() {
                       dims=${dims} onDimsChange=${onDimsChange} view=${view} onViewChange=${onViewChange}
                       range=${range} onRangeChange=${onRangeChange} startDate=${trip.start_date} />
       ${picked === 'total' && html`
-        <${TotalSection} groups=${groups} dims=${dims} trip=${trip} ratesState=${ratesState}
-                         onTargetChange=${onTargetChange} onRateChange=${onRateChange} locale=${locale} view=${view}
+        <${TotalSection} groups=${groups} dims=${dims} trip=${trip} rates=${rates} locale=${locale} view=${view}
                          range=${range} />
       `}
       ${currency && html`

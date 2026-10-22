@@ -26,6 +26,16 @@ function rateFmt(locale) {
   return rateFmts[locale] ??= new Intl.NumberFormat(locale, { maximumSignificantDigits: 6, useGrouping: false });
 }
 
+const storedRateFmts = {};
+function storedRateFmt(locale) {
+  return storedRateFmts[locale] ??= new Intl.NumberFormat(locale, { maximumFractionDigits: 9, useGrouping: false });
+}
+
+// A settled trip's stored rate, all nine places.
+export function storedRate(value, locale) {
+  return storedRateFmt(locale).format(value);
+}
+
 // An exchange rate: six significant digits, no grouping, so parse() reads it back
 // as the typed value it becomes in the Total's rate form.
 export function rate(value, locale) {
@@ -77,6 +87,17 @@ export function dateTime(iso, locale) {
   const month = localMonthFmts[locale] ??= new Intl.DateTimeFormat(locale, { month: 'short' });
   const time = timeFmts[locale] ??= new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' });
   return `${day.format(d)} ${month.format(d)}, ${time.format(d)}`;
+}
+
+// "22 Sep 2026" — a real instant's day with its year, in the viewer's own zone like
+// dateTime, for a moment that may lie in another year.
+const localYearFmts = {};
+export function dateWithYear(iso, locale) {
+  const d = new Date(iso);
+  const day = localDayFmts[locale] ??= new Intl.DateTimeFormat(locale, { day: 'numeric' });
+  const month = localMonthFmts[locale] ??= new Intl.DateTimeFormat(locale, { month: 'short' });
+  const year = localYearFmts[locale] ??= new Intl.DateTimeFormat(locale, { year: 'numeric' });
+  return `${day.format(d)} ${month.format(d)} ${year.format(d)}`;
 }
 
 // A row's time is a wall time, "YYYY-MM-DDTHH:mm:ss", already in the trip's zone: the
