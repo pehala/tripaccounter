@@ -84,9 +84,9 @@ import pytest
         ),
     ],
 )
-def test_item_write_validation(client, trip, item_body, overrides, expected):
+def test_item_write_validation(client, trip_url, item_body, overrides, expected):
     """Each item write rule fails with its own code and params, on its own field."""
-    response = client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(**overrides))
+    response = client.post(f"{trip_url}/items", json=item_body(**overrides))
 
     assert response.status_code == 422
     assert response.json() == {
@@ -101,12 +101,14 @@ PLACE_INACTIVE = {
 
 
 @pytest.mark.parametrize("field", [pytest.param(field, id=field) for field in PLACE_INACTIVE])
-def test_new_item_cannot_place_an_inactive_person(client, trip, item_body, deactivate, field):
+def test_new_item_cannot_place_an_inactive_person(  # noqa: PLR0913, PLR0917 (the fixtures are the setup)
+    client, trip, item_body, deactivate, field, trip_url
+):
     """A new item can name a deactivated person neither as its payer nor in its split."""
     deactivate(trip["people"][3])
 
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
+        f"{trip_url}/items",
         json=item_body(**PLACE_INACTIVE[field](trip["people"])),
     )
 
@@ -121,18 +123,17 @@ def test_new_item_cannot_place_an_inactive_person(client, trip, item_body, deact
 
 
 @pytest.mark.parametrize("field", [pytest.param(field, id=field) for field in PLACE_INACTIVE])
-def test_edit_cannot_newly_place_an_inactive_person(client, trip, item_body, deactivate, field):
+def test_edit_cannot_newly_place_an_inactive_person(  # noqa: PLR0913, PLR0917 (the fixtures are the setup)
+    client, trip, item_body, deactivate, field, trip_url, create
+):
     """An edit can't make a deactivated person the payer or add them to a split they weren't on."""
     people = trip["people"]
-    item_id = client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
-        json=item_body(shares=[{"person_id": person["id"]} for person in people[:3]]),
-    ).json()["item"]["id"]
+    item_id = create(
+        "items", item_body(shares=[{"person_id": person["id"]} for person in people[:3]])
+    )["id"]
     deactivate(people[3])
 
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/items/{item_id}", json=PLACE_INACTIVE[field](people)
-    )
+    response = client.patch(f"{trip_url}/items/{item_id}", json=PLACE_INACTIVE[field](people))
 
     assert response.status_code == 422
     assert response.json() == {
@@ -144,11 +145,9 @@ def test_edit_cannot_newly_place_an_inactive_person(client, trip, item_body, dea
     }
 
 
-def test_person_default_weight_must_be_a_canonical_decimal_string(client, trip):
+def test_person_default_weight_must_be_a_canonical_decimal_string(client, trip_url):
     """A weight sent as a JSON number, not the canonical string, is not_positive."""
-    response = client.post(
-        f"/api/v1/trips/{trip['slug']}/people", json={"name": "Zed", "default_weight": 1}
-    )
+    response = client.post(f"{trip_url}/people", json={"name": "Zed", "default_weight": 1})
 
     assert response.status_code == 422
     assert response.json()["error"]["fields"]["default_weight"] == {
@@ -157,11 +156,9 @@ def test_person_default_weight_must_be_a_canonical_decimal_string(client, trip):
     }
 
 
-def test_omitted_required_field_is_required(client, trip, people):
+def test_omitted_required_field_is_required(client, trip_url, people):
     """A write body missing a field the schema declares fails as `required` on that field."""
-    response = client.post(
-        f"/api/v1/trips/{trip['slug']}/wallets", json={"person_id": people[0]["id"]}
-    )
+    response = client.post(f"{trip_url}/wallets", json={"person_id": people[0]["id"]})
 
     assert response.status_code == 422
     assert response.json() == {
@@ -173,11 +170,9 @@ def test_omitted_required_field_is_required(client, trip, people):
     }
 
 
-def test_wallet_person_from_another_trip_is_not_in_trip(client, trip):
+def test_wallet_person_from_another_trip_is_not_in_trip(client, trip, trip_url):
     """A wallet can only be created for someone on this trip."""
-    response = client.post(
-        f"/api/v1/trips/{trip['slug']}/wallets", json={"person_id": 999999, "name": "Cash"}
-    )
+    response = client.post(f"{trip_url}/wallets", json={"person_id": 999999, "name": "Cash"})
 
     assert response.status_code == 422
     assert response.json()["error"]["fields"]["person_id"] == {"code": "not_in_trip", "params": {}}
@@ -190,37 +185,31 @@ def test_wallet_person_from_another_trip_is_not_in_trip(client, trip):
         pytest.param("x" * 61, {"code": "too_long", "params": {"max": 60}}, id="over-60"),
     ],
 )
-def test_wallet_name_length_rules(client, trip, people, name, expected):
+def test_wallet_name_length_rules(client, trip_url, people, name, expected):
     """A wallet name is required and capped at 60 characters."""
-    response = client.post(
-        f"/api/v1/trips/{trip['slug']}/wallets", json={"person_id": people[0]["id"], "name": name}
-    )
+    response = client.post(f"{trip_url}/wallets", json={"person_id": people[0]["id"], "name": name})
 
     assert response.status_code == 422
     assert response.json()["error"]["fields"]["name"] == expected
 
 
-def test_patch_item_blank_name_is_rejected(client, trip, item_body):
+def test_patch_item_blank_name_is_rejected(client, trip_url, item_body, create):
     """An update is validated like a create: a name that is only whitespace is required."""
-    created = client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body()).json()["item"]
+    created = create("items", item_body())
 
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/items/{created['id']}", json={"name": "   "}
-    )
+    response = client.patch(f"{trip_url}/items/{created['id']}", json={"name": "   "})
 
     assert response.status_code == 422
     assert response.json()["error"]["fields"]["name"] == {"code": "required", "params": {}}
 
 
-def test_patch_transfer_wallet_not_in_trip_is_rejected(client, trip, transfer_body):
+def test_patch_transfer_wallet_not_in_trip_is_rejected(
+    client, trip, transfer_body, trip_url, create
+):
     """An update's references are checked against this trip, as a create's are."""
-    created = client.post(f"/api/v1/trips/{trip['slug']}/transfers", json=transfer_body()).json()[
-        "transfer"
-    ]
+    created = create("transfers", transfer_body())
 
-    response = client.patch(
-        f"/api/v1/trips/{trip['slug']}/transfers/{created['id']}", json={"to_wallet_id": 999999}
-    )
+    response = client.patch(f"{trip_url}/transfers/{created['id']}", json={"to_wallet_id": 999999})
 
     assert response.status_code == 422
     assert response.json()["error"]["fields"]["to_wallet_id"] == {
@@ -229,11 +218,9 @@ def test_patch_transfer_wallet_not_in_trip_is_rejected(client, trip, transfer_bo
     }
 
 
-def test_person_default_weight_past_four_decimals_is_too_precise(client, trip):
+def test_person_default_weight_past_four_decimals_is_too_precise(client, trip_url):
     """A default weight carrying a fifth decimal names the precision limit it broke."""
-    response = client.post(
-        f"/api/v1/trips/{trip['slug']}/people", json={"name": "Zed", "default_weight": "0.50001"}
-    )
+    response = client.post(f"{trip_url}/people", json={"name": "Zed", "default_weight": "0.50001"})
 
     assert response.status_code == 422
     assert response.json()["error"]["fields"]["default_weight"] == {

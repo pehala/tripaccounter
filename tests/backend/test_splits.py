@@ -3,18 +3,18 @@
 import pytest
 
 
-def test_equal_split_pads_the_roster(client, trip, item_body):
+def test_equal_split_pads_the_roster(client, trip_url, item_body):
     """Equal split lists all four people; owed distributes evenly."""
-    response = client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(amount="18400"))
+    response = client.post(f"{trip_url}/items", json=item_body(amount="18400"))
     shares = response.json()["item"]["split"]["shares"]
     assert [s["owed"] for s in shares] == [4600, 4600, 4600, 4600]
     assert [s["weight"] for s in shares] == ["1", "1", "1", "1"]
 
 
-def test_equal_split_excludes_one_person_leaves_null(client, trip, people, item_body):
+def test_equal_split_excludes_one_person_leaves_null(client, trip_url, people, item_body):
     """A person left out of `shares` gets weight null, owed null - not zero."""
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
+        f"{trip_url}/items",
         json=item_body(
             amount="90.00",
             split_mode="equal",
@@ -31,10 +31,10 @@ def test_equal_split_excludes_one_person_leaves_null(client, trip, people, item_
     assert excluded["owed"] is None
 
 
-def test_shares_split_by_weight(client, trip, people, item_body):
+def test_shares_split_by_weight(client, trip_url, people, item_body):
     """Weighted split: 1, 1, 1, 0.5 divides 96000 into thirds and a half-third."""
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
+        f"{trip_url}/items",
         json=item_body(
             amount="96000",
             split_mode="shares",
@@ -54,10 +54,10 @@ def test_shares_split_by_weight(client, trip, people, item_body):
     assert owed[people[3]["id"]] == 13714.285714
 
 
-def test_exact_split_sums_to_amount(client, trip, people, item_body):
+def test_exact_split_sums_to_amount(client, trip_url, people, item_body):
     """Exact split rows sum to `amount` exactly and are echoed as typed."""
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
+        f"{trip_url}/items",
         json=item_body(
             amount="184.00",
             split_mode="exact",
@@ -73,10 +73,10 @@ def test_exact_split_sums_to_amount(client, trip, people, item_body):
     assert owed == {people[0]["id"]: 92, people[1]["id"]: 92}
 
 
-def test_exact_split_off_by_one_is_rejected(client, trip, people, item_body):
+def test_exact_split_off_by_one_is_rejected(client, trip_url, people, item_body):
     """An exact split that misses the total by a cent fails with the diff."""
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
+        f"{trip_url}/items",
         json=item_body(
             amount="184.00",
             split_mode="exact",
@@ -98,21 +98,21 @@ def test_exact_split_off_by_one_is_rejected(client, trip, people, item_body):
     }
 
 
-def test_shares_omitted_means_equal_over_active_people(client, trip, item_body):
+def test_shares_omitted_means_equal_over_active_people(client, trip_url, item_body):
     """Omitting `shares` entirely means equal over every active person."""
     body = item_body(amount="100.00")
     del body["shares"]
-    response = client.post(f"/api/v1/trips/{trip['slug']}/items", json=body)
+    response = client.post(f"{trip_url}/items", json=body)
     shares = response.json()["item"]["split"]["shares"]
     assert all(s["owed"] is not None for s in shares)
     assert len(shares) == 4
 
 
-def test_shares_duplicate_person_rejected(client, trip, people, item_body):
+def test_shares_duplicate_person_rejected(client, trip_url, people, item_body):
     """The same person_id twice in `shares` is a duplicate_person error."""
     pid = people[0]["id"]
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
+        f"{trip_url}/items",
         json=item_body(split_mode="equal", shares=[{"person_id": pid}, {"person_id": pid}]),
     )
     assert response.status_code == 422
@@ -133,11 +133,11 @@ def test_shares_duplicate_person_rejected(client, trip, people, item_body):
         pytest.param("one", id="not-a-number"),
     ],
 )
-def test_shares_weight_not_positive_rejected(client, trip, people, item_body, weight):
+def test_shares_weight_not_positive_rejected(client, trip_url, people, item_body, weight):
     """A weight that is not a canonical decimal string greater than zero is not_positive."""
     pid = people[0]["id"]
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
+        f"{trip_url}/items",
         json=item_body(split_mode="shares", shares=[{"person_id": pid, "weight": weight}]),
     )
     assert response.status_code == 422
@@ -150,12 +150,12 @@ def test_shares_weight_not_positive_rejected(client, trip, people, item_body, we
     }
 
 
-def test_preview_split_matches_saved_item(client, trip, item_body):
+def test_preview_split_matches_saved_item(client, trip_url, item_body, create):
     """preview-split returns byte-identical split to the item created from the same body."""
     body = item_body(amount="18400")
-    created = client.post(f"/api/v1/trips/{trip['slug']}/items", json=body).json()["item"]
+    created = create("items", body)
 
-    preview = client.post(f"/api/v1/trips/{trip['slug']}/items/preview-split", json=body).json()
+    preview = client.post(f"{trip_url}/items/preview-split", json=body).json()
 
     assert preview["split"] == created["split"]
     assert preview["total"] == created["amount"]
@@ -168,9 +168,9 @@ def test_preview_split_matches_saved_item(client, trip, item_body):
         pytest.param([{"weight": "1"}], id="row-without-a-person"),
     ],
 )
-def test_shares_without_a_usable_row_is_empty(client, trip, item_body, shares):
+def test_shares_without_a_usable_row_is_empty(client, trip_url, item_body, shares):
     """A `shares` array with no rows, or a row naming nobody, is `empty`."""
-    response = client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(shares=shares))
+    response = client.post(f"{trip_url}/items", json=item_body(shares=shares))
 
     assert response.status_code == 422
     assert response.json() == {
@@ -182,7 +182,7 @@ def test_shares_without_a_usable_row_is_empty(client, trip, item_body, shares):
     }
 
 
-def test_shares_person_from_another_trip_is_not_in_trip(client, trip, item_body):
+def test_shares_person_from_another_trip_is_not_in_trip(client, item_body, trip_url):
     """A share row naming someone on a different trip is rejected, not silently dropped."""
     other = client.post(
         "/api/v1/trips",
@@ -195,7 +195,7 @@ def test_shares_person_from_another_trip_is_not_in_trip(client, trip, item_body)
     ).json()["trip"]
 
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
+        f"{trip_url}/items",
         json=item_body(shares=[{"person_id": other["people"][0]["id"]}]),
     )
 
@@ -203,11 +203,9 @@ def test_shares_person_from_another_trip_is_not_in_trip(client, trip, item_body)
     assert response.json()["error"]["fields"]["shares"] == {"code": "not_in_trip", "params": {}}
 
 
-def test_preview_split_currency_from_another_trip_is_not_in_trip(client, trip, item_body):
+def test_preview_split_currency_from_another_trip_is_not_in_trip(client, item_body, trip_url):
     """preview-split checks the currency belongs to this trip before splitting anything."""
-    response = client.post(
-        f"/api/v1/trips/{trip['slug']}/items/preview-split", json=item_body(currency_id=999999)
-    )
+    response = client.post(f"{trip_url}/items/preview-split", json=item_body(currency_id=999999))
 
     assert response.status_code == 422
     assert response.json() == {
@@ -219,10 +217,10 @@ def test_preview_split_currency_from_another_trip_is_not_in_trip(client, trip, i
     }
 
 
-def test_shares_weight_past_four_decimals_is_too_precise(client, trip, people, item_body):
+def test_shares_weight_past_four_decimals_is_too_precise(client, trip_url, people, item_body):
     """A weight carrying a fifth decimal is too_precise, not a positivity failure."""
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
+        f"{trip_url}/items",
         json=item_body(
             split_mode="shares",
             shares=[{"person_id": people[0]["id"], "weight": "1.00001"}],

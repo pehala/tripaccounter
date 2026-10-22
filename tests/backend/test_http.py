@@ -6,10 +6,10 @@ from fastapi.testclient import TestClient
 from app.routers import trips
 
 
-def test_malformed_json_is_400(client, trip):
+def test_malformed_json_is_400(client, trip_url):
     """Malformed JSON in the body is a bad_request, not a 422 with a message."""
     response = client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
+        f"{trip_url}/items",
         content=b"{not json",
         headers={"content-type": "application/json"},
     )
@@ -17,11 +17,9 @@ def test_malformed_json_is_400(client, trip):
     assert response.json() == {"error": {"code": "bad_request", "params": {}}}
 
 
-def test_unknown_fields_in_write_body_are_rejected(client, trip):
+def test_unknown_fields_in_write_body_are_rejected(client, trip_url):
     """An unrecognised field in a write body is rejected, not silently dropped."""
-    response = client.post(
-        f"/api/v1/trips/{trip['slug']}/people", json={"name": "Zed", "surprise": 1}
-    )
+    response = client.post(f"{trip_url}/people", json={"name": "Zed", "surprise": 1})
     assert response.status_code == 400
     assert response.json() == {"error": {"code": "bad_request", "params": {}}}
 
@@ -33,9 +31,9 @@ def test_unknown_slug_is_404_not_found(client):
     assert response.json()["error"]["params"] == {"resource": "trip"}
 
 
-def test_delete_returns_204_with_empty_body(client, trip):
+def test_delete_returns_204_with_empty_body(client, trip_url):
     """DELETE responses are 204 with no body."""
-    response = client.delete(f"/api/v1/trips/{trip['slug']}")
+    response = client.delete(f"{trip_url}")
     assert response.status_code == 204
     assert response.content == b""
 
@@ -57,27 +55,25 @@ def test_unhandled_exception_is_500_with_ref(client, trip, monkeypatch):
     assert "ref" in body["error"]["params"]
 
 
-def test_api_get_repeated_with_its_etag_is_an_empty_304(client, trip):
+def test_api_get_repeated_with_its_etag_is_an_empty_304(client, trip_url):
     """An unchanged API GET revalidates to a bodiless 304, so a repeat load costs nothing."""
-    first = client.get(f"/api/v1/trips/{trip['slug']}")
+    first = client.get(f"{trip_url}")
     assert first.status_code == 200
     assert first.headers["cache-control"] == "no-cache"
 
-    second = client.get(
-        f"/api/v1/trips/{trip['slug']}", headers={"if-none-match": first.headers["etag"]}
-    )
+    second = client.get(f"{trip_url}", headers={"if-none-match": first.headers["etag"]})
 
     assert second.status_code == 304
     assert second.content == b""
     assert "content-length" not in second.headers
 
 
-def test_api_etag_changes_after_a_write(client, trip):
+def test_api_etag_changes_after_a_write(client, trip_url):
     """A write moves the ETag, so a client holding the old one gets the new body."""
-    before = client.get(f"/api/v1/trips/{trip['slug']}").headers["etag"]
-    client.patch(f"/api/v1/trips/{trip['slug']}", json={"note": "changed"})
+    before = client.get(f"{trip_url}").headers["etag"]
+    client.patch(f"{trip_url}", json={"note": "changed"})
 
-    response = client.get(f"/api/v1/trips/{trip['slug']}", headers={"if-none-match": before})
+    response = client.get(f"{trip_url}", headers={"if-none-match": before})
 
     assert response.status_code == 200
     assert response.json()["trip"]["note"] == "changed"
@@ -90,9 +86,9 @@ def test_api_etag_changes_after_a_write(client, trip):
         pytest.param("patch", "people/not-an-int", {"name": "Zed"}, id="non-integer-path-id"),
     ],
 )
-def test_input_no_catalog_code_describes_is_400(client, trip, method, path, body):
+def test_input_no_catalog_code_describes_is_400(client, trip_url, method, path, body):
     """A pydantic failure with no catalog code of its own is a bad_request, not a 422."""
-    response = getattr(client, method)(f"/api/v1/trips/{trip['slug']}/{path}", json=body)
+    response = getattr(client, method)(f"{trip_url}/{path}", json=body)
 
     assert response.status_code == 400
     assert response.json() == {"error": {"code": "bad_request", "params": {}}}

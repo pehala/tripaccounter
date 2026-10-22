@@ -7,16 +7,16 @@ import pytest
 
 
 @pytest.fixture()
-def two_person_item(client, trip, people, item_body):
+def two_person_item(client, trip_url, people, item_body, create):
     """Create the two-person item the CSV/JSON parity tests compare against.
 
     The second sharer is deactivated afterwards: a person keeps the shares they
     already carry, and export resolves against the whole roster, so both shares
     stay in the file.
     """
-    item = client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
-        json=item_body(
+    item = create(
+        "items",
+        item_body(
             name="Layover lunch",
             amount="120.00",
             note="Split at the gate",
@@ -24,27 +24,24 @@ def two_person_item(client, trip, people, item_body):
             labels=["food", "airport"],
             shares=[{"person_id": people[0]["id"]}, {"person_id": people[1]["id"]}],
         ),
-    ).json()["item"]
-    client.patch(f"/api/v1/trips/{trip['slug']}/people/{people[1]['id']}", json={"active": False})
+    )
+    client.patch(f"{trip_url}/people/{people[1]['id']}", json={"active": False})
     return item
 
 
-def test_csv_export_one_row_per_share(client, trip, people, item_body):
+def test_csv_export_one_row_per_share(client, trip_url, people, item_body, create):
     """CSV is share-grained: an item split four ways is four rows, not one."""
-    client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
-        json=item_body(name="Dinner at Messinn", amount="184.00"),
-    )
-    client.post(
-        f"/api/v1/trips/{trip['slug']}/items",
-        json=item_body(
+    create("items", item_body(name="Dinner at Messinn", amount="184.00"))
+    create(
+        "items",
+        item_body(
             name="Layover lunch",
             amount="120.00",
             shares=[{"person_id": people[0]["id"]}, {"person_id": people[1]["id"]}],
         ),
     )
 
-    response = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "csv"})
+    response = client.get(f"{trip_url}/export", params={"format": "csv"})
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/csv")
@@ -56,11 +53,13 @@ def test_csv_export_one_row_per_share(client, trip, people, item_body):
     assert [row["name"] for row in rows] == ["Dinner at Messinn"] * 4 + ["Layover lunch"] * 2
 
 
-def test_csv_export_header_and_first_row_are_the_contract(client, trip, people, two_person_item):
+def test_csv_export_header_and_first_row_are_the_contract(
+    client, trip, people, two_person_item, trip_url
+):
     """The header row is pinned literally, because a client parses it."""
     created = two_person_item
 
-    response = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "csv"})
+    response = client.get(f"{trip_url}/export", params={"format": "csv"})
     reader = csv.DictReader(io.StringIO(response.text))
 
     assert reader.fieldnames == [
@@ -113,11 +112,13 @@ def test_csv_export_header_and_first_row_are_the_contract(client, trip, people, 
     }
 
 
-def test_csv_export_blank_optional_fields_are_empty_not_the_string_none(client, trip, item_body):
+def test_csv_export_blank_optional_fields_are_empty_not_the_string_none(
+    client, trip_url, item_body, create
+):
     """An item with no note/city/map_url/lat/lon exports empty fields, not the word 'None'."""
-    client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(name="Dinner"))
+    create("items", item_body(name="Dinner"))
 
-    response = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "csv"})
+    response = client.get(f"{trip_url}/export", params={"format": "csv"})
     row = next(csv.DictReader(io.StringIO(response.text)))
 
     assert row["note"] == ""
@@ -128,11 +129,11 @@ def test_csv_export_blank_optional_fields_are_empty_not_the_string_none(client, 
     assert row["labels"] == ""
 
 
-def test_json_export_is_share_grained_like_the_csv(client, trip, people, two_person_item):
+def test_json_export_is_share_grained_like_the_csv(client, trip, people, two_person_item, trip_url):
     """JSON export has the same grain as the CSV: one row per share, not one per item."""
     created = two_person_item
 
-    response = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "json"})
+    response = client.get(f"{trip_url}/export", params={"format": "json"})
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("application/json")
@@ -168,12 +169,10 @@ def test_json_export_is_share_grained_like_the_csv(client, trip, people, two_per
     assert body["transfers"] == []
 
 
-def test_csv_and_json_export_carry_the_same_rows(client, trip, people, two_person_item):
+def test_csv_and_json_export_carry_the_same_rows(client, trip_url, people, two_person_item):
     """CSV and JSON export are identical except for the format, deactivated sharer included."""
-    csv_text = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "csv"}).text
-    json_rows = client.get(
-        f"/api/v1/trips/{trip['slug']}/export", params={"format": "json"}
-    ).json()["items"]
+    csv_text = client.get(f"{trip_url}/export", params={"format": "csv"}).text
+    json_rows = client.get(f"{trip_url}/export", params={"format": "json"}).json()["items"]
     csv_rows = list(csv.DictReader(io.StringIO(csv_text)))
 
     assert len(csv_rows) == len(json_rows) == 2
@@ -190,37 +189,37 @@ def test_csv_and_json_export_carry_the_same_rows(client, trip, people, two_perso
         assert csv_row["owed"] == str(json_row["owed"])
 
 
-def test_export_rows_are_oldest_first(client, trip, people, item_body):
+def test_export_rows_are_oldest_first(client, trip_url, people, item_body, create):
     """Export reads as a chronological sheet, whatever the items endpoint answers in."""
     for name, occurred_at in (
         ("Layover lunch", "2026-09-14T12:00:00"),
         ("Dinner at Messinn", "2026-09-12T19:00:00"),
         ("Blue Lagoon", "2026-09-13T10:00:00"),
     ):
-        client.post(
-            f"/api/v1/trips/{trip['slug']}/items",
-            json=item_body(
+        create(
+            "items",
+            item_body(
                 name=name,
                 occurred_at=occurred_at,
                 shares=[{"person_id": people[0]["id"]}],
             ),
         )
 
-    response = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "csv"})
+    response = client.get(f"{trip_url}/export", params={"format": "csv"})
 
     rows = list(csv.DictReader(io.StringIO(response.text)))
     assert [row["name"] for row in rows] == ["Dinner at Messinn", "Blue Lagoon", "Layover lunch"]
 
 
-def test_export_of_empty_trip_is_not_500(client, trip):
+def test_export_of_empty_trip_is_not_500(client, trip_url):
     """A trip with no items exports a header and nothing else."""
-    response = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "csv"})
+    response = client.get(f"{trip_url}/export", params={"format": "csv"})
     assert response.status_code == 200
     rows = list(csv.DictReader(io.StringIO(response.text)))
     assert rows == []
 
 
-def test_export_unknown_format_is_400(client, trip):
+def test_export_unknown_format_is_400(client, trip_url):
     """An unsupported format value is a bad_request."""
-    response = client.get(f"/api/v1/trips/{trip['slug']}/export", params={"format": "xml"})
+    response = client.get(f"{trip_url}/export", params={"format": "xml"})
     assert response.status_code == 400

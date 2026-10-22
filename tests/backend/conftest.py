@@ -176,6 +176,29 @@ def trip(client):
 
 
 @pytest.fixture()
+def trip_url(trip):
+    """Return the trip's API root, `/api/v1/trips/<slug>`; a test appends the route it hits."""
+    return f"/api/v1/trips/{trip['slug']}"
+
+
+@pytest.fixture()
+def create(client, trip_url):
+    """Return a function that POSTs `body` to `<trip_url>/<collection>` and returns the entity.
+
+    Asserts the 201, so a setup write the API rejects fails at the setup line, and unwraps the
+    one-key envelope: `create("items", item_body())` is the item, not `{"item": {...}}`.
+    """
+
+    def _create(collection, body):
+        response = client.post(f"{trip_url}/{collection}", json=body)
+        assert response.status_code == 201, response.text
+        (entity,) = response.json().values()
+        return entity
+
+    return _create
+
+
+@pytest.fixture()
 def people(trip):
     """List the trip's four people, in `sort_order`: Petr, Ann, Bob, Eva (weight 0.5)."""
     return trip["people"]
@@ -295,35 +318,28 @@ def stay_body(country):
 
 
 @pytest.fixture()
-def deactivate(client, trip):
+def deactivate(client, trip_url):
     """Return a function that deactivates a person through `PATCH {"active": false}`."""
 
     def _deactivate(person):
-        response = client.patch(
-            f"/api/v1/trips/{trip['slug']}/people/{person['id']}", json={"active": False}
-        )
+        response = client.patch(f"{trip_url}/people/{person['id']}", json={"active": False})
         assert response.status_code == 200, response.text
 
     return _deactivate
 
 
 @pytest.fixture()
-def items_two_same_day_one_earlier(client, trip, item_body):
+def items_two_same_day_one_earlier(create, item_body):
     """Create three items, after the trip's start: two posted for 2026-09-14, one for 2026-09-13.
 
     The earlier item sets up the occurred_at/id tie-break ordering test.
     """
     dates = ("2026-09-13T09:00:00", "2026-09-14T09:00:00", "2026-09-14T09:00:00")
-    return [
-        client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(occurred_at=d)).json()[
-            "item"
-        ]
-        for d in dates
-    ]
+    return [create("items", item_body(occurred_at=d)) for d in dates]
 
 
 @pytest.fixture()
-def scenario_items(client, trip, person_id, item_body):
+def scenario_items(create, person_id, item_body):
     """Create one shared, richer batch of items in the standard `trip`.
 
     Pre-created for every functional test whose behaviour only shows up once
@@ -335,9 +351,7 @@ def scenario_items(client, trip, person_id, item_body):
 
     def _post(**overrides):
         overrides.setdefault("occurred_at", "2026-07-02T10:00:00")
-        return client.post(
-            f"/api/v1/trips/{trip['slug']}/items", json=item_body(**overrides)
-        ).json()["item"]
+        return create("items", item_body(**overrides))
 
     return {
         "day1_labelled": _post(

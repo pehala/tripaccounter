@@ -3,12 +3,12 @@
 from app.services.errors import FIELD_ERROR_PARAMS, TOP_LEVEL_PARAMS
 
 
-def test_no_response_body_ever_contains_a_message_key(client, trip, people, item_body):
+def test_no_response_body_ever_contains_a_message_key(client, trip_url, people, item_body):
     """Every kind of error response is checked here for a stray `message` key."""
     responses = [
         client.get("/api/v1/trips/does-not-exist"),
-        client.post(f"/api/v1/trips/{trip['slug']}/people", json={"name": people[0]["name"]}),
-        client.post(f"/api/v1/trips/{trip['slug']}/items", json=item_body(amount="not-a-number")),
+        client.post(f"{trip_url}/people", json={"name": people[0]["name"]}),
+        client.post(f"{trip_url}/items", json=item_body(amount="not-a-number")),
     ]
     for response in responses:
         assert "message" not in response.text
@@ -20,11 +20,9 @@ def test_every_code_seen_on_the_wire_is_a_catalog_key(error_codes):
     assert error_codes <= known
 
 
-def test_invalid_amount_format_is_422(client, trip, item_body):
+def test_invalid_amount_format_is_422(client, trip_url, item_body):
     """A non-canonical amount string is invalid_amount, not a generic failure."""
-    response = client.post(
-        f"/api/v1/trips/{trip['slug']}/items", json=item_body(amount="18,400.50")
-    )
+    response = client.post(f"{trip_url}/items", json=item_body(amount="18,400.50"))
     assert response.status_code == 422
     assert response.json() == {
         "error": {

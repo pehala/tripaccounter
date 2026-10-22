@@ -101,22 +101,22 @@ def test_get_trip_unknown_slug_is_404(client):
     assert response.json() == {"error": {"code": "not_found", "params": {"resource": "trip"}}}
 
 
-def test_patch_trip_cannot_move_slug(trip, client):
+def test_patch_trip_cannot_move_slug(trip, client, trip_url):
     """PATCH ignores a `slug` field even implicitly - only documented fields move."""
-    response = client.patch(f"/api/v1/trips/{trip['slug']}", json={"name": "Renamed"})
+    response = client.patch(f"{trip_url}", json={"name": "Renamed"})
     assert response.status_code == 200
     updated = response.json()["trip"]
     assert updated["slug"] == trip["slug"]
     assert updated["name"] == "Renamed"
 
 
-def test_delete_trip_cascades(trip, client):
+def test_delete_trip_cascades(client, trip_url):
     """DELETE removes the trip; a second GET is 404."""
-    response = client.delete(f"/api/v1/trips/{trip['slug']}")
+    response = client.delete(f"{trip_url}")
     assert response.status_code == 204
     assert response.content == b""
 
-    response = client.get(f"/api/v1/trips/{trip['slug']}")
+    response = client.get(f"{trip_url}")
     assert response.status_code == 404
     assert response.json() == {"error": {"code": "not_found", "params": {"resource": "trip"}}}
 
@@ -154,25 +154,23 @@ def test_list_trips_orders_by_end_date_desc_undated_last(client):
     assert [s for s in slugs if s in {early, undated, late}] == [late, early, undated]
 
 
-def test_trip_payload_orders_people_and_wallets_by_sort_order(client, trip, people):
+def test_trip_payload_orders_people_and_wallets_by_sort_order(client, people, trip_url):
     """The trip payload follows the roster's sort_order, and each wallet follows its owner."""
     for position, person in enumerate(reversed(people)):
-        response = client.patch(
-            f"/api/v1/trips/{trip['slug']}/people/{person['id']}", json={"sort_order": position}
-        )
+        response = client.patch(f"{trip_url}/people/{person['id']}", json={"sort_order": position})
         assert response.status_code == 200, response.text
 
-    body = client.get(f"/api/v1/trips/{trip['slug']}").json()["trip"]
+    body = client.get(f"{trip_url}").json()["trip"]
     assert [person["name"] for person in body["people"]] == ["Eva", "Bob", "Ann", "Petr"]
     assert [wallet["person_id"] for wallet in body["wallets"]] == [
         person["id"] for person in body["people"]
     ]
 
 
-def test_patch_trip_writes_dates_note_and_archived(trip, client):
+def test_patch_trip_writes_dates_note_and_archived(trip, client, trip_url):
     """PATCH writes each optional trip field a body carries, leaving the name alone."""
     response = client.patch(
-        f"/api/v1/trips/{trip['slug']}",
+        f"{trip_url}",
         json={
             "start_date": "2026-09-13",
             "end_date": "2026-09-22",
