@@ -26,6 +26,12 @@ def scale_weight(weight) -> int:
     return int(scaled)
 
 
+def scale_rate(rate) -> int:
+    """Decimal -> int, rate scaled by 10**9. Exact: rate is already <= 9 decimal places."""
+    scaled = rate * RATE_SCALE
+    return int(scaled)
+
+
 def to_wire(value: int, scale: int) -> int | float:
     """Int minor units -> a plain JSON number, dividing once, at the edge."""
     if value % scale == 0:

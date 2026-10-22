@@ -101,6 +101,7 @@
           "lon": "-19.00600"
         }
       ],
+      "settlement": null,
       "created_at": "2026-09-01T08:12:00Z",
       "updated_at": "2026-09-12T14:02:00Z"
     }

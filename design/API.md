@@ -90,7 +90,9 @@ Every decimal that is not an amount — `weight`, `default_weight`, `lat`, `lon`
 **string** in both directions (`"0.5"`, `"64.14930"`), canonical grammar, up to 4
 fraction digits for weights (stored ×10⁴) and 6 for coordinates. Amounts are the one
 number on output, because they are what clients format; everything else is passed
-through untouched.
+through untouched. A settlement `rate` is a string on input, up to 9 fraction digits
+(stored ×10⁹), and a plain number to 9 places in `TripOut.settlement`, the shape
+`GET /exchange-rates` already answers rates in.
 
 ### Time
 `occurred_at` is a **wall time without an offset**, `YYYY-MM-DDTHH:MM:SS`, in both
@@ -185,7 +187,14 @@ cut in. It is optional on create (`UTC` when omitted), writable by `PATCH`, and 
 unknown name is `invalid_timezone`.
 
 `slug` is generated from `name` at creation and **never changes**, so a pasted link
-survives a rename. `PATCH` cannot move it. Deleting a trip cascades everything.
+survives a rename. `PATCH` cannot move it. Deleting a trip cascades everything,
+a settled trip included.
+
+`settlement` is `null` on an open trip and `{target_currency_id, settled_at, rates}`
+on a settled one: the currency the group agreed to settle in, when they agreed, and
+one `{currency_id, rate}` per other trip currency in trip currency order, read *1
+`currency_id` = `rate` target*. `/settlement` alone writes it — see "Settling a
+trip" below.
 
 Creating a trip requires **at least one person, one currency and one country** —
 otherwise the item form would be unusable. `labels` on create is optional and makes
@@ -393,8 +402,43 @@ currencies on this endpoint.** The one client-side exception, shared with the
 statistics page, is this page's own Total switch: it converts and sums
 `people[].net`, and nets `suggestions[]` by unordered person pair, only once every
 currency has a positive typed rate — see "Statistics" below.
+On a settled trip the Total reads `trip.settlement` instead of the typed rates; the
+blocks themselves are computed live as always, and stay fixed because their inputs
+are locked.
 `|sum(people[].net)| < 0.00001` per currency — a client may assert it;
 `sum(suggestions)` balances exactly.
+
+### Settling a trip
+`PUT /trips/{slug}/settlement` stores the agreement the group paid against:
+`{target_currency_id, rates: [{currency_id, rate}]}`, one rate per trip currency
+other than the target. It is the API's one `PUT`, because the body is the whole
+agreement: every call replaces the target, every rate and `settled_at` (from the
+server's clock), on an open trip or over a settled one, and answers `200` with the
+trip. The roster alone decides what it accepts; no balance is read.
+`DELETE /trips/{slug}/settlement` unlocks the trip, clearing all three, and answers
+`200` with the trip; on an open trip it is `409 trip_not_settled`. Both repeat any
+number of times.
+
+The server stores the rates and applies none: balances and statistics stay per
+currency, and each page's Total multiplies by them in the browser exactly as it does
+by typed rates, so a settled Total equals the one the group saw before settling.
+
+**The lock.** While settled, the trip keeps every input of `net` as it stands:
+
+| Object | Locked | Writable |
+|---|---|---|
+| Item | create, delete; `amount`, `currency_id`, `payer_id`, `split_mode`, `shares` | `name`, `note`, `city`, `country_id`, `labels`, `map_url`, `lat`, `lon`, `occurred_at`, `occurred_tz`, `stay_id`, `wallet_id` among the payer's own wallets |
+| Transfer, same-owner and cross-owner | create, update, delete | — |
+| Currency | create, delete | `symbol`, `is_primary` |
+| Person, country, label, wallet | — | everything, under their usual rules |
+| Trip | the settlement, through `/settlement` | `name`, dates, `note`, `archived` |
+
+A locked item field is compared by value: resending the stored value saves, so a
+client that sends the full body on every edit keeps working; `shares` compare once
+resolved, so `"2"` and `"2.0"` are one weight. A changed locked field is `409
+trip_settled` under that field; a locked whole-object write is `409 trip_settled`
+under `fields.id`. `preview-split` stays open, since it saves nothing. The export's
+`trip` object is `TripOut`, so it carries `settlement` too.
 
 ### Exchange rates
 `GET /trips/{slug}/exchange-rates` answers, for each person and every currency pair
@@ -540,6 +584,12 @@ rule, its code and its intended meaning sit in one row.
 | stay `url` | absolute `http(s)` URL | `invalid_url` | | "Not a link." |
 | stay `country_id` | belongs to this trip | `not_in_trip` | | "Unknown country." |
 | `group_by` (stats) | each name in the dimension registry, once per chain | `unknown_dimension` | `{dimension}` | "Not something statistics can group by: wallet." |
+| settlement `target_currency_id` | a currency of this trip | `not_in_trip` | | "Not part of this trip." |
+| settlement `rates` | one per trip currency other than the target | `missing_rate` | `{currency_id}` | "Add a rate for every currency." |
+| settlement `rates` | only trip currencies other than the target, each once; canonical grammar, `> 0`, ≤ 9 integer digits, ≤ 9 fraction digits | `invalid_rate` | `{currency_id}` | "A rate must be a positive number with up to 9 decimal places." |
+| locked item field on a settled trip (`amount`, `currency_id`, `payer_id`, `split_mode`, `shares`) | value equals the stored one | `trip_settled` (409) | | "This trip is settled — unlock it on Balances to change its money." |
+| item create/delete, any transfer write, currency create/delete on a settled trip | refused, under `fields.id` | `trip_settled` (409) | | "This trip is settled — unlock it on Balances to change its money." |
+| `DELETE /settlement` | the trip is settled | `trip_not_settled` (409) | | "This trip isn't settled." |
 
 A new rule adds a row here, the code to `services/errors/`, and an `err.<code>`
 key to every frontend catalog **in the same commit** — `test_errors.py` and

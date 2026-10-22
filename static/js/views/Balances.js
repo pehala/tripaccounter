@@ -1,19 +1,20 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect } from 'preact/hooks';
 import { html } from '../h.js';
 import { useStore, reload } from '../store.js';
 import { t, getLocale } from '../i18n/index.js';
 import { money, signed } from '../fmt.js';
-import { getRatesState, setTargetCurrency, setRateValue } from '../rates.js';
+import { useTotalRates } from '../rates.js';
 import { rateFor, convert, combineGroup, combineSuggestions } from '../convert.js';
 import { Loading } from '../components/Loading.js';
 import { CollapsibleSection } from '../components/CollapsibleSection.js';
-import { RatesForm } from '../components/RatesForm.js';
+import { SettledBadge } from '../components/SettledBadge.js';
+import { TotalRatesPanel } from '../components/TotalRatesPanel.js';
 import { SideNav, MobilePillNav } from '../components/SideNav.js';
 
 // Shared renderer for a currency's own balance *or* the Total's converted
 // figures. `showNote` is false for the Total: its settle-up list isn't the
 // real, never-converted one the note describes.
-function BalanceBlock({ id, badgeLabel, code, totalSpent, people, suggestions, trip, locale, extra, showSections = true, showNote = true }) {
+function BalanceBlock({ id, badgeLabel, code, totalSpent, people, suggestions, trip, locale, extra, badge, showSections = true, showNote = true }) {
   const personName = (pid) => trip.people.find((p) => p.id === pid)?.name || '';
   const maxAbs = Math.max(1e-9, ...[...people.values()].map((net) => Math.abs(net)));
 
@@ -22,6 +23,7 @@ function BalanceBlock({ id, badgeLabel, code, totalSpent, people, suggestions, t
       <h2 class="h6 d-flex align-items-center gap-2 pt-2">
         <span class="badge text-bg-primary">${badgeLabel}</span>
         ${totalSpent !== null && html`<b class="num">${t('balances.spent', { amount: `${money(totalSpent, locale)} ${code}` })}</b>`}
+        ${badge}
       </h2>
 
       ${extra}
@@ -69,42 +71,35 @@ function CurrencyBalanceBlock({ balance, trip, locale }) {
   return html`
     <${BalanceBlock} id=${balance.currency_id} badgeLabel=${balance.currency_code} code=${balance.currency_code}
                       totalSpent=${balance.total_spent} people=${people} suggestions=${balance.suggestions}
-                      trip=${trip} locale=${locale} />
+                      trip=${trip} locale=${locale}
+                      badge=${html`<${SettledBadge} settlement=${trip.settlement} locale=${locale} />`} />
   `;
 }
 
 // Converted, pair-netted totals — never a fresh minimum-transfer plan (that
-// stays `settle.py`'s job; this only converts and sums per-currency results).
-function TotalBalances({ balances, trip, ratesState, onTargetChange, onRateChange, locale }) {
-  const primary = trip.currencies.find((c) => c.is_primary) || trip.currencies[0];
-  const target = trip.currencies.find((c) => c.id === ratesState.target) || primary;
-  const values = ratesState.values;
+// stays `settle_up.py`'s job; this only converts and sums per-currency results).
+function TotalBalances({ balances, trip, rates, locale }) {
+  const { target, values, ready } = rates;
 
-  const allRatesSet = trip.currencies.every((c) => rateFor(c.id, target.id, values, locale) !== null);
-
-  const totalSpent = allRatesSet
+  const totalSpent = ready
     ? balances.reduce((sum, b) => sum + convert(b.total_spent, rateFor(b.currency_id, target.id, values, locale)), 0)
     : null;
-  const people = allRatesSet ? combineGroup(balances, 'people', 'person_id', target.id, values, locale, 'net') : new Map();
-  const suggestions = allRatesSet ? combineSuggestions(balances, target.id, values, locale) : [];
+  const people = ready ? combineGroup(balances, 'people', 'person_id', target.id, values, locale, 'net') : new Map();
+  const suggestions = ready ? combineSuggestions(balances, target.id, values, locale) : [];
 
-  const extra = html`
-    <${RatesForm} trip=${trip} target=${target} values=${values} onTargetChange=${onTargetChange} onRateChange=${onRateChange} />
-    ${!allRatesSet && html`<div class="alert alert-secondary py-2 px-3 small mb-0">${t('rates.missing')}</div>`}
-    ${allRatesSet && html`<div class="small text-body-secondary mb-2">${t('rates.total_note')}</div>`}
-  `;
+  const extra = html`<${TotalRatesPanel} trip=${trip} rates=${rates} locale=${locale} />`;
 
   return html`
     <${BalanceBlock} id="total" badgeLabel=${t('nav.total')} code=${target.code} totalSpent=${totalSpent}
                       people=${people} suggestions=${suggestions} trip=${trip} locale=${locale}
-                      extra=${extra} showSections=${allRatesSet} showNote=${false} />
+                      extra=${extra} showSections=${ready} showNote=${false} />
   `;
 }
 
 export function Balances() {
   const store = useStore();
   const locale = getLocale();
-  const [ratesState, setRatesState] = useState(() => getRatesState(store.slug));
+  const rates = useTotalRates(store);
 
   useEffect(() => {
     if (!store.balances) reload('balances');
@@ -114,14 +109,6 @@ export function Balances() {
 
   const trip = store.trip;
   const multiCurrency = trip.currencies.length > 1;
-
-  function onTargetChange(currencyId) {
-    setRatesState(setTargetCurrency(store.slug, currencyId));
-  }
-
-  function onRateChange(currencyId, value) {
-    setRatesState(setRateValue(store.slug, currencyId, value));
-  }
 
   const groups = [
     { key: 'net', title: t('balances.title') },
@@ -139,7 +126,7 @@ export function Balances() {
         <${SideNav} entries=${entries} ariaLabel=${t('nav.jump_to')} />
       </div>
       <div class="col-md-8 col-lg-9 balances-content">
-        ${multiCurrency && html`<${TotalBalances} balances=${store.balances} trip=${trip} ratesState=${ratesState} onTargetChange=${onTargetChange} onRateChange=${onRateChange} locale=${locale} />`}
+        ${multiCurrency && html`<${TotalBalances} balances=${store.balances} trip=${trip} rates=${rates} locale=${locale} />`}
         ${store.balances.map((balance) => html`<${CurrencyBalanceBlock} key=${balance.currency_id} balance=${balance} trip=${trip} locale=${locale} />`)}
       </div>
     </div>

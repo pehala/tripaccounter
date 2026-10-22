@@ -1,7 +1,7 @@
 # Trip Accounter — Settlement
 
-> **Status: proposed.** The design record; once shipped, the rules themselves live in
-> `ERD.md` §settlement, `API.md` §settlement and `DECISIONS.md`, which win where the
+> **Status: shipped.** The design record; the rules themselves live in `ERD.md`
+> §Settlement, `API.md` §"Settling a trip" and `DECISIONS.md`, which win where the
 > documents differ.
 
 At the end of a trip the group agrees on one currency to settle in and one rate per
@@ -54,7 +54,7 @@ of that moment.
 
 ## 2. Data model
 
-Migration `0004`:
+Migration `26c5a7326a18`:
 
 ```
 TRIP           + settled_at             datetime NULL
@@ -72,7 +72,7 @@ TRIP_CURRENCY  + settlement_rate_scaled bigint NULL    -- ×10⁹
   same trip.
 - **The key is named by hand.** The naming convention covers single-column keys, so
   the model declares a `ForeignKeyConstraint` named `fk_trip_settlement_currency`
-  in `Trip.__table_args__`, and migration `0004` creates it under the same name.
+  in `Trip.__table_args__`, and migration `26c5a7326a18` creates it under the same name.
   `trip_scoped_fk` serves keys whose trip column is `trip_id`; on `trip` that column
   is `id`, so this key is written out in full.
 - **The key is circular.** `trip_currency.trip_id` already references `trip`. The
@@ -89,7 +89,7 @@ TRIP_CURRENCY  + settlement_rate_scaled bigint NULL    -- ×10⁹
   `settlement_rate_scaled` together, and flushes; then it deletes the trip. The trip
   row names no currency by the time the currencies go, and the check holds at every
   step, on SQLite and Postgres alike.
-- **Migration `0004` runs in batch mode.** SQLite cannot add a foreign key or a
+- **Migration `26c5a7326a18` runs in batch mode.** SQLite cannot add a foreign key or a
   check constraint in place, and the backend suite upgrades to head on SQLite. The
   migration adds the three columns, then adds the key and the check inside
   `op.batch_alter_table("trip")`, as `0003` does for `item_label`.
@@ -273,7 +273,7 @@ the state. `iceland-2026` stays unsettled, and `test_seed.py` keeps asserting on
 ## 9. Build order
 
 1. Model: the three columns, the `use_alter` key `fk_trip_settlement_currency`, and
-   `foreign_keys` on `Trip.currencies` and `TripCurrency.trip`. Migration `0004`:
+   `foreign_keys` on `Trip.currencies` and `TripCurrency.trip`. Migration `26c5a7326a18`:
    columns first, then the key and the check inside
    `op.batch_alter_table("trip")`. Verify the upgrade on SQLite and Postgres and the
    downgrade on both before moving on.

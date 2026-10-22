@@ -15,6 +15,7 @@ from app.schemas.fields import (
     LatStr,
     LonStr,
     OccurredAt,
+    Rate,
     Strict,
     UrlStr,
     Weight,
@@ -163,6 +164,20 @@ class TripUpdate(Strict):
     timezone: str | None = None
     note: str | None = None
     archived: bool | None = None
+
+
+class SettlementRateWrite(Strict):
+    """One agreed rate: 1 `currency_id` = `rate` of the settlement target."""
+
+    currency_id: int
+    rate: Rate
+
+
+class SettlementWrite(Strict):
+    """Request body for settling a trip: the target currency and a rate for every other one."""
+
+    target_currency_id: int
+    rates: list[SettlementRateWrite]
 
 
 # ---- Items -------------------------------------------------------------------

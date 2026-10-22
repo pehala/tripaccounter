@@ -17,7 +17,7 @@ from app.schemas.responses import (
     TransferOut,
 )
 from app.services import items as item_service
-from app.services import queries, splits
+from app.services import queries, settlement, splits
 from app.services.errors.api import ValidationError, field_errors
 from app.services.errors.fields import NotInTripError
 from app.services.labels import prune_unused, set_item_labels
@@ -112,10 +112,11 @@ def get_item(item_id: int, trip: TripDep, session: SessionDep):
     "/trips/{slug}/items",
     status_code=201,
     response_model=ItemEnvelope,
-    responses=error_responses(400, 404, 422),
+    responses=error_responses(400, 404, 409, 422),
 )
 def create_item(body: ItemWrite, trip: TripDep, session: SessionDep, clock: ClockDep):
     """Create a new item on a trip."""
+    settlement.assert_unsettled(trip)
     fields = item_service.validate_write(session, trip, body)
     if fields:
         raise ValidationError(fields)
@@ -144,7 +145,7 @@ def create_item(body: ItemWrite, trip: TripDep, session: SessionDep, clock: Cloc
 @router.patch(
     "/trips/{slug}/items/{item_id}",
     response_model=ItemEnvelope,
-    responses=error_responses(400, 404, 422),
+    responses=error_responses(400, 404, 409, 422),
 )
 def update_item(item_id: int, body: ItemWrite, trip: TripDep, session: SessionDep):
     """Update an item's fields, and its shares if the split changed."""
@@ -153,6 +154,8 @@ def update_item(item_id: int, body: ItemWrite, trip: TripDep, session: SessionDe
     fields = item_service.validate_write(session, trip, body, item=item)
     if fields:
         raise ValidationError(fields)
+    with field_errors("shares"):
+        item_service.assert_locked_unchanged(session, trip, item, body)
 
     with field_errors("wallet_id"):
         item_service.rewrite_wallet(session, item, body)
@@ -168,10 +171,13 @@ def update_item(item_id: int, body: ItemWrite, trip: TripDep, session: SessionDe
     return {"item": ItemOut.from_item(item, split_roster(trip.people))}
 
 
-@router.delete("/trips/{slug}/items/{item_id}", status_code=204, responses=error_responses(404))
+@router.delete(
+    "/trips/{slug}/items/{item_id}", status_code=204, responses=error_responses(404, 409)
+)
 def delete_item(item_id: int, trip: TripDep, session: SessionDep):
     """Delete an item from a trip."""
     item = require_in_trip(session, LineItem, item_id, trip.id, "item", options=ITEM_LOAD_OPTIONS)
+    settlement.assert_unsettled(trip)
     labels = item.label_rows
     session.delete(item)
     session.flush()

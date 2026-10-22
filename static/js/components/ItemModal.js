@@ -5,6 +5,7 @@ import { reload, invalidateMoneyViews } from '../store.js';
 import { t, getLocale } from '../i18n/index.js';
 import { parse, money, fmtParams, toInputValue, fromInputValue, nowIn } from '../fmt.js';
 import { pushFlash } from './Flash.js';
+import { errText } from './errText.js';
 import { PersonChip } from './PersonChip.js';
 import { LabelInput } from './LabelInput.js';
 import { SplitEditor } from './SplitEditor.js';
@@ -131,6 +132,9 @@ export function ItemModal({ trip, labels, entry, onClose }) {
     return trip.people.filter((p) => p.active || sharing.has(p.id));
   }, [trip]);
   const payerPeople = useMemo(() => trip.people.filter((p) => p.active || p.id === item?.payer_id), [trip]);
+  // A settled trip freezes what enters a balance: an item's money fields, and a
+  // transfer whole. Everything else on an item stays editable.
+  const settled = Boolean(trip.settlement);
 
   const [state, setState] = useState(() => initialItemState(item, trip));
   const [tstate, setTState] = useState(() => initialTransferState(transfer, trip));
@@ -329,14 +333,19 @@ export function ItemModal({ trip, labels, entry, onClose }) {
         onClose();
       }
     } catch (err) {
-      if (err.fields && Object.keys(err.fields).length) {
-        setFieldErrors(err.fields);
-      } else {
-        pushFlash(t('err.' + err.code, fmtParams(err.params, locale)));
-      }
+      showError(err);
     } finally {
       setSaving(false);
     }
+  }
+
+  // `fields.id` is the object-level slot — a trip settled from another tab, say —
+  // which no input owns, so it goes to the flash; every other field to its input.
+  function showError(err) {
+    const { id, ...rest } = err.fields || {};
+    if (id) pushFlash(errText(id, locale));
+    if (Object.keys(rest).length) setFieldErrors(rest);
+    else if (!id) pushFlash(errText(err, locale));
   }
 
   async function remove() {
@@ -350,7 +359,7 @@ export function ItemModal({ trip, labels, entry, onClose }) {
       invalidateMoneyViews();
       onClose();
     } catch (err) {
-      pushFlash(t('err.' + err.code, fmtParams(err.params, locale)));
+      showError(err);
     }
   }
 
@@ -386,7 +395,8 @@ export function ItemModal({ trip, labels, entry, onClose }) {
 
           <div class="modal-body">
             ${kind === 'transfer' && html`
-              <${TransferFields} trip=${trip} state=${tstate} fieldError=${fieldError}
+              ${settled && html`<div class="alert alert-secondary py-2 px-3 small settled-hint">${t('settlement.locked_hint')}</div>`}
+              <${TransferFields} trip=${trip} state=${tstate} fieldError=${fieldError} disabled=${settled}
                                   onFromWallet=${(e) => setT({ fromWalletId: Number(e.target.value) })}
                                   onFromAmount=${fromAmountChanged} onFromCurrency=${fromCurrencyChanged}
                                   onToWallet=${(e) => setT({ toWalletId: Number(e.target.value) })}
@@ -404,14 +414,16 @@ export function ItemModal({ trip, labels, entry, onClose }) {
               ${fieldError('name')}
             </div>
 
+            ${settled && html`<div class="alert alert-secondary py-2 px-3 small settled-hint">${t('settlement.locked_hint')}</div>`}
             <div class="input-group input-group-lg mb-3">
               <input class="form-control num text-end fw-semibold ${fieldErrors.amount ? 'is-invalid' : ''}" name="amount"
-                     inputmode="decimal" placeholder="0" required
+                     inputmode="decimal" placeholder="0" required disabled=${settled}
                      value=${state.amount} onInput=${(e) => set({ amount: e.target.value })} onChange=${amountChanged} />
-              <select class="form-select flex-grow-0 w-auto" name="currency_id" value=${state.currencyId} onChange=${currencyChanged}>
+              <select class="form-select flex-grow-0 w-auto" name="currency_id" value=${state.currencyId}
+                      disabled=${settled} onChange=${currencyChanged}>
                 ${trip.currencies.map((c) => html`<option key=${c.id} value=${c.id}>${c.code}</option>`)}
               </select>
-              ${fieldError('amount')}
+              ${fieldError('amount')}${fieldError('currency_id')}
             </div>
 
             <label class="form-label small mb-1">${t('item.country_label')} <span class="text-danger">*</span></label>
@@ -436,9 +448,10 @@ export function ItemModal({ trip, labels, entry, onClose }) {
             <div class="d-flex gap-1 flex-wrap mb-3">
               ${payerPeople.map((p) => html`
                 <${PersonChip} key=${p.id} person=${p} type="radio" name="payer_id" id="pay-${p.id}"
-                                checked=${state.payerId === p.id} onChange=${() => payerChanged(p.id)} />
+                                checked=${state.payerId === p.id} disabled=${settled} onChange=${() => payerChanged(p.id)} />
               `)}
             </div>
+            ${fieldError('payer_id')}
 
             <label class="form-label small mb-1">${t('item.wallet_label')}</label>
             <select class="form-select mb-3 ${fieldErrors.wallet_id ? 'is-invalid' : ''}" name="wallet_id"
@@ -452,8 +465,8 @@ export function ItemModal({ trip, labels, entry, onClose }) {
                             weights=${state.weights} onWeightChange=${changeWeight}
                             exacts=${state.exacts} onExactChange=${changeExact}
                             preview=${state.preview} previewFailed=${previewFailed} previewError=${previewError}
-                            locale=${locale} />
-            ${fieldError('shares')}
+                            locale=${locale} disabled=${settled} />
+            ${fieldError('split_mode')}${fieldError('shares')}
 
             <div class="row g-3 mt-0">
               <div class="col-12 col-sm-6">
@@ -505,7 +518,7 @@ export function ItemModal({ trip, labels, entry, onClose }) {
           </div>
 
           <div class="modal-footer py-2">
-            ${isEdit && html`
+            ${isEdit && !settled && html`
               <button type="button" class="btn btn-link link-danger text-decoration-none me-auto" onClick=${remove}>
                 <i class="bi bi-trash"></i> ${t('item.delete')}</button>
             `}
@@ -517,7 +530,7 @@ export function ItemModal({ trip, labels, entry, onClose }) {
               <button type="button" class="btn btn-outline-primary" disabled=${saving}
                       onClick=${(e) => save(e, true)}>${t('item.save_another')}</button>
             `}
-            <button type="submit" class="btn btn-primary px-4" disabled=${saving}>${t('item.save')}</button>
+            <button type="submit" class="btn btn-primary px-4" disabled=${saving || (settled && kind === 'transfer')}>${t('item.save')}</button>
           </div>
         </form>
       </div>

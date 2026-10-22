@@ -12,7 +12,7 @@ from app.services.money import (
     to_hundredths,
     to_wire,
 )
-from app.services.settle import round_nets_to_minor, suggest_transfers
+from app.services.settle_up import round_nets_to_minor, suggest_transfers
 
 
 @pytest.mark.parametrize(

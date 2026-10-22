@@ -15,6 +15,7 @@ from decimal import Decimal
 from app.services.errors.fields import (
     InvalidAmountError,
     InvalidCoordinatesError,
+    InvalidRateError,
     NotPositiveError,
     TooPreciseError,
 )
@@ -22,6 +23,8 @@ from app.services.errors.fields import (
 AMOUNT_RE = re.compile(r"^-?[0-9]+(\.[0-9]{1,2})?$")
 WEIGHT_RE = re.compile(r"^[0-9]+(\.[0-9]+)?$")
 COORD_RE = re.compile(r"^-?[0-9]+(\.[0-9]{1,6})?$")
+# ≤ 9 integer digits keeps a rate ×10⁹ inside a bigint.
+RATE_RE = re.compile(r"^[0-9]{1,9}(\.[0-9]{1,9})?$")
 
 
 def parse_amount(raw: object, *, allow_zero: bool = False) -> Decimal:
@@ -58,4 +61,17 @@ def parse_coordinate(raw: object, *, low: Decimal, high: Decimal) -> Decimal:
     value = Decimal(raw)
     if not (low <= value <= high):
         raise InvalidCoordinatesError()
+    return value
+
+
+def parse_rate(raw: object, currency_id: int | None) -> Decimal:
+    """Parse the canonical rate grammar: ≤ 9 integer digits, ≤ 9 fraction digits, > 0.
+
+    `currency_id` names the currency the rate is for, carried in the error.
+    """
+    if not isinstance(raw, str) or not RATE_RE.match(raw):
+        raise InvalidRateError(currency_id=currency_id)
+    value = Decimal(raw)
+    if value <= 0:
+        raise InvalidRateError(currency_id=currency_id)
     return value

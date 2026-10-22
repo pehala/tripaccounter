@@ -42,7 +42,9 @@ app/
 │   │                   split-mode defaulting, the share rows a write persists
 │   ├── splits.py       build/validate share rows, exact-sum check, pad to roster
 │   │                   order; resolve_shares_wire is the view expression in Python
-│   ├── settle.py       round nets to hundredths with the zero-sum correction, then
+│   ├── settlement.py   the stored settlement: validate, settle, unlock, and the lock
+│   │                   every item, transfer and currency write meets while settled
+│   ├── settle_up.py    round nets to hundredths with the zero-sum correction, then
 │   │                   the greedy plan. THE one place money is rounded.
 │   ├── balances.py     per-currency paid/owed/net via SQL aggregates
 │   ├── stats.py        the dimension registry + one GROUP BY per requested chain
@@ -108,7 +110,7 @@ Money is integers, and there is exactly one rounding step.
 | computed share | `bigint` micro-units, floored, **a view** | `db_views.share_owed` |
 | aggregated | SQL `GROUP BY` over both | `services/balances.py`, `services/stats.py` |
 | exchange rate | exact `Fraction` per lot, floored once at ×10⁹ — a ratio, never stored | `services/exchange_rates.py` |
-| **rounded** | **hundredths, zero-sum corrected** | **`services/settle.py` — the only one** |
+| **rounded** | **hundredths, zero-sum corrected** | **`services/settle_up.py` — the only one** |
 | wire | plain JSON number, 2 places typed / 6 computed / 9 for a rate | `money.to_wire` in `schemas/responses.py` |
 
 Consequences that are easy to trip over:
@@ -206,6 +208,7 @@ lives, which is rarely where the code that answers it lives.
 | `test_wallets.py` | the wallet balances report — `received/sent/spent`, the overcharge sign, untracked `[]`, currency order |
 | `test_exchange_rates.py` | spent and leftover rates — FIFO lot order, a lot split between parts, change-backs, the held cap, `null` rates, per-person rows |
 | `test_stays.py` | stay CRUD, `null` clears on `PATCH`, the date range, per-currency totals and `per_night` (floored, `null` at 0 nights), delete detaching items, an item's `stay_id` |
+| `test_settlement.py` | `PUT`/`DELETE /settlement`, the rate rules, the lock on every locked field and whole-object write, the editable fields, settle/unlock cycles, deleting a settled trip, the rate invariant over the seed |
 | `test_transfers.py` | transfer CRUD, the plain/exchange mirroring rule, `same_wallet`/`cross_owner_exchange`, exclusion from spend |
 | `test_stats.py` | prefix expansion, nested rows against their parent, each dimension's own column, the deliberate `label` overlap, `person` as owed |
 | `test_timezones.py` | the trip time zone: wall times in and out, gap and repeat, the days it cuts across a clock change, feed order |

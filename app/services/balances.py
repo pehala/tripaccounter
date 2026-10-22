@@ -14,7 +14,7 @@ from app.models.items import LineItem
 from app.models.roster import Person
 from app.models.wallets import Wallet, WalletTransfer
 from app.schemas.responses import BalanceBlockOut, BalancePersonOut, SuggestionOut
-from app.services import queries, settle
+from app.services import queries, settle_up
 from app.services.money import AMOUNT_SCALE, MICRO_PER_MINOR, MICRO_SCALE, to_wire
 
 
@@ -104,14 +104,14 @@ def compute_balances(session: Session, trip_id: int) -> list[BalanceBlockOut]:
                 )
             )
 
-        net_minor = settle.round_nets_to_minor(net_micro, roster_order)
+        net_minor = settle_up.round_nets_to_minor(net_micro, roster_order)
         suggestions = [
             SuggestionOut(
                 from_person_id=transfer["from_person_id"],
                 to_person_id=transfer["to_person_id"],
                 amount=to_wire(transfer["amount"], AMOUNT_SCALE),
             )
-            for transfer in settle.suggest_transfers(net_minor, roster_order)
+            for transfer in settle_up.suggest_transfers(net_minor, roster_order)
         ]
 
         blocks.append(

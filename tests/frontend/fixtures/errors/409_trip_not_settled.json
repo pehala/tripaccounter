@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "conflict",
+    "params": {},
+    "fields": {
+      "id": { "code": "trip_not_settled", "params": {} }
+    }
+  }
+}

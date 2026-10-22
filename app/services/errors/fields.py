@@ -174,6 +174,29 @@ class CrossOwnerExchangeError(FieldError):
     code = "cross_owner_exchange"
 
 
+# ---- settlement --------------------------------------------------------------
+
+
+class MissingRateError(FieldError):
+    """A trip currency other than the settlement target has no rate."""
+
+    code = "missing_rate"
+    param_names = ("currency_id",)
+
+    def __init__(self, currency_id: int) -> None:
+        super().__init__({"currency_id": currency_id})
+
+
+class InvalidRateError(FieldError):
+    """A rate names the target or a currency outside the trip, or is not a positive `Rate`."""
+
+    code = "invalid_rate"
+    param_names = ("currency_id",)
+
+    def __init__(self, currency_id: int | None) -> None:
+        super().__init__({"currency_id": currency_id})
+
+
 # ---- conflicts (409) ---------------------------------------------------------
 
 
@@ -201,3 +224,15 @@ class IsDefaultError(ConflictFieldError):
     """The wallet is a person's default and can't be deleted while it holds that role."""
 
     code = "is_default"
+
+
+class TripSettledError(ConflictFieldError):
+    """The trip is settled, and the write would change what a balance is computed from."""
+
+    code = "trip_settled"
+
+
+class TripNotSettledError(ConflictFieldError):
+    """The trip has no settlement to unlock."""
+
+    code = "trip_not_settled"
